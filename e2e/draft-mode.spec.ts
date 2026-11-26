@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { blockSanity, enterDraftMode } from "./support/sanity";
+import { blockSanity, openSharedPreviewLink } from "./support/sanity";
 
 test("draft mode stays off without a preview secret that Sanity confirms", async ({ request }) => {
   for (const path of [
@@ -8,8 +8,9 @@ test("draft mode stays off without a preview secret that Sanity confirms", async
   ]) {
     const response = await request.get(path, { maxRedirects: 0 });
 
-    // 401 for a wrong secret. 503 where no read token is set (as in CI): the secret can't be checked.
-    expect([401, 503]).toContain(response.status());
+    // Playwright gives the server the stand-in's read token (playwright.config.ts), so the secret
+    // is checked against the Studio's (e2e/fixtures/sanity-content.mts) and refused.
+    expect(response.status()).toBe(401);
     expect(response.headers()["set-cookie"] ?? "").not.toContain("__prerender_bypass");
   }
 });
@@ -17,10 +18,8 @@ test("draft mode stays off without a preview secret that Sanity confirms", async
 test("someone with a shared preview link sees a preview banner and can exit", async ({
   page,
   context,
-  baseURL,
 }) => {
-  await enterDraftMode(context, baseURL!);
-  await page.goto("/");
+  await openSharedPreviewLink(page, "/");
 
   const banner = page.getByRole("complementary", { name: "Preview" });
   await expect(banner).toContainText("unpublished changes");
@@ -39,10 +38,10 @@ test("someone with a shared preview link sees a preview banner and can exit", as
   await expect(banner).toBeHidden();
 });
 
-test("the Studio never shows the site's preview banner", async ({ page, context, baseURL }) => {
+test("the Studio never shows the site's preview banner", async ({ page }) => {
   // Editors using live preview have draft mode on in the same browser as the Studio.
   await blockSanity(page);
-  await enterDraftMode(context, baseURL!);
+  await openSharedPreviewLink(page);
   await page.goto("/studio");
 
   await expect(page.getByRole("dialog", { name: "Network error" })).toBeVisible();
