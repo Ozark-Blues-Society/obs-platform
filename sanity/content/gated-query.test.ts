@@ -8,11 +8,13 @@ import { MEMBERSHIP_LEVELS, type MembershipLevel } from "../schemas/options";
 import {
   CAN_VIEW,
   GATED_TYPES,
+  LINK_TARGET,
   PUBLIC_FIELDS,
   gatedProjection,
   isBalancedGroq,
   itemQuery,
   listQuery,
+  readsOtherDocuments,
   type GatedType,
 } from "./gated-query";
 
@@ -86,8 +88,12 @@ const CONTENT: Record<GatedType, string> = {
 
 type Item = Record<string, unknown> & { locked: unknown; content: unknown };
 
-async function run(query: string, params: Record<string, unknown>): Promise<unknown> {
-  const result = await evaluate(parse(query), { dataset: DATASET, params });
+async function run(
+  query: string,
+  params: Record<string, unknown>,
+  dataset: Doc[] = DATASET,
+): Promise<unknown> {
+  const result = await evaluate(parse(query), { dataset, params });
   return result.get();
 }
 
@@ -281,7 +287,6 @@ describe("isBalancedGroq", () => {
       '{ excerpt, body, "author": author->{ name } }',
       '{ "url": "https://example.org/a}b" }',
       "{ 'paren': ')' }",
-      '{ "n": count(*[_type == "post"][0...3]) }',
       '{ "quote": "say \\"hi\\" }" }',
     ]) {
       expect(isBalancedGroq(text, true), text).toBe(true);
@@ -308,6 +313,166 @@ describe("isBalancedGroq", () => {
     expect(isBalancedGroq("publishedAt desc, title asc")).toBe(true);
     expect(isBalancedGroq("x) || true || (y")).toBe(false);
     expect(isBalancedGroq("(a")).toBe(false);
+  });
+});
+
+describe("reads of other documents", () => {
+  // A public page and post that point at members-only ones: the shapes that C-2's blocks that fill
+  // themselves and rich-text links invite. An item's gate doesn't cover what its GROQ reads
+  // elsewhere.
+  const NESTED: Doc[] = [
+    {
+      _id: "page-home",
+      _type: "page",
+      slug: { current: "home" },
+      title: "Home",
+      template: "standard",
+      visibility: { audience: "everyone" },
+      blocks: [{ _type: "upcomingEventsBlock", _key: "b1", heading: "Coming up", count: 3 }],
+    },
+    {
+      _id: "post-public",
+      _type: "post",
+      slug: { current: "public" },
+      title: "Public post",
+      visibility: { audience: "everyone" },
+      body: [
+        {
+          _type: "block",
+          children: [{ _type: "span", text: "See the notes", marks: ["m1"] }],
+          markDefs: [{ _key: "m1", _type: "link", internal: { _ref: "post-members" } }],
+        },
+      ],
+    },
+    ...docsFor("members", VISIBILITIES.members),
+  ];
+  const UPCOMING_EVENTS =
+    '{ blocks[]{ ..., _type == "upcomingEventsBlock" => { "events": *[_type == "event"] | order(start asc)[0...3]{ title, start, body } } } }';
+
+  it("refuses * in content, which would read other documents past their gates", async () => {
+    for (const content of [UPCOMING_EVENTS, '{ "n": count(*[_type == "post"][0...3]) }']) {
+      expect(() => gatedProjection("page", content), content).toThrow(
+        "The members-only fields can't use * outside quotes",
+      );
+    }
+    expect(() => itemQuery("page", UPCOMING_EVENTS)).toThrow(
+      "own getGatedItem or listGatedItems call",
+    );
+    // What the upcoming-events projection would have done, unchecked: a visitor on the public home
+    // page gets the members-only event's description.
+    const unchecked = `*[_id == "page-home"][0]{ title, "content": select(${CAN_VIEW} => @${UPCOMING_EVENTS}) }`;
+    const home = (await run(unchecked, { memberLevel: null }, NESTED)) as {
+      content: { blocks: { events: unknown }[] };
+    };
+    expect(home.content.blocks[0].events).toEqual([
+      {
+        title: "Event members",
+        start: "2026-12-05T01:00:00Z",
+        body: [{ _type: "block", children: [{ _type: "span", text: `${SECRET}: event` }] }],
+      },
+    ]);
+  });
+
+  it("refuses * in a list filter or ordering", () => {
+    // Whether any members-only post mentions a word: an answer without returning the post.
+    const filter =
+      'count(*[_type == "post" && visibility.audience != "everyone" && pt::text(body) match "jam"]) > 0';
+    expect(() => listQuery("post", CONTENT.post, { filter })).toThrow(
+      "The list filter can't use * outside quotes",
+    );
+    expect(() =>
+      listQuery("post", CONTENT.post, { order: "count(*[references(^._id)]) desc" }),
+    ).toThrow("The list order can't use * outside quotes");
+  });
+
+  it("allows * inside quotes", async () => {
+    for (const filter of ['title match "post*"', "title match 'post*'", 'title != "a \\" * b"']) {
+      expect(() => listQuery("post", CONTENT.post, { filter }), filter).not.toThrow();
+    }
+    expect(() => gatedProjection("post", '{ body, "note": "5 * 2" }')).not.toThrow();
+    const posts = (await run(listQuery("post", CONTENT.post, { filter: 'title match "post*"' }), {
+      memberLevel: null,
+    })) as Item[];
+    expect(posts).toHaveLength(Object.keys(VISIBILITIES).length);
+  });
+
+  it("needs a projection after each -> in content, listing what it reads", async () => {
+    const bare = '{ body[]{ ..., markDefs[]{ ..., "target": internal-> } } }';
+    for (const content of [
+      bare,
+      '{ "linked": body[0].markDefs[0].internal->excerpt }',
+      '{ body[]{ ..., markDefs[]{ ..., "target": internal->{ ... } } } }',
+    ]) {
+      expect(() => gatedProjection("post", content), content).toThrow(
+        "must follow each -> with a projection that lists the fields it reads",
+      );
+    }
+    // Unchecked, a whole-document dereference gives a visitor the linked members-only post.
+    const unchecked = `*[_id == "post-public"][0]{ "content": select(${CAN_VIEW} => @${bare}) }`;
+    expect(JSON.stringify(await run(unchecked, { memberLevel: null }, NESTED))).toContain(
+      `${SECRET}: body`,
+    );
+    // LINK_TARGET takes only what every locked item shows. (Venues can be dereferenced freely:
+    // see CONTENT.event.)
+    const links = `{ body[]{ ..., markDefs[]{ ..., "target": internal->${LINK_TARGET} } } }`;
+    const post = (await run(
+      itemQuery("post", links),
+      { slug: "public", memberLevel: null },
+      NESTED,
+    )) as { content: { body: { markDefs: { target: unknown }[] }[] } };
+    expect(post.content.body[0].markDefs[0].target).toEqual({
+      _type: "post",
+      slug: "post-members",
+      title: "Post members",
+    });
+    expect(JSON.stringify(post)).not.toContain(SECRET);
+  });
+});
+
+describe("readsOtherDocuments", () => {
+  it("finds * outside quotes, in content, filters and orderings", () => {
+    for (const [text, content] of [
+      ['{ "n": count(*[_type == "post"][0...3]) }', true],
+      ['{ "events": *[_type == "event"]{ title } }', true],
+      ['{ "double": price * 2 }', true],
+      ['{ "after": "quote"*2 }', true],
+      ["count(*[references(^._id)]) desc", false],
+      ['_id in *[_type == "post"]._id', false],
+    ] as const) {
+      expect(readsOtherDocuments(text, content), text).toBe("*");
+    }
+    for (const [text, content] of [
+      ['{ "pattern": "jam*", "other": \'*\' }', true],
+      ['{ "quote": "say \\"*\\"" }', true],
+      ['title match "jam*"', false],
+    ] as const) {
+      expect(readsOtherDocuments(text, content), text).toBeNull();
+    }
+  });
+
+  it("finds a dereference in content that doesn't list the fields it reads", () => {
+    for (const text of [
+      '{ "target": internal-> }',
+      '{ "body": internal->body }',
+      '{ "target": internal->{ ... } }',
+      '{ "target": internal->{ _type, ..., title } }',
+      '{ "target": internal->{ _type == "post" => { ... } } }',
+      '{ "venue": venue->{ "all": { ... } } }',
+    ]) {
+      expect(readsOtherDocuments(text, true), text).toBe("->");
+    }
+    for (const text of [
+      '{ "venue": venue->{ name, address, mapUrl } }',
+      '{ "venue": venue -> { name } }',
+      '{ "sponsors": sponsors[]->{ name, "tags": tags[0...3] } }',
+      `{ body[]{ ..., markDefs[]{ ..., "target": internal->${LINK_TARGET} } } }`,
+      '{ "arrow": "->", body }',
+    ]) {
+      expect(readsOtherDocuments(text, true), text).toBeNull();
+    }
+    // Not checked in filters and orderings, where `venue->name` is the natural way to write it:
+    // they use public fields only, as the docs say.
+    expect(readsOtherDocuments("venue->name asc", false)).toBeNull();
   });
 });
 
