@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { buttonClass } from "@/components/form-classes";
+import { Button } from "@/components/ui/button";
 
 // The Server Function arrives as a prop (from page.tsx), so the form can be tested on its own.
 type ConfirmAction = (formData: FormData) => Promise<void>;
@@ -37,8 +37,8 @@ function SubmitButton() {
   // Disabled while signing in: a second press would find the link already used.
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className={buttonClass}>
+    <Button type="submit" variant="dark" disabled={pending} className="mt-4 w-full">
       {pending ? "Signing in…" : "Finish signing in"}
-    </button>
+    </Button>
   );
 }

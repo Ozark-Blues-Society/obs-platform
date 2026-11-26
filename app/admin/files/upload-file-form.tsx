@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent } from "react";
-import { successBoxClass } from "@/components/form-classes";
 import { Button } from "@/components/ui/button";
-import { CheckboxField, Fieldset, TextField } from "@/components/ui/form-fields";
+import {
+  CheckboxField,
+  Fieldset,
+  FormError,
+  SuccessBox,
+  TextField,
+} from "@/components/ui/form-fields";
 import {
   FILE_MESSAGES,
   checkFile,
@@ -183,22 +188,18 @@ export function UploadFileForm({ prepare, save, upload = putFile }: Props) {
         <Button type="submit" disabled={pending}>
           {pending ? "Uploading…" : "Upload file"}
         </Button>
-        {errorOn(null) && (
-          <p role="alert" className="mt-2 text-small font-medium text-danger">
-            {errorOn(null)}
-          </p>
-        )}
+        {errorOn(null) && <FormError className="mt-2">{errorOn(null)}</FormError>}
       </div>
       {/* Always in the page, so screen readers announce the message when it appears. */}
       <div role="status">
         {state.status === "saved" && (
-          <div className={successBoxClass}>
+          <SuccessBox>
             <p>{state.message}</p>
             <p className="mt-2 flex flex-wrap items-center gap-2">
               Code: <code className="break-all">{state.id}</code>
               <CopyCodeButton code={state.id} label="Copy code for the new file" />
             </p>
-          </div>
+          </SuccessBox>
         )}
       </div>
     </form>

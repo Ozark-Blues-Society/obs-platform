@@ -1,6 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { CheckboxField, Fieldset, SelectField, TextareaField, TextField } from "./form-fields";
+import {
+  CheckboxField,
+  Fieldset,
+  FormError,
+  SelectField,
+  SuccessBox,
+  TextareaField,
+  TextField,
+} from "./form-fields";
 
 describe("form fields", () => {
   it("label the control and describe it with the help text and the error", () => {
@@ -82,5 +90,21 @@ describe("form fields", () => {
     const group = screen.getByRole("group", { name: "I can help with…" });
     expect(group).toHaveAccessibleDescription("Pick any.");
     expect(group).toContainElement(screen.getByRole("checkbox", { name: "Blues in the Schools" }));
+  });
+
+  it("report on the whole form: a problem as an alert, a success in a box", () => {
+    render(
+      <>
+        <FormError>The upload didn&apos;t finish.</FormError>
+        <div role="status">
+          <SuccessBox>
+            <p>Saved.</p>
+          </SuccessBox>
+        </div>
+      </>,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent("The upload didn't finish.");
+    expect(screen.getByRole("status")).toHaveTextContent("Saved.");
   });
 });

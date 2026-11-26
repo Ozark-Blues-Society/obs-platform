@@ -18,7 +18,9 @@ const controlClasses =
   "mt-1 block w-full rounded-lg border border-line-strong bg-white px-3 py-2.5 text-base text-ink " +
   "placeholder:text-muted aria-invalid:border-danger disabled:cursor-not-allowed disabled:opacity-60";
 const hintClasses = "mt-1 text-xs text-muted";
-const errorClasses = "mt-1 text-small font-medium text-danger";
+// A field's error and a whole form's (FormError) look alike.
+const errorTextClasses = "text-small font-medium text-danger";
+const errorClasses = `mt-1 ${errorTextClasses}`;
 
 /** The ids that tie a control to its label, help text and error message. */
 function useFieldIds(
@@ -157,5 +159,36 @@ export function Fieldset({ legend, hint, error, children, className }: FieldsetP
       <div className="mt-2 grid gap-1.5">{children}</div>
       <HintAndError ids={ids} hint={hint} error={error} />
     </fieldset>
+  );
+}
+
+type MessageProps = { children: ReactNode; className?: string };
+
+/**
+ * A problem with the whole form rather than one field, such as a save that failed. It's an alert,
+ * so screen readers read it out when it appears.
+ */
+export function FormError({ children, className }: MessageProps) {
+  return (
+    <p role="alert" className={cx(errorTextClasses, className)}>
+      {children}
+    </p>
+  );
+}
+
+/**
+ * Says the form did what was asked ("Check your email."). Show it inside an element with
+ * `role="status"` that's always in the page, so screen readers announce it when it appears.
+ */
+export function SuccessBox({ children, className }: MessageProps) {
+  return (
+    <div
+      className={cx(
+        "rounded-lg border border-success bg-success-soft p-4 text-sm text-ink",
+        className,
+      )}
+    >
+      {children}
+    </div>
   );
 }

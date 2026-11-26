@@ -1,13 +1,8 @@
 "use client";
 
-import { useActionState, useId } from "react";
-import {
-  buttonClass,
-  errorClass,
-  inputClass,
-  labelClass,
-  successBoxClass,
-} from "@/components/form-classes";
+import { useActionState } from "react";
+import { Button } from "@/components/ui/button";
+import { SuccessBox, TextField } from "@/components/ui/form-fields";
 import type { EmailLinkState, PasswordState } from "@/lib/auth/sign-in-state";
 
 // The Server Functions arrive as props (from page.tsx), so the forms can be tested on their own.
@@ -16,47 +11,34 @@ type PasswordAction = (state: PasswordState, formData: FormData) => Promise<Pass
 
 export function EmailLinkForm({ action }: { action: EmailLinkAction }) {
   const [state, formAction, pending] = useActionState(action, { status: "idle" });
-  const id = useId();
-  const emailId = `${id}-email`;
-  const errorId = `${id}-error`;
-  const hasError = state.status === "error";
 
   return (
     <form action={formAction} noValidate className="mt-4">
-      <label htmlFor={emailId} className={labelClass}>
-        Email address
-      </label>
-      <input
-        id={emailId}
+      <TextField
+        label="Email address"
         name="email"
         type="email"
         autoComplete="email"
         spellCheck={false}
         required
         defaultValue={state.status === "idle" ? "" : state.email}
-        aria-invalid={hasError || undefined}
-        aria-describedby={hasError ? errorId : undefined}
-        className={inputClass}
+        // An alert, so screen readers read the message out when it appears.
+        error={state.status === "error" && <span role="alert">{state.message}</span>}
       />
-      {hasError && (
-        <p id={errorId} role="alert" className={errorClass}>
-          {state.message}
-        </p>
-      )}
-      <button type="submit" disabled={pending} className={buttonClass}>
+      <Button type="submit" variant="dark" disabled={pending} className="mt-4 w-full">
         {pending ? "Sending…" : "Email me a sign-in link"}
-      </button>
+      </Button>
       {/* Always in the page, so screen readers announce the message when it appears. */}
       <div role="status" className="mt-4">
         {state.status === "sent" && (
-          <div className={successBoxClass}>
+          <SuccessBox>
             <p className="font-semibold">Check your email.</p>
             <p className="mt-1">
               If <strong>{state.email}</strong> belongs to a member, a sign-in link is on its way.
               It can take a minute to arrive, so check your spam folder too. The link works once,
               for one hour.
             </p>
-          </div>
+          </SuccessBox>
         )}
       </div>
     </form>
@@ -65,49 +47,32 @@ export function EmailLinkForm({ action }: { action: EmailLinkAction }) {
 
 export function PasswordForm({ action, next }: { action: PasswordAction; next: string }) {
   const [state, formAction, pending] = useActionState(action, { status: "idle" });
-  const id = useId();
-  const emailId = `${id}-email`;
-  const passwordId = `${id}-password`;
-  const errorId = `${id}-error`;
   const hasError = state.status === "error";
 
   return (
     <form action={formAction} noValidate className="mt-4">
       <input type="hidden" name="next" value={next} />
-      <label htmlFor={emailId} className={labelClass}>
-        Email address
-      </label>
-      <input
-        id={emailId}
+      <TextField
+        label="Email address"
         name="email"
         type="email"
         autoComplete="username"
         spellCheck={false}
         required
         defaultValue={hasError ? state.email : ""}
-        className={inputClass}
       />
-      <label htmlFor={passwordId} className={`${labelClass} mt-4`}>
-        Password
-      </label>
-      <input
-        id={passwordId}
+      <TextField
+        label="Password"
         name="password"
         type="password"
         autoComplete="current-password"
         required
-        aria-invalid={hasError || undefined}
-        aria-describedby={hasError ? errorId : undefined}
-        className={inputClass}
+        error={hasError && <span role="alert">{state.message}</span>}
+        className="mt-4"
       />
-      {hasError && (
-        <p id={errorId} role="alert" className={errorClass}>
-          {state.message}
-        </p>
-      )}
-      <button type="submit" disabled={pending} className={buttonClass}>
+      <Button type="submit" variant="dark" disabled={pending} className="mt-4 w-full">
         {pending ? "Signing in…" : "Sign in"}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -7,7 +7,9 @@ import { EventCard } from "@/components/ui/event-card";
 import {
   CheckboxField,
   Fieldset,
+  FormError,
   SelectField,
+  SuccessBox,
   TextareaField,
   TextField,
 } from "@/components/ui/form-fields";
@@ -149,6 +151,13 @@ export default function ComponentsPage() {
               name="renew"
               defaultChecked
             />
+            <FormError>
+              The upload didn&apos;t finish. Check your connection and try again.
+            </FormError>
+            <SuccessBox>
+              <p className="font-semibold">Check your email.</p>
+              <p className="mt-1">A sign-in link is on its way.</p>
+            </SuccessBox>
           </Card>
         </Section>
 
