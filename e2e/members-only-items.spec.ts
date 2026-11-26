@@ -102,16 +102,37 @@ test.describe("a visitor", () => {
 });
 
 test.describe("a member", () => {
-  test("reads a members-only post and its files", async ({ page }) => {
+  test("reads a members-only post and its files, and a file is asked for only when clicked", async ({
+    page,
+  }) => {
     await signIn(page, MEMBERS.individual);
+    // Each request for /files/<code>. Any such request makes the server ask Storage for a
+    // download link, so it must come from a click, never from a prefetch (as next/link would do).
+    const fileRequests: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.startsWith("/files/")) fileRequests.push(request.url());
+    });
+
     await page.goto(postUrl(POSTS.members.slug));
     await expect(page.getByText(`The post ${POSTS.members.title} in full.`)).toBeVisible();
     const files = page.getByRole("region", { name: "Files for members" });
-    await expect(files.getByRole("link", { name: "E2E minutes (PDF)" })).toHaveAttribute(
-      "href",
-      `/files/${MEMBER_FILE_CODE}`,
-    );
+    const link = files.getByRole("link", { name: "E2E minutes (PDF)" });
+    await expect(link).toHaveAttribute("href", `/files/${MEMBER_FILE_CODE}`);
     await expect(page.getByRole("heading", { name: "This post is for members" })).toHaveCount(0);
+
+    // On screen and hovered, but not clicked: nothing asks for the file. A prefetch would start
+    // within moments of the link showing, so absence is checked after a short wait.
+    await link.hover();
+    await page.waitForTimeout(1_500);
+    expect(fileRequests).toEqual([]);
+
+    // Clicked: the browser asks /files/<code> once, and the route checks the member. This file has
+    // no row, so the member is told it isn't available.
+    await link.click();
+    await expect(
+      page.getByRole("heading", { level: 1, name: /^This file isn.t available to you$/ }),
+    ).toBeVisible();
+    expect(fileRequests).toHaveLength(1);
   });
 
   test("at another level is told whom a post is for, and gets none of it", async ({ page }) => {
