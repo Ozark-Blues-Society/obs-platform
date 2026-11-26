@@ -93,7 +93,8 @@ export const SOCIAL_PLATFORMS = [
 /**
  * First parts of web addresses that belong to the app's own routes, so a page can't use them as
  * its web address (pages live at /<web address>). A test checks that every top-level route folder
- * in app/ is listed; the rest are routes the architecture plans (docs/spec/architecture.md).
+ * in app/ is listed; the rest are routes the architecture plans (docs/spec/architecture.md), and
+ * /join, where the header's Join button goes (Membership Benefits & Join, M-4).
  */
 export const RESERVED_PAGE_SLUGS = [
   "account",
@@ -106,6 +107,7 @@ export const RESERVED_PAGE_SLUGS = [
   "donate",
   "draft-mode",
   "events",
+  "join",
   "sign-in",
   "sponsors",
   "studio",

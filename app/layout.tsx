@@ -16,7 +16,7 @@ const dmSerifDisplay = DM_Serif_Display({
   variable: "--font-dm-serif-display",
 });
 
-// The layout shell (header, footer) arrives with D-2.
+// The site's header and footer are in app/(site)/layout.tsx, so the Studio (app/studio) has none.
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${inter.variable} ${dmSerifDisplay.variable} h-full antialiased`}>

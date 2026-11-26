@@ -22,6 +22,22 @@ and select **+** (Create) to add one.
   **Under Events**, **Under About** and **Under Member Resources** put it inside that part of the
   top menu. **Footer** puts it with the links at the bottom of every page. Leave it on **Don't add
   to a menu** for pages you link to from somewhere else, such as a button.
+- **Position in menu** (shown once the page is in a menu): pages in the same menu are listed from
+  the lowest number up. Pages without a number come after them, in alphabetical order of title.
+  Use 1, 2, 3 and so on; leaving gaps (10, 20, 30) makes it easier to fit a page in between later.
+
+### How the menus work
+
+The top menu always has **Events**, **Blog**, **Sponsors** and **Donate**. Pages on **Main menu**
+appear after Sponsors. **About** and **Member Resources** appear only once a page is in them: on a
+computer they open a short list when clicked, and on a phone the **Menu** button shows everything.
+Putting a page under **Events** adds it to a list that also links to the events calendar.
+
+Members-only pages show in the menu for everyone, as in the approved design: a visitor who opens
+one sees its title and a prompt to sign in or join, not its content.
+
+Links to things that aren't pages in the Studio, such as another website, are added in [Site
+settings](site-settings.md). In each menu they come after the pages.
 
 ## Page blocks
 

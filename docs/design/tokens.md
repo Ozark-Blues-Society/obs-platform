@@ -80,12 +80,12 @@ A pair the site uses belongs here.
 | `muted`         | `muted-soft`   | Neutral tags ("Weekly", "Expired")                     | 4.79:1  | 4.5:1    |
 | `white`         | `primary-dark` | Header, footer, hero and toast text                    | 17.48:1 | 4.5:1    |
 | `muted-on-dark` | `primary-dark` | Hero intro, nav links, footer text                     | 12.17:1 | 4.5:1    |
-| `accent-light`  | `primary-dark` | Logo tagline, the hero's "Next up" date                | 12.14:1 | 4.5:1    |
+| `accent-light`  | `primary-dark` | Logo tagline, phone menu group labels, "Next up" date | 12.14:1 | 4.5:1    |
 | `accent`        | `primary-dark` | Eyebrows on the hero                                   | 6.64:1  | 4.5:1    |
 | `white`         | `primary`      | Page header, dark buttons, date badges, selected pills | 12.36:1 | 4.5:1    |
 | `white`         | `primary-light` | Dark buttons on hover                                 | 8.61:1  | 4.5:1    |
 | `muted-on-dark` | `primary`      | Page header intro                                      | 8.60:1  | 4.5:1    |
-| `accent-light`  | `primary`      | Date badge month                                       | 8.59:1  | 4.5:1    |
+| `accent-light`  | `primary`      | Date badge month, page header eyebrow                  | 8.59:1  | 4.5:1    |
 | `primary-dark`  | `accent`       | Main buttons, call-to-action band; focus outline there | 6.64:1  | 4.5:1    |
 | `white`         | `success`      | "Approve" button                                       | 5.75:1  | 4.5:1    |
 | `line-strong`   | `white`        | Form field border                                      | 3.71:1  | 3:1      |
