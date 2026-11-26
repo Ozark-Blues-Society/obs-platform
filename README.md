@@ -491,6 +491,15 @@ do what, and `e2e/listings.spec.ts` tests the form.
   read a listing that shows it: anyone, visitors included, can sign a link to a live listing's
   photo, but only the poster and the moderators to a pending one's. A photo stays while a listing
   shows it.
+- **A listing shows only the photo the moderators saw.** A listing can name only a photo already in
+  Storage, and it keeps the object's version (`photo_version`, set by the trigger
+  `private.pin_listing_photo()`). The Storage policy shows the photo only while the object is still
+  that version. Storage's API won't overwrite a photo, but an upload link made with `x-upsert` can
+  replace its object for two hours, past the policies. A replaced photo stops showing, to visitors
+  and moderators alike, until the poster submits a new one, which goes back to the moderators. A
+  signed link checks the policies only when it's made, so sign photo links for the listing's
+  version, `createSignedUrl(path, expiresIn, { versionId: photo_version })`: a link without it
+  keeps serving a replaced photo until it expires.
 - **Contact preference:** `email`, where people write through the website and the poster's address
   stays private (K-3 builds that), or `phone`, the number on the poster's profile. The form offers
   phone only when the profile has a number.

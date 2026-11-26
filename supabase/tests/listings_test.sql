@@ -12,7 +12,7 @@
 -- The sections change the data as they go (a poster edits and deletes, a moderator approves), so
 -- each section's expected results follow from the ones before it.
 begin;
-select plan(67);
+select plan(74);
 
 insert into auth.users (id, email)
 values
@@ -51,6 +51,16 @@ values
   ('00000000-0000-4000-8930-000000000007', 'admin'),
   ('00000000-0000-4000-8930-000000000008', 'editor'),
   ('00000000-0000-4000-8930-000000000009', 'membership_manager');
+
+-- The photos of T01, T02 and T04, and an upload of each member's that no listing shows (yet). They
+-- come first: a listing's photo must be in Storage, and the listing keeps the object's version.
+insert into storage.objects (bucket_id, name, version)
+values
+  ('listing-photos', '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000001.jpg', 'v1'),
+  ('listing-photos', '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000002.jpg', 'v2'),
+  ('listing-photos', '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000003.png', 'v3'),
+  ('listing-photos', '00000000-0000-4000-8930-000000000002/00000000-0000-4000-8950-000000000004.webp', 'v4'),
+  ('listing-photos', '00000000-0000-4000-8930-000000000002/00000000-0000-4000-8950-000000000006.jpg', 'v6');
 
 insert into public.listings (
   id, profile_id, category, title, body, price, photo_path, status, reject_reason, created_at,
@@ -93,15 +103,6 @@ values
     'pending', null, now(), null, null),
   ('00000000-0000-4000-8940-000000000011', '00000000-0000-4000-8930-000000000002', 'merch',
     'T11 other pending to reject', 'Posters.', null, null, 'pending', null, now(), null, null);
-
--- The photos of T01, T02 and T04, and an upload of each member's that no listing shows (yet).
-insert into storage.objects (bucket_id, name)
-values
-  ('listing-photos', '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000001.jpg'),
-  ('listing-photos', '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000002.jpg'),
-  ('listing-photos', '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000003.png'),
-  ('listing-photos', '00000000-0000-4000-8930-000000000002/00000000-0000-4000-8950-000000000004.webp'),
-  ('listing-photos', '00000000-0000-4000-8930-000000000002/00000000-0000-4000-8950-000000000006.jpg');
 
 -- The bucket, policies, privileges and constraints. Each policy is covered by the behaviour tests
 -- below; a new one needs tests of its own.
@@ -429,9 +430,9 @@ select results_eq(
 
 select lives_ok(
   $$
-    insert into storage.objects (bucket_id, name)
+    insert into storage.objects (bucket_id, name, version)
     values ('listing-photos',
-      '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000005.jpg')
+      '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000005.jpg', 'v5')
   $$,
   'an active member uploads a photo into their own folder'
 );
@@ -453,6 +454,32 @@ select results_eq(
   $$,
   $$ values ('pending', '00000000-0000-4000-8930-000000000001', true) $$,
   'a new listing is the poster''s own and waits for a moderator'
+);
+
+select is(
+  (select photo_version from public.listings where title = 'T12 poster new'),
+  'v5',
+  'a new listing keeps the version of the photo it was submitted with'
+);
+
+select throws_ok(
+  $$
+    insert into public.listings (category, title, body, photo_path)
+    values ('gear', 'Amp', 'Body',
+      '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000099.jpg')
+  $$,
+  '23503', null,
+  'a listing can''t show a photo that isn''t in Storage yet, so no photo arrives after review'
+);
+
+select throws_ok(
+  $$
+    update public.listings
+    set photo_path = '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000099.jpg'
+    where id = '00000000-0000-4000-8940-000000000009'
+  $$,
+  '23503', null,
+  'the poster can''t change a listing''s photo to one that isn''t in Storage yet'
 );
 
 select throws_ok(
@@ -479,8 +506,8 @@ select throws_ok(
     values ('gear', 'Amp', 'Body',
       '00000000-0000-4000-8930-000000000002/00000000-0000-4000-8950-000000000006.jpg')
   $$,
-  '23514', null,
-  'a member can''t put another member''s upload on their listing'
+  '23503', null,
+  'a member can''t put another member''s upload on their listing: they can''t even find it'
 );
 
 select lives_ok(
@@ -757,6 +784,77 @@ select results_eq(
   $$,
   array['T01 poster live', 'T03 other live', 'T10 other pending to approve'],
   'a visitor now reads the approved listing, not the rejected one or the one changed since approval'
+);
+
+reset role;
+
+-- A photo replaced in Storage after review (an upload link made with x-upsert overwrites the object
+-- past the policies) stops showing: the listing kept the version the moderator saw.
+
+update storage.objects set version = 'replaced after review'
+where name = '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000001.jpg';
+
+set local role anon;
+set local request.jwt.claims to '{"role": "anon"}';
+
+select is_empty(
+  $$
+    select name from storage.objects
+    where bucket_id = 'listing-photos' and name like '00000000-0000-4000-8930-%'
+  $$,
+  'a visitor no longer sees a live listing''s photo once it''s replaced in Storage'
+);
+
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims to
+  '{"sub": "00000000-0000-4000-8930-000000000006", "role": "authenticated"}';
+
+select results_eq(
+  $$
+    select name from storage.objects
+    where bucket_id = 'listing-photos' and name like '00000000-0000-4000-8930-%'
+    order by name
+  $$,
+  array[
+    '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000005.jpg',
+    '00000000-0000-4000-8930-000000000002/00000000-0000-4000-8950-000000000004.webp'
+  ],
+  'nor does a moderator'
+);
+
+reset role;
+
+-- Saving the listing again with the same photo doesn't take the replaced version: only a new photo
+-- path is looked up again, and changing the photo sends the listing back to the moderators.
+
+set local role authenticated;
+set local request.jwt.claims to
+  '{"sub": "00000000-0000-4000-8930-000000000001", "role": "authenticated"}';
+
+select results_eq(
+  $$
+    update public.listings
+    set photo_path = '00000000-0000-4000-8930-000000000001/00000000-0000-4000-8950-000000000001.jpg'
+    where id = '00000000-0000-4000-8940-000000000001'
+    returning status::text, photo_version
+  $$,
+  $$ values ('live', 'v1') $$,
+  'the poster saves their live listing again with the same photo: it keeps the reviewed version'
+);
+
+reset role;
+
+set local role anon;
+set local request.jwt.claims to '{"role": "anon"}';
+
+select is_empty(
+  $$
+    select name from storage.objects
+    where bucket_id = 'listing-photos' and name like '00000000-0000-4000-8930-%'
+  $$,
+  'so a visitor still doesn''t see the photo replaced after review'
 );
 
 reset role;

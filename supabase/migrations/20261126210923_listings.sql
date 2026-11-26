@@ -8,7 +8,8 @@
 --
 -- Who can do what:
 --   - Everyone, visitors included, reads live listings until their expires_at, and sees their
---     photos. Nobody else's pending, rejected or expired listings, and no unattached uploads.
+--     photos as they were submitted. Nobody else's pending, rejected or expired listings, and no
+--     unattached uploads.
 --   - An active member submits listings as themselves. A new listing waits for a moderator
 --     (status pending), whatever the request says: the status columns can't be inserted.
 --   - The poster reads all their own listings and deletes them at any time. While their membership
@@ -40,6 +41,9 @@ create table public.listings (
   price numeric(8, 2) check (price >= 0),
   -- The photo's object in the listing-photos bucket: "<profile_id>/<random uuid>.<jpg|png|webp>".
   photo_path text unique,
+  -- The version of the photo's object (storage.objects.version) when the listing was submitted or
+  -- its photo changed, set by a trigger. The photo is shown only while the object is that version.
+  photo_version text,
   contact_pref public.listing_contact not null default 'email',
   status public.listing_status not null default 'pending',
   reject_reason text check (char_length(reject_reason) <= 500),
@@ -62,6 +66,9 @@ comment on table public.listings is
 comment on column public.listings.contact_pref is
   'How the poster wants to be reached: email (people write through the site; the address stays '
   'private) or phone (the phone number on their profile).';
+comment on column public.listings.photo_version is
+  'The version of the photo''s object (storage.objects.version) when the listing was submitted or '
+  'its photo changed, set by a trigger. The photo shows only while the object is that version.';
 comment on column public.listings.status is
   'pending until a moderator approves (live) or rejects it; live listings become expired at '
   'expires_at. A poster''s change sends a listing back to pending.';
@@ -229,6 +236,38 @@ create trigger check_listing_change
   for each row
   execute function private.check_listing_change();
 
+-- A listing's photo must be in Storage already, and the listing keeps the object's version: the
+-- Storage policy below shows a listing's photo only while the object is still that version. An
+-- upload link made with x-upsert lets its holder overwrite the object for two hours, past the
+-- policies; a photo replaced after review then stops showing instead of going public unreviewed.
+-- SECURITY INVOKER: posters find their photo through their own folder's Storage policy.
+create function private.pin_listing_photo()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.photo_path is null then
+    new.photo_version := null;
+  elsif tg_op = 'INSERT' or new.photo_path is distinct from old.photo_path then
+    select objects.version into new.photo_version
+    from storage.objects
+    where objects.bucket_id = 'listing-photos' and objects.name = new.photo_path;
+    if not found then
+      raise exception 'upload the photo before adding it to a listing' using errcode = '23503';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.pin_listing_photo() from public;
+
+create trigger pin_listing_photo
+  before insert or update of photo_path on public.listings
+  for each row
+  execute function private.pin_listing_photo();
+
 -- The photos: a private bucket, so a photo is seen only through these policies or a signed URL.
 -- JPEG, PNG and WebP only (iPhones convert their photos to JPEG for uploads from the browser), up
 -- to 10 MB each.
@@ -240,10 +279,12 @@ values (
 
 -- Viewing, listing and signing need SELECT. A photo is visible to whoever can read a listing that
 -- shows it (the subquery runs under the listings policies above: live ones for everyone, their own
--- for posters, all for moderators), and to its uploader, who checks an upload arrived before the
--- listing exists. Uploading needs INSERT: active members, into their own folder, under a name like
--- the listing's photo_path. Removing needs DELETE: the uploader, once no listing shows the photo.
--- There's no UPDATE policy, so nobody overwrites or moves a photo.
+-- for posters, all for moderators) while the object is still the version that listing keeps, and
+-- to its uploader, who checks an upload arrived before the listing exists. Uploading needs INSERT:
+-- active members, into their own folder, under a name like the listing's photo_path. Removing needs
+-- DELETE: the uploader, once no listing shows the photo. There's no UPDATE policy, so the API
+-- refuses to overwrite or move a photo, except through an upload link made with x-upsert (see
+-- pin_listing_photo above).
 create policy "Anyone sees the photos of listings they can read"
   on storage.objects
   for select
@@ -251,7 +292,11 @@ create policy "Anyone sees the photos of listings they can read"
   using (
     bucket_id = 'listing-photos'
     and (
-      exists (select 1 from public.listings where listings.photo_path = objects.name)
+      exists (
+        select 1 from public.listings
+        where listings.photo_path = objects.name
+          and listings.photo_version = objects.version
+      )
       or (storage.foldername(name))[1] = (select auth.uid())::text
     )
   );

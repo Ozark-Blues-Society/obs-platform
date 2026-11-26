@@ -99,19 +99,28 @@ select results_eq(
   'the seed adds the 13 fixture listings, covering every category and status'
 );
 
+-- Compared with when the seed was loaded, not now(): the shared stack keeps its seed for days, and
+-- a live fixture listing ends 4 days after loading. One fixture listing is created 0 days before
+-- loading, so the newest created_at is the load time.
 select ok(
   (
     select bool_and(
       case
         when status in ('live', 'expired') then
-          expires_at = approved_at + interval '60 days' and (status = 'live') = (expires_at > now())
+          expires_at = approved_at + interval '60 days'
+          and (status = 'live') = (expires_at > seeded.at)
         else approved_at is null and expires_at is null
       end
     )
-    from public.listings
+    from public.listings,
+      (
+        select max(created_at) as at
+        from public.listings
+        where id::text like '00000000-0000-4000-8200-%'
+      ) as seeded
     where id::text like '00000000-0000-4000-8200-%'
   ),
-  'approved fixture listings run 60 days from approval, and only the live ones are still running'
+  'approved fixture listings run 60 days from approval; only the live ones were running when loaded'
 );
 
 select * from finish();

@@ -102,6 +102,10 @@ describe("listings", () => {
     }
   });
 
+  it("has one created the day the seed loads, which seed_test.sql takes as the load time", () => {
+    expect(Math.min(...LISTINGS.map((l) => l.createdDaysAgo))).toBe(0);
+  });
+
   it("uses the site's categories and listing length", () => {
     expect(LISTING_CATEGORIES).toEqual(SITE_LISTING_CATEGORIES.map((category) => category.title));
     expect(LISTING_CATEGORIES.map(listingCategoryValue)).toEqual(
