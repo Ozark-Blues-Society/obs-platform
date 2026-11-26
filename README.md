@@ -25,7 +25,7 @@ them.
 git clone https://github.com/Ozark-Blues-Society/obs-platform.git
 cd obs-platform
 pnpm install
-cp .env.example .env.local   # local Supabase settings; .env.local is git-ignored
+cp .env.example .env.local   # local Supabase and Sanity settings; .env.local is git-ignored
 pnpm dev
 ```
 
@@ -187,6 +187,56 @@ third link in an hour isn't sent, though the form still says it was. Raise the l
 without committing it, or wait. (With SMTP off, the CLI sets that limit to 360000, which is why
 Mailpit never hits it.)
 
+## Content Studio (Sanity)
+
+Editors manage the site's content in the Content Studio at `/studio`: Sanity Studio, embedded in
+the app (`sanity.config.ts`, `app/studio/[[...tool]]/page.tsx`). The content lives in Sanity's
+hosted Content Lake, with no local copy, so local development connects to a Sanity project's
+`development` dataset, never the production one. Editors' instructions are in
+[`docs/volunteer-guide/`](docs/volunteer-guide/).
+
+### Connecting a Sanity project
+
+The Society's Sanity project doesn't exist yet. Creating Sanity projects, datasets and tokens is a
+human gate ([`docs/HUMAN_GATES.md`](docs/HUMAN_GATES.md); due Dec 3 in decision 0002). Until a
+project is connected, leave the Sanity variables in `.env.local` empty. The app then uses the
+project ID `placeholder`: it builds and runs, `/studio` shows Sanity's "Project not found" screen,
+and no content loads.
+
+With a project, set these in `.env.local`:
+
+| Variable                        | Value                                                                   |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SANITY_PROJECT_ID` | The project's ID, from [sanity.io/manage](https://www.sanity.io/manage) |
+| `NEXT_PUBLIC_SANITY_DATASET`    | `development` (the default)                                             |
+| `SANITY_API_READ_TOKEN`         | A token with the Viewer role (Manage → API → Tokens). It's a secret.    |
+
+Then, in Manage → API → CORS origins, add `http://localhost:3000` with "Allow credentials" ticked,
+so the Studio can sign in from there. Every address that serves the site needs that entry.
+
+### How it fits together
+
+- **Private datasets** (decision 0001). Sanity answers anonymous queries on a private dataset as if
+  it were empty, so the server reads everything, published or draft, with the read token
+  (`sanity/live.ts`). The token never reaches the browser: it has no `NEXT_PUBLIC_` name, and
+  `defineLive` gets `browserToken: false`.
+- **Document types** go in `sanity/schemas/` (backlog C-1).
+- **Live preview.** The Studio's Presentation tool shows the site next to the document being
+  edited. It opens `/api/draft-mode/enable` with a secret, which the route checks with Sanity before
+  turning on Next.js draft mode. In draft mode, pages read drafts (`getDynamicFetchOptions()` in
+  `sanity/live.ts`), text carries invisible markers that make it clickable for editing, and the page
+  re-renders each time the Studio reports an edit (`app/(site)/draft-mode/visual-editing.tsx`).
+- **Shared preview links.** The Presentation tool's share button turns on a link with a long-lived
+  secret. Anyone who has it sees drafts without a Studio login, under a banner with an "Exit
+  preview" button. Turning sharing off and on again stops old links working. Draft mode is not a
+  membership: members-only content must stay locked for a draft-mode visitor (M-7).
+- **Published changes.** `<SanityLive>` in `app/(site)/layout.tsx` listens for them and refreshes
+  cached content. It needs no token, only the site's address in the CORS origins.
+- **Pages that show Sanity content** go under `app/(site)/`, the route group that holds the
+  draft-mode tools; the Studio stays outside it. With Cache Components, call `sanityFetch` inside a
+  `"use cache"` function and resolve `getDynamicFetchOptions()` outside it, as in Sanity's guide
+  [Sanity Live with Next.js Cache Components](https://www.sanity.io/docs/nextjs/cache-components).
+
 ## Scripts
 
 | Command                  | What it does                                                       |
@@ -261,14 +311,14 @@ lib/            Server and shared code: Supabase clients, sign-in helpers
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
 scripts/        Synthetic fixtures (scripts/fixtures/) and the seed generator
+sanity/         Sanity client, live preview helpers and (C-1) content schemas
 supabase/       Local Supabase config, migrations, seed and pgTAP tests
 docs/           Specs, decisions, design concept, backlog
 tools/          Helper scripts for the agent team
 ```
 
 Later backlog items add the rest of the target layout in
-[`docs/spec/architecture.md`](docs/spec/architecture.md): `sanity/`, `emails/` and the rest of
-`scripts/`.
+[`docs/spec/architecture.md`](docs/spec/architecture.md): `emails/` and the rest of `scripts/`.
 
 ## Next.js 16 notes
 
