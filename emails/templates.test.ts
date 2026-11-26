@@ -12,6 +12,12 @@ const files = readdirSync(new URL(".", import.meta.url)).filter(
   (file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx"),
 );
 
+// Newsletters go out through MailerLite, which fills in its own links for each subscriber: the
+// unsubscribe page and the web version. Every other template is one of the site's own emails, sent
+// through Resend, which would leave such a link as it is.
+const NEWSLETTERS = new Set(["monthly-newsletter.tsx"]);
+const MAILERLITE_LINKS = ["{$unsubscribe}", "{$url}"];
+
 const templates = await Promise.all(
   files.map(async (file) => {
     // Resolved when the test runs, so Vite can't analyze it ahead of time and shouldn't try.
@@ -38,6 +44,7 @@ it("finds the templates", () => {
       "listing-expiring.tsx",
       "listing-rejected.tsx",
       "membership-lapsed.tsx",
+      "monthly-newsletter.tsx",
       "receipt.tsx",
       "renewal-last-reminder.tsx",
       "renewal-reminder.tsx",
@@ -46,8 +53,9 @@ it("finds the templates", () => {
   );
 });
 
-describe.each(templates)("$file", ({ template, rendered: { subject, html, text } }) => {
+describe.each(templates)("$file", ({ file, template, rendered: { subject, html, text } }) => {
   const siteUrl = template.PreviewProps.siteUrl;
+  const newsletter = NEWSLETTERS.has(file);
 
   it("has a subject, which is also the document's only title", () => {
     expect(subject.trim()).not.toBe("");
@@ -65,10 +73,14 @@ describe.each(templates)("$file", ({ template, rendered: { subject, html, text }
     expect(text).not.toContain(decode(preview!).trim());
   });
 
-  it("links only to absolute addresses on the site", () => {
+  it("links only to absolute addresses on the site, and a newsletter to MailerLite's pages", () => {
     const links = all(html, / href="([^"]*)"/g).map(decode);
     expect(links.length).toBeGreaterThan(0);
-    expect(links.filter((link) => !link.startsWith(`${siteUrl}/`))).toEqual([]);
+    const allowed = (link: string) =>
+      link.startsWith(`${siteUrl}/`) || (newsletter && MAILERLITE_LINKS.includes(link));
+    expect(links.filter((link) => !allowed(link))).toEqual([]);
+    if (newsletter) expect(links).toEqual(expect.arrayContaining(MAILERLITE_LINKS));
+    else expect(html).not.toContain("{$");
   });
 
   it("uses only the design tokens' colors", () => {
@@ -93,7 +105,11 @@ describe.each(templates)("$file", ({ template, rendered: { subject, html, text }
   it("has a plain-text version with the same content and no markup or missing values", () => {
     expect(text).not.toMatch(/<[a-z!/]/i);
     expect(text).not.toMatch(/\b(?:undefined|null|NaN|Invalid Date)\b/);
-    expect(text).toContain("Replies to this email aren't read.");
-    expect(text).toContain(`contact page ${siteUrl}/contact`);
+    if (newsletter) {
+      expect(text).toContain("Unsubscribe {$unsubscribe}");
+    } else {
+      expect(text).toContain("Replies to this email aren't read.");
+      expect(text).toContain(`contact page ${siteUrl}/contact`);
+    }
   });
 });

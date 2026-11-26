@@ -32,3 +32,90 @@ export function eventDateParts(instant: string | Date) {
 export function formatSocietyDate(instant: string | Date): string {
   return dateFormat.format(new Date(instant));
 }
+
+// Months on the Society's calendar, written "2026-11", such as the monthly email digest's
+// (backlog E-4).
+const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;
+
+/** Whether `value` is a month written as "2026-11". */
+export function isMonth(value: unknown): value is string {
+  return typeof value === "string" && MONTH.test(value);
+}
+
+function monthParts(month: string): { year: number; index: number } {
+  const match = MONTH.exec(month);
+  if (!match) throw new Error(`Not a month: "${month}"`);
+  return { year: Number(match[1]), index: Number(match[2]) - 1 };
+}
+
+const yearMonthFormat = format({ year: "numeric", month: "2-digit" });
+
+/** The month that `instant` falls in on the Society's calendar: "2026-11". */
+export function societyMonth(instant: Date): string {
+  const parts = yearMonthFormat.formatToParts(instant);
+  const part = (type: string) => parts.find((each) => each.type === type)?.value;
+  return `${part("year")}-${part("month")}`;
+}
+
+/** The month `count` months after `month` (before it, for a negative count). */
+export function addMonths(month: string, count: number): string {
+  const { year, index } = monthParts(month);
+  const first = new Date(Date.UTC(year, index + count, 1));
+  return `${first.getUTCFullYear()}-${String(first.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/** "November 2026". */
+export function monthName(month: string): string {
+  const { year, index } = monthParts(month);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, index, 1)));
+}
+
+/**
+ * When `month` starts and ends on the Society's calendar: midnight Central Time on its first day,
+ * and on the next month's first day (the end is outside the month).
+ */
+export function monthRange(month: string): { start: Date; end: Date } {
+  return { start: startOfMonth(month), end: startOfMonth(addMonths(month, 1)) };
+}
+
+const wallClockFormat = format({
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "numeric",
+  second: "numeric",
+  hourCycle: "h23",
+});
+
+/** How far the Society's clocks are ahead of UTC at `instant`, in milliseconds (negative: behind). */
+function offsetAt(instant: number): number {
+  const seconds = Math.floor(instant / 1000) * 1000;
+  const parts = Object.fromEntries(
+    wallClockFormat.formatToParts(new Date(seconds)).map((part) => [part.type, Number(part.value)]),
+  );
+  const wallClock = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  return wallClock - seconds;
+}
+
+/** Midnight Central Time at the start of the month's first day. */
+function startOfMonth(month: string): Date {
+  const { year, index } = monthParts(month);
+  const midnight = Date.UTC(year, index, 1);
+  // Midnight UTC comes 5 or 6 hours before the Society's. Guess with the offset then, and correct
+  // with the offset at the guess, in case the clocks changed in between (in Central Time they
+  // change at 2 AM, so they never do).
+  const guess = midnight - offsetAt(midnight);
+  return new Date(midnight - offsetAt(guess));
+}

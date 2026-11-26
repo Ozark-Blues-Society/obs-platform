@@ -382,7 +382,9 @@ const post = await getGatedItem("post", slug, "{ excerpt, body }");
   shows its headline, category, date and cover photo, a locked event its title, date, time, prices
   and photo (not the venue), and a locked page its title. Everything else goes in `content`.
 - `listGatedItems(type, content, { filter, params, order, limit })` does the same for lists, feeds
-  and sitemaps.
+  and sitemaps. `listPublicItems` takes the same arguments but always asks as a visitor, for
+  published content only, whoever is signed in and even in a preview: for what goes out to
+  everyone, such as the monthly email digest.
 - The gate covers the item a loader returns, not other documents its GROQ reads. So `content`,
   `filter` and `order` are fixed strings in the code. Values go in `params`, never built from
   request input. And:
@@ -472,10 +474,12 @@ Sign-in emails belong to Supabase Auth (see [Sign-in](#sign-in-supabase-auth)).
 | `listing-approved.tsx`      | A moderator approves a listing             | Moderation (K-2)                                |
 | `listing-rejected.tsx`      | A moderator rejects one, with a reason     | Moderation (K-2)                                |
 | `listing-expiring.tsx`      | 5 days before a listing expires            | Listing expiry (K-4)                            |
+| `monthly-newsletter.tsx`    | Once a month, by the newsletter writer     | MailerLite (the Monthly digest screen, E-4)     |
 
 Stripe also emails its own receipt for online payments (decision 0002), and its own notices to
-members on yearly auto-renew, who get no renewal reminders. Each email is about the recipient's own
-membership, payment or listing and promotes nothing, so none has an unsubscribe link. The lapsed
+members on yearly auto-renew, who get no renewal reminders. Each of the site's own emails is about
+the recipient's own membership, payment or listing and promotes nothing, so none has an unsubscribe
+link. The lapsed
 note says that the membership has ended and how to renew, with no offers (Q-20261126-104811-8667
 asks Parker to confirm; a promotional email would also need the Society's postal address and an
 opt-out).
@@ -526,11 +530,34 @@ lands in Mailpit (see "Sending" below).
 - **Footer.** It says why the email was sent. Replies to a no-reply address go nowhere, so it
   links to the contact page (`/contact`, backlog P-7) instead.
 - **Tests.** `emails/welcome.test.ts`, `emails/receipt.test.ts`, `emails/renewal.test.ts` (both
-  reminders and the lapsed note) and `emails/listing.test.ts` render each template.
-  `emails/templates.test.ts` checks every template it finds (one title, the language, absolute
-  links, token colors only, a plain-text version with no gaps), so it covers a new template
-  without changes. `e2e/emails.spec.ts` loads each email in the browser at desktop and 390px
-  width.
+  reminders and the lapsed note), `emails/listing.test.ts` and `emails/monthly-newsletter.test.ts`
+  render each template. `emails/templates.test.ts` checks every template it finds (one title, the
+  language, absolute links, token colors only, a plain-text version with no gaps), so it covers a
+  new template without changes; a newsletter must be listed in its `NEWSLETTERS`.
+  `e2e/emails.spec.ts` loads each email in the browser at desktop and 390px width.
+
+### The monthly newsletter
+
+Once a month the newsletter writer (an editor or administrator) makes the newsletter on the
+**Monthly digest** screen, `/admin/digest` (backlog E-4; steps for volunteers in
+[`docs/volunteer-guide/monthly-digest.md`](docs/volunteer-guide/monthly-digest.md)). The site
+doesn't send it: the writer copies its HTML and pastes it into MailerLite's custom HTML editor, and
+MailerLite sends it to the mailing list, which has people who aren't members.
+
+- **Posts.** The month's blog posts marked "Include in the monthly email digest", published in that
+  month on the Society's calendar and up to now, latest first (`lib/newsletter/digest.ts`). They're
+  read with `listPublicItems`, as a visitor sees them, so a members-only post comes with its
+  headline and a link to sign in, never its summary, whoever makes the digest.
+- **Template.** `emails/monthly-newsletter.tsx`, in the same layout as the site's emails, with a
+  footer of its own: MailerLite's link variables `{$unsubscribe}` and `{$url}` (the web version),
+  which MailerLite fills in for each subscriber, and the mailing address from Site settings, which
+  MailerLite's terms ask for. Until the address is there, the footer shows a placeholder and the
+  screen warns. The preheader is in the HTML, where MailerLite's custom HTML editor expects it. A
+  busy month stays far below the 102 KB at which Gmail clips an email (a test checks 20 posts).
+- **The screen** checks the role, lists the month's posts, shows the newsletter in a sandboxed
+  frame and copies its HTML to the clipboard. Every MailerLite plan has the custom HTML editor
+  (pricing page, checked 2026-11-26). MailerLite stays out of this repository: no account, API key
+  or sending.
 
 ## Daily jobs
 

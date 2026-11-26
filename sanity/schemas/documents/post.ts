@@ -74,7 +74,8 @@ export const post = defineType({
       name: "includeInDigest",
       title: "Include in the monthly email digest",
       type: "boolean",
-      description: "Adds the headline and summary to the next monthly digest email.",
+      description:
+        "Adds the post to the digest email for the month it's published in: its headline and summary, or only the headline for a members-only post.",
       initialValue: false,
     }),
     defineField({

@@ -3,24 +3,40 @@ import { Body, Container, Head, Html, Link, Preview, Section, Text } from "react
 import { siteLink } from "../_lib/format";
 import { colors, fonts } from "../_lib/theme";
 
-export interface EmailLayoutProps {
+export type EmailLayoutProps = {
   /** The subject line. It's also the document's title. */
   title: string;
   /** The line that inboxes show after the subject (keep it under about 90 characters). */
   preview: string;
-  /** Why the recipient got this email, for the footer. */
-  reason: string;
   /** The site's address, such as https://example.org. Links in an email must be absolute. */
   siteUrl: string;
   children: ReactNode;
-}
+} & (
+  | {
+      /** Why the recipient got this email, for the footer of the site's own emails. */
+      reason: string;
+      footer?: never;
+    }
+  | {
+      /** A footer of the template's own instead, such as the newsletter's. */
+      footer: ReactNode;
+      reason?: never;
+    }
+);
 
 /**
  * The frame every Society email shares: a header with the logo, a card that holds the template's
  * content, and a footer. React Email lays it out with tables, which every email client supports.
  * It's 600px wide at most and narrows to fit a phone.
  */
-export function EmailLayout({ title, preview, reason, siteUrl, children }: EmailLayoutProps) {
+export function EmailLayout({
+  title,
+  preview,
+  reason,
+  footer,
+  siteUrl,
+  children,
+}: EmailLayoutProps) {
   return (
     <Html lang="en" dir="ltr">
       <Head>
@@ -55,7 +71,7 @@ export function EmailLayout({ title, preview, reason, siteUrl, children }: Email
           >
             {children}
           </Section>
-          <Footer reason={reason} siteUrl={siteUrl} />
+          {footer ?? <Footer reason={reason ?? ""} siteUrl={siteUrl} />}
         </Container>
       </Body>
     </Html>
@@ -110,14 +126,19 @@ function Logo({ siteUrl }: { siteUrl: string }) {
   );
 }
 
-const footerText = {
+/** Text in a footer, under the card. */
+export const footerText = {
   margin: "0 0 12px",
   fontSize: "13px",
   lineHeight: "1.5",
   color: colors.muted,
 } as const;
 
-const footerLink = { color: colors.primaryLight, textDecoration: "underline" } as const;
+/** A link in a footer. */
+export const footerLink = { color: colors.primaryLight, textDecoration: "underline" } as const;
+
+/** A footer's frame, under the card. */
+export const footerSection = { padding: "24px 28px 0" } as const;
 
 /**
  * Transactional email comes from a no-reply address (decision 0005), so the footer says where to
@@ -125,7 +146,7 @@ const footerLink = { color: colors.primaryLight, textDecoration: "underline" } a
  */
 function Footer({ reason, siteUrl }: { reason: string; siteUrl: string }) {
   return (
-    <Section style={{ padding: "24px 28px 0" }}>
+    <Section style={footerSection}>
       <Text style={footerText}>{reason}</Text>
       <Text style={footerText}>
         Replies to this email aren&apos;t read. To reach the Society, use the{" "}

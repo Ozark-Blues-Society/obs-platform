@@ -3,8 +3,9 @@
 // fields filled in only if that viewer can see it (./gated-query.ts), then checks again here. So an
 // item's members-only fields are fetched and rendered only after the access check, whichever page,
 // feed or metadata route asks for it. The check covers that item, so callers' GROQ must not read
-// other documents past their own gates (the rules at the top of ./gated-query.ts). ESLint stops
-// other code from using the Sanity client directly (eslint.config.mjs).
+// other documents past their own gates (the rules at the top of ./gated-query.ts). listPublicItems
+// skips the first step: it always asks as a visitor would, for what goes out to everyone. ESLint
+// stops other code from using the Sanity client directly (eslint.config.mjs).
 //
 // Loaders run at request time and read the session, so call them inside a <Suspense> boundary.
 // Results are cached per query, viewer level and preview mode, never per person: two members at
@@ -15,6 +16,7 @@ import { connection } from "next/server";
 import {
   activeLevel,
   checkAccess,
+  VISITOR,
   type Access,
   type Viewer,
   type Visibility,
@@ -99,7 +101,41 @@ export async function listGatedItems<T extends GatedType, Content = Record<strin
   const { params, ...list } = options;
   const query = listQuery(type, content, list);
   if (!isConfigured) return [];
-  const viewing = await whoIsViewing();
+  return listFor<T, Content>(type, query, params, await whoIsViewing());
+}
+
+/**
+ * Published pages, posts or events as a visitor sees them, whoever is signed in and even in a
+ * preview: for what goes out to everyone, such as the monthly email digest (backlog E-4). Locked
+ * items come without their members-only fields. `content` and `options` are as for
+ * listGatedItems, with the same rules.
+ */
+export async function listPublicItems<T extends GatedType, Content = Record<string, unknown>>(
+  type: T,
+  content: string,
+  options: ListOptions & { params?: Record<string, unknown> } = {},
+): Promise<GatedItem<T, Content>[]> {
+  const { params, ...list } = options;
+  const query = listQuery(type, content, list);
+  if (!isConfigured) return [];
+  // At request time, like the other loaders.
+  await connection();
+  const viewing: Viewing = {
+    perspective: "published",
+    stega: false,
+    viewer: VISITOR,
+    now: new Date(),
+    memberLevel: null,
+  };
+  return listFor<T, Content>(type, query, params, viewing);
+}
+
+async function listFor<T extends GatedType, Content>(
+  type: T,
+  query: string,
+  params: Record<string, unknown> | undefined,
+  viewing: Viewing,
+): Promise<GatedItem<T, Content>[]> {
   // The viewer's level goes last, so no caller can choose it.
   const raw = await fetchForLevel(query, { ...params, memberLevel: viewing.memberLevel }, viewing);
   return Array.isArray(raw)

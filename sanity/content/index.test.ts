@@ -23,7 +23,7 @@ vi.mock("../env", () => ({
 }));
 vi.mock("@/lib/members/viewer", () => ({ getViewer: mocks.getViewer }));
 
-const { getGatedItem, listGatedItems } = await import("./index");
+const { getGatedItem, listGatedItems, listPublicItems } = await import("./index");
 
 const DAY = 24 * 60 * 60 * 1000;
 const inDays = (days: number) => new Date(Date.now() + days * DAY).toISOString();
@@ -272,6 +272,59 @@ describe("listGatedItems", () => {
       listGatedItems("post", "{ body }", { filter: 'documents::get(related).title == "x"' }),
     ).rejects.toThrow("The list filter can't use documents:: functions");
     expect(mocks.getViewer).not.toHaveBeenCalled();
+    expect(mocks.sanityFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("listPublicItems", () => {
+  it("reads nothing without a Sanity project", async () => {
+    mocks.isConfigured = false;
+    await expect(listPublicItems("post", "{ excerpt }")).resolves.toEqual([]);
+    expect(mocks.sanityFetch).not.toHaveBeenCalled();
+  });
+
+  it("asks for published content as a visitor, whoever is signed in and even in a preview", async () => {
+    mocks.getViewer.mockResolvedValue(member("band", inDays(30)));
+    mocks.getDynamicFetchOptions.mockResolvedValue({ perspective: "drafts", stega: true });
+    mocks.sanityFetch.mockResolvedValue({ data: [] });
+    const options = { filter: "includeInDigest == true", order: "publishedAt desc" };
+    await listPublicItems("post", "{ excerpt }", {
+      ...options,
+      params: { from: "2026-11-01T05:00:00.000Z", memberLevel: "band" },
+    });
+    expect(mocks.sanityFetch).toHaveBeenCalledWith({
+      query: listQuery("post", "{ excerpt }", options),
+      params: { from: "2026-11-01T05:00:00.000Z", memberLevel: null },
+      perspective: "published",
+      stega: false,
+    });
+    expect(mocks.connection).toHaveBeenCalled();
+    // It never asks who is signed in.
+    expect(mocks.getViewer).not.toHaveBeenCalled();
+    expect(mocks.getDynamicFetchOptions).not.toHaveBeenCalled();
+  });
+
+  it("returns locked items without their members-only fields, even if Sanity sent them", async () => {
+    mocks.sanityFetch.mockResolvedValue({
+      data: [
+        membersPost(true),
+        // Sanity and checkAccess disagree: a bug, so it's shown locked.
+        membersPost(false, { _id: "post-2", slug: "sent-by-mistake" }),
+        { ...membersPost(false), _id: "post-3", visibility: { audience: "everyone" } },
+      ],
+    });
+    const posts = await listPublicItems("post", "{ body }");
+    expect(posts.map((post) => [post._id, post.access, post.content])).toEqual([
+      ["post-1", { allowed: false, reason: "sign-in" }, null],
+      ["post-2", { allowed: false, reason: "sign-in" }, null],
+      ["post-3", { allowed: true }, { body: "Members-only body" }],
+    ]);
+  });
+
+  it("refuses a filter that reads other documents, before asking Sanity", async () => {
+    await expect(
+      listPublicItems("post", "{ excerpt }", { filter: 'count(*[_type == "post"]) > 0' }),
+    ).rejects.toThrow("The list filter can't use * outside quotes");
     expect(mocks.sanityFetch).not.toHaveBeenCalled();
   });
 });
