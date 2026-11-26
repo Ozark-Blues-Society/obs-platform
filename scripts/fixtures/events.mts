@@ -1,8 +1,11 @@
 /**
  * Synthetic events and venues, shaped after the event and venue fields in
- * docs/spec/architecture.md. Events live in Sanity, so these are for Sanity's development dataset:
- * the import arrives with the schemas (C-1). Names follow the placeholders in the approved design
- * concept (docs/design/prototype.html); none of them is a real venue or band.
+ * docs/spec/architecture.md. Events live in Sanity, so these are for Sanity's development dataset.
+ * Loading them waits for a Sanity project (bead op-4nd.1, Q-20261126-042834-8727). In C-1's schemas
+ * (sanity/schemas/documents/) each fixture venue becomes a public venue (name, address, mapUrl)
+ * plus a members-only directoryEntry (capacity, notes, booking contact). Names follow the
+ * placeholders in the approved design concept (docs/design/prototype.html); none of them is a real
+ * venue or band.
  */
 
 /** Event categories in the design concept. */

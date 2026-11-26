@@ -252,7 +252,28 @@ so the Studio can sign in from there. Every address that serves the site needs t
   it were empty, so the server reads everything, published or draft, with the read token
   (`sanity/live.ts`). The token never reaches the browser: it has no `NEXT_PUBLIC_` name, and
   `defineLive` gets `browserToken: false`.
-- **Document types** go in `sanity/schemas/` (backlog C-1).
+- **Content model** (`sanity/schemas/`, backlog C-1): one file per document type in `documents/`
+  (page, event, post, sponsor, sponsorTier, venue, directoryEntry, person, siteSettings), the
+  page blocks in `page-blocks.ts`, shared objects in `objects/` (visibility, link, rich text),
+  fixed choices in `options.ts` and custom validation in `validation.ts`. Volunteers' steps are in
+  the guide's editing pages. When you change it:
+  - Give every field a plain-language `description` for volunteers. `schemas.test.ts` fails
+    without one.
+  - Pages, posts and events carry `visibility`: `audience` is `everyone`, `members` or `levels`,
+    with `levels` holding membership levels. M-7 gates on it on the server (decision 0001).
+  - Venues are public: event pages and the ICS feed show them. Directory details and the
+    `bookingContact` object live on `directoryEntry`. Select `bookingContact` only for Band,
+    Business and Sponsor members (M-9), and never fetch directory entries with `...`.
+  - Site settings is a singleton (document ID `siteSettings`, registered under
+    `document.singletons` in `sanity.config.ts`). Its benefits table starts as board-decisions §1.
+  - Web addresses: pages at `/<slug>`, events at `/events/<slug>`, posts at `/blog/<slug>`
+    (`sanity/paths.ts`, which the Presentation tool uses too). A page can't take a slug from
+    `RESERVED_PAGE_SLUGS`, and a test keeps that list in step with the routes in `app/`.
+  - Event start times and post dates are entered in Central Time (`SOCIETY_TIME_ZONE`) and stored
+    in UTC.
+  - `schemas.test.ts` and `sanity/studio-config.test.ts` run Sanity's own schema compiler,
+    document validation and Studio configuration (`createWorkspaceFromConfig`) with a stand-in
+    client, so they need no Sanity project.
 - **Live preview.** The Studio's Presentation tool shows the site next to the document being
   edited. It opens `/api/draft-mode/enable` with a secret, which the route checks with Sanity before
   turning on Next.js draft mode. In draft mode, pages read drafts (`getDynamicFetchOptions()` in
@@ -343,7 +364,7 @@ lib/            Server and shared code: Supabase clients, sign-in helpers
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
 scripts/        Synthetic fixtures (scripts/fixtures/) and the seed generator
-sanity/         Sanity client, live preview helpers and (C-1) content schemas
+sanity/         Sanity client, live preview helpers, Studio structure and content schemas
 supabase/       Local Supabase config, migrations, seed and pgTAP tests
 docs/           Specs, decisions, design concept, backlog
 tools/          Helper scripts for the agent team
