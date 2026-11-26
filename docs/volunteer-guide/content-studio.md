@@ -1,12 +1,18 @@
 # Content Studio
 
-> **Stub.** This page covers the basics that work the same for everything you edit. Steps for each
-> kind of content (pages, events, blog posts, venues, sponsors and site settings) are added as those
-> parts of the Studio are built. Where something isn't decided yet, this page says so.
+This page covers the basics that work the same for everything you edit. Each kind of content has
+its own page: [Pages](pages.md), [Events and venues](events-and-venues.md) (including the venue
+directory), [Blog posts](blog-posts.md), [Sponsors](sponsors.md), [People](people.md) and
+[Site settings](site-settings.md). Where something isn't decided yet, this page says so.
 
 The Content Studio is where you change what the website shows. Open it by adding `/studio` to the
 website's address, for example `https://<the Society's website>/studio`. It works on a phone, but a
 computer is easier for longer edits.
+
+The list on the left follows the website: Pages, Events, Blog posts, Sponsors, Sponsor tiers,
+Venues, Directory entries and People, with Site settings at the bottom. Every field in a form has a
+short note under it that says what it's for. A field the Studio marks in red needs fixing before
+you can publish.
 
 ## Signing in
 
@@ -23,6 +29,31 @@ Everything you type is saved straight away as a **draft**. Website visitors don'
 can stop halfway and come back later.
 
 When it's ready, press **Publish**, and the change goes live on the website.
+
+## Who can see it
+
+Pages, events and blog posts each have a **Who can see this?** setting:
+
+- **Everyone**: anyone on the internet.
+- **Members only, any level**: signed-in members whose membership hasn't expired.
+- **Only some membership levels**: tick the levels that can see it (Individual, Band, Business,
+  Sponsor).
+
+Visitors who can't see something get a prompt to sign in or join instead. Members-only content is
+kept in a part of the Studio that the public can't read, so locking an item really does keep it
+private.
+
+Photos are the exception: anyone who has a photo's web address can open it, even from a
+members-only post. Don't put anything private in a photo.
+
+## Photos and alt text
+
+Every photo needs **alt text**: a few words that describe it for people who can't see it, for
+example "Band performing on stage under warm lights". Screen readers read it aloud. The Studio
+won't publish a photo without it.
+
+Most photos also have a focal point: drag the circle onto the important part (a face, the stage),
+and the photo crops around it on phones, cards and banners.
 
 ## Previewing your changes
 
