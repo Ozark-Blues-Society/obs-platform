@@ -49,6 +49,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      # Local Supabase publishes ports 54320-54329 (supabase/config.jsonc), inside Linux's ephemeral
+      # range (32768-60999). An outgoing connection that holds one of them, open or in its 60 s
+      # TIME_WAIT, makes "supabase start" fail with "address already in use" (run 45829132016).
+      # Reserving them first, before any step opens a connection, keeps the kernel from handing
+      # them out. Explicit binds, like Docker's, still work.
+      - name: Keep local Supabase's ports out of the ephemeral range
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54320-54329
+
       # Actions are pinned to full commit SHAs; the release tag is in the comment.
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,7 +68,8 @@ jobs:
       # the same tree finds it and skips the checks: it still succeeds, costs one billed minute
       # instead of four or five, and its notice links the run that passed. The usual case is a push
       # to develop: when develop hasn't moved since a pull request's last run, the squash-merge
-      # commit has exactly the tree that run tested. If the lookup fails, every check runs.
+      # commit has exactly the tree that run tested. If the lookup fails, every check runs. Markers
+      # from runs of a fork's pull request don't count: such a run uses the fork's own ci.yml.
       - name: Look for an earlier run that passed this tree
         id: scope
         env:
@@ -73,7 +82,9 @@ jobs:
             > "$RUNNER_TEMP/passed-tree.txt"
           # On an HTTP error gh prints the error body, not a run ID; the case below rejects it.
           passed_in="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=passed-tree-$tree" \
-            --jq '[.artifacts[] | select(.expired | not)][0].workflow_run.id // empty' \
+            --jq '[.artifacts[] | select((.expired | not)
+              and .workflow_run.head_repository_id == .workflow_run.repository_id)
+              ][0].workflow_run.id // empty' \
             2> /dev/null || true)"
           case "$passed_in" in
             "" | *[!0-9]*)
@@ -108,16 +119,10 @@ jobs:
       # API gateway (kong), Auth (gotrue), the REST API (postgrest), Storage (members-only files,
       # backlog M-7) and Mailpit, which catches Auth emails. When a test or a migration needs an
       # excluded service (Realtime...), drop it from the --exclude lists.
-      #
-      # The stack's ports, 54320-54329 (supabase/config.jsonc), are inside Linux's ephemeral range
-      # (32768-60999). An outgoing connection from the install steps that happens to get one of
-      # them as its local port makes the start fail with "address already in use", as it did once
-      # in PR #34's runs. The sysctl stops the kernel from handing those ports out.
       - name: Start local Supabase in the background
         id: supabase-start
         if: ${{ !cancelled() && steps.supabase-cli.outcome == 'success' }}
         run: |
-          sudo sysctl -w net.ipv4.ip_local_reserved_ports=54320-54329
           (
             started="$(date +%s)"
             status=0

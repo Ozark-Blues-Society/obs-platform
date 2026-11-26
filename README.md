@@ -573,7 +573,8 @@ A change that needs one of them in CI drops it from the `--exclude` lists in `ci
 runs before the stack is up (it doesn't call Supabase), so it takes `NEXT_PUBLIC_SUPABASE_URL` and
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from `.env.example`, and the end-to-end tests first check
 that `supabase status` reports the same values. They're the well-known local demo values, not
-secrets.
+secrets. The job's first step reserves the stack's ports (54320-54329) from Linux's ephemeral
+range, so no outgoing connection can hold one when Docker binds it.
 
 To reproduce a CI run locally:
 
