@@ -1,0 +1,75 @@
+-- Generated from scripts/fixtures/ by `pnpm fixtures:generate`. Don't edit it by hand.
+--
+-- LOCAL DEVELOPMENT ONLY. Synthetic people with @example.com addresses, all sharing a password
+-- that is published in the README. Never load this into a hosted project.
+
+-- Fixture members as confirmed email + password sign-ins.
+with fixture (id, email, first_name, last_name) as (
+  values
+    ('00000000-0000-4000-8100-000000000001'::uuid, 'avery.collins@example.com', 'Avery', 'Collins'),
+    ('00000000-0000-4000-8100-000000000002'::uuid, 'jordan.ellis@example.com', 'Jordan', 'Ellis'),
+    ('00000000-0000-4000-8100-000000000003'::uuid, 'morgan.hale@example.com', 'Morgan', 'Hale'),
+    ('00000000-0000-4000-8100-000000000004'::uuid, 'casey.brooks@example.com', 'Casey', 'Brooks'),
+    ('00000000-0000-4000-8100-000000000005'::uuid, 'robin.fields@example.com', 'Robin', 'Fields'),
+    ('00000000-0000-4000-8100-000000000006'::uuid, 'jesse.carter@example.com', 'Jesse', 'Carter'),
+    ('00000000-0000-4000-8100-000000000007'::uuid, 'terry.mills@example.com', 'Terry', 'Mills'),
+    ('00000000-0000-4000-8100-000000000008'::uuid, 'glen.pruitt@example.com', 'Glen', 'Pruitt'),
+    ('00000000-0000-4000-8100-000000000009'::uuid, 'june.little@example.com', 'June', 'Little'),
+    ('00000000-0000-4000-8100-000000000010'::uuid, 'shannon.oneal@example.com', 'Shannon', 'O''Neal'),
+    ('00000000-0000-4000-8100-000000000011'::uuid, 'bev.grant@example.com', 'Bev', 'Grant'),
+    ('00000000-0000-4000-8100-000000000012'::uuid, 'otis.ivy@example.com', 'Otis', 'Ivy'),
+    ('00000000-0000-4000-8100-000000000013'::uuid, 'rosa.delgado@example.com', 'Rosa', 'Delgado'),
+    ('00000000-0000-4000-8100-000000000014'::uuid, 'lena.park@example.com', 'Lena', 'Park'),
+    ('00000000-0000-4000-8100-000000000015'::uuid, 'wes.turner@example.com', 'Wes', 'Turner'),
+    ('00000000-0000-4000-8100-000000000016'::uuid, 'nora.quinn@example.com', 'Nora', 'Quinn'),
+    ('00000000-0000-4000-8100-000000000017'::uuid, 'dale.ramsey@example.com', 'Dale', 'Ramsey'),
+    ('00000000-0000-4000-8100-000000000018'::uuid, 'tasha.moore@example.com', 'Tasha', 'Moore'),
+    ('00000000-0000-4000-8100-000000000019'::uuid, 'marcus.lane@example.com', 'Marcus', 'Lane'),
+    ('00000000-0000-4000-8100-000000000020'::uuid, 'ruth.abbott@example.com', 'Ruth', 'Abbott'),
+    ('00000000-0000-4000-8100-000000000021'::uuid, 'chris.price@example.com', 'Chris', 'Price'),
+    ('00000000-0000-4000-8100-000000000022'::uuid, 'pat.walsh@example.com', 'Pat', 'Walsh'),
+    ('00000000-0000-4000-8100-000000000023'::uuid, 'ray.booker@example.com', 'Ray', 'Booker'),
+    ('00000000-0000-4000-8100-000000000024'::uuid, 'eddie.vance@example.com', 'Eddie', 'Vance'),
+    ('00000000-0000-4000-8100-000000000025'::uuid, 'mae.whitfield@example.com', 'Mae', 'Whitfield'),
+    ('00000000-0000-4000-8100-000000000026'::uuid, 'cole.barrett@example.com', 'Cole', 'Barrett'),
+    ('00000000-0000-4000-8100-000000000027'::uuid, 'grace.holloway@example.com', 'Grace', 'Holloway'),
+    ('00000000-0000-4000-8100-000000000028'::uuid, 'victor.nash@example.com', 'Victor', 'Nash'),
+    ('00000000-0000-4000-8100-000000000029'::uuid, 'irene.coleman@example.com', 'Irene', 'Coleman'),
+    ('00000000-0000-4000-8100-000000000030'::uuid, 'frank.delaney@example.com', 'Frank', 'Delaney'),
+    ('00000000-0000-4000-8100-000000000031'::uuid, 'hazel.monroe@example.com', 'Hazel', 'Monroe'),
+    ('00000000-0000-4000-8100-000000000032'::uuid, 'leon.pierce@example.com', 'Leon', 'Pierce'),
+    ('00000000-0000-4000-8100-000000000033'::uuid, 'doris.kemp@example.com', 'Doris', 'Kemp'),
+    ('00000000-0000-4000-8100-000000000034'::uuid, 'walt.ferris@example.com', 'Walt', 'Ferris'),
+    ('00000000-0000-4000-8100-000000000035'::uuid, 'margaret.sloan@example.com', 'Margaret', 'Sloan'),
+    ('00000000-0000-4000-8100-000000000036'::uuid, 'curtis.bell@example.com', 'Curtis', 'Bell'),
+    ('00000000-0000-4000-8100-000000000037'::uuid, 'elaine.foster@example.com', 'Elaine', 'Foster'),
+    ('00000000-0000-4000-8100-000000000038'::uuid, 'russell.boyd@example.com', 'Russell', 'Boyd'),
+    ('00000000-0000-4000-8100-000000000039'::uuid, 'vera.lindqvist@example.com', 'Vera', 'Lindqvist'),
+    ('00000000-0000-4000-8100-000000000040'::uuid, 'howard.keene@example.com', 'Howard', 'Keene')
+),
+fixture_password as materialized (
+  select extensions.crypt('obs-local-dev', extensions.gen_salt('bf')) as hash
+),
+new_user as (
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, recovery_token, email_change_token_new, email_change
+  )
+  select
+    '00000000-0000-0000-0000-000000000000'::uuid, f.id, 'authenticated', 'authenticated',
+    f.email, p.hash, now(),
+    '{"provider": "email", "providers": ["email"]}'::jsonb,
+    jsonb_build_object('first_name', f.first_name, 'last_name', f.last_name),
+    now(), now(),
+    -- Supabase Auth reads these token columns as strings and fails on NULL.
+    '', '', '', ''
+  from fixture f cross join fixture_password p
+  returning id, email
+)
+insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at)
+select
+  u.id::text, u.id,
+  jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true),
+  'email', now(), now()
+from new_user u;
