@@ -7,17 +7,20 @@
 -- Data API does for a request. postgres, which runs the setup and the checks between, bypasses row
 -- level security.
 begin;
-select plan(37);
+select plan(38);
 
 -- Anyone with the publishable key can sign up and put whatever they like in the sign-up's user
--- metadata (options.data). So test.alice's metadata also asks for a paid, active membership and
--- the other columns only server code writes. The sign-up trigger must read only the names.
+-- metadata (options.data). So test.alice's metadata also asks for a paid, active membership, the
+-- other columns only server code writes, a staff role and another address. Supabase Auth inserts
+-- the user with that metadata exactly as it was sent, so the sign-up trigger sees every key. It
+-- must read only the names.
 insert into auth.users (id, email, raw_user_meta_data)
 values
   ('00000000-0000-4000-8900-000000000001', 'test.alice@example.com',
     '{"first_name": "Alice", "last_name": "Archer", "level": "sponsor", "status": "active",
       "expires_at": "2099-01-01T00:00:00Z", "auto_renew": true, "stripe_customer_id": "cus_fake",
-      "joined_at": "2020-01-01T00:00:00Z", "notes": "Comped by the board"}'),
+      "joined_at": "2020-01-01T00:00:00Z", "notes": "Comped by the board", "role": "admin",
+      "email": "test.mallory@example.com"}'),
   ('00000000-0000-4000-8900-000000000002', 'test.bob@example.com',
     '{"first_name": "Bob", "last_name": "Baker"}'),
   ('00000000-0000-4000-8900-000000000003', 'test.moderator@example.com', '{}'),
@@ -42,8 +45,16 @@ select results_eq(
       null::text
     )
   $$,
-  'signing up creates a profile with the address and names from the sign-up, and no membership '
-    || 'even though the sign-up''s metadata asks for one'
+  'signing up creates a profile with the address from Supabase Auth and the names from the '
+    || 'sign-up''s metadata, and no membership, even though the metadata asks for one and gives '
+    || 'another address'
+);
+
+select is_empty(
+  $$
+    select role from public.user_roles where profile_id = '00000000-0000-4000-8900-000000000001'
+  $$,
+  'signing up gives no staff role even though the sign-up''s metadata asks for one'
 );
 
 select is(
