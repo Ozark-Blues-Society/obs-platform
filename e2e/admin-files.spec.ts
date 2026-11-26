@@ -141,6 +141,12 @@ test.describe("an editor", () => {
       mimeType: "text/plain",
       buffer: Buffer.from("Minutes"),
     });
+    // Enter in the empty Name box: focus is already there, so the message is announced instead.
+    await upload.getByLabel("Name").press("Enter");
+    await expect(upload.getByRole("alert")).toHaveText(
+      "Give the file a name members will recognize.",
+    );
+    await expect(upload.getByLabel("Name")).toBeFocused();
     await upload.getByLabel("Name").fill(title);
     await upload.getByRole("button", { name: "Upload file" }).click();
     await expect(upload.getByText(`Added "${title}".`)).toBeVisible();

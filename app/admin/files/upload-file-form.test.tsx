@@ -44,7 +44,8 @@ async function submit() {
 
 /**
  * Submits, then checks that focus went to `field` and that the field's description already held
- * `message` when it took focus: that's when a screen reader reads it out (WCAG 4.1.3).
+ * `message` when it took focus: that's when a screen reader reads it out (WCAG 4.1.3). Nothing
+ * else announces it, so it isn't read out twice.
  */
 async function submitAndExpectFocusOn(field: HTMLElement, message: string) {
   let describedAs = "";
@@ -60,6 +61,15 @@ async function submitAndExpectFocusOn(field: HTMLElement, message: string) {
   expect(field).toHaveFocus();
   expect(describedAs).toContain(message);
   expect(field).toHaveAccessibleDescription(expect.stringContaining(message));
+  expect(screen.queryByRole("alert")).toBeNull();
+}
+
+/** Submits the form from `control`, as Enter in a text box or on a checkbox does. */
+async function submitFrom(control: HTMLElement) {
+  control.focus();
+  await act(async () => {
+    fireEvent.submit(control.closest("form") as HTMLFormElement);
+  });
 }
 
 describe("UploadFileForm", () => {
@@ -114,6 +124,31 @@ describe("UploadFileForm", () => {
     expect(screen.getByText(FILE_MESSAGES.levelsMissing)).toBeVisible();
 
     expect(props.prepare).not.toHaveBeenCalled();
+  });
+
+  it("announces the message when the field to fix already has focus", async () => {
+    setup();
+    chooseFile(pdf());
+    const name = screen.getByLabelText("Name");
+    await submitAndExpectFocusOn(name, FILE_MESSAGES.titleMissing);
+    const shown = screen.getByText(FILE_MESSAGES.titleMissing);
+    // Enter in the still-empty Name box: focus can't move there, so the message is an alert, and
+    // a new element, which screen readers announce although the same text was on screen.
+    await submitFrom(name);
+    expect(name).toHaveFocus();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(FILE_MESSAGES.titleMissing);
+    expect(alert).not.toBe(shown);
+    expect(name).toHaveAccessibleDescription(expect.stringContaining(FILE_MESSAGES.titleMissing));
+
+    fireEvent.change(name, { target: { value: "Board minutes" } });
+    fireEvent.click(screen.getByLabelText("Only some membership levels"));
+    const levels = screen.getByRole("group", { name: "Membership levels" });
+    const firstLevel = within(levels).getAllByRole("checkbox")[0];
+    await submitFrom(firstLevel);
+    expect(firstLevel).toHaveFocus();
+    expect(screen.getByRole("alert")).toHaveTextContent(FILE_MESSAGES.levelsMissing);
+    expect(firstLevel).toHaveAccessibleDescription(FILE_MESSAGES.levelsMissing);
   });
 
   it("takes focus back to the field each time the same check fails", async () => {
