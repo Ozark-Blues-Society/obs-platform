@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ROLE_MESSAGES, type GrantRoleState } from "@/lib/admin/roles-state";
 import { GrantRoleForm } from "./grant-role-form";
@@ -115,5 +115,56 @@ describe("GrantRoleForm", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Email address")).toHaveValue("");
     expect(screen.getByLabelText("Role")).toHaveValue("");
+  });
+
+  it.each([
+    { about: "the address", field: "email" as const, message: ROLE_MESSAGES.noAccount },
+    { about: "the whole form", field: null, message: "Dale Ramsey already has the Editor role." },
+  ])("reads out a repeated problem with $about again", async ({ field, message }) => {
+    const action = answering({
+      status: "error",
+      field,
+      message,
+      email: "dale.ramsey@example.com",
+      role: "editor",
+    });
+    render(<GrantRoleForm action={action} />);
+
+    submit("dale.ramsey@example.com", "editor");
+    const first = await screen.findByRole("alert");
+    submit("dale.ramsey@example.com", "editor");
+
+    // A new alert, which screen readers read out. The same one, unchanged, is read out by nobody.
+    await waitFor(() => expect(screen.getByRole("alert")).not.toBe(first));
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(action).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the button focused while giving the role, and ignores another press", async () => {
+    let answer: (state: GrantRoleState) => void = () => {};
+    const action = vi.fn<(state: GrantRoleState, formData: FormData) => Promise<GrantRoleState>>(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+    );
+    render(<GrantRoleForm action={action} />);
+    const button = screen.getByRole("button", { name: "Give role" });
+
+    button.focus();
+    submit("dale.ramsey@example.com", "editor");
+    expect(await screen.findByRole("button", { name: "Giving the role…" })).toBe(button);
+    // Announced as unavailable, but not disabled: browsers take focus away from a disabled button.
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toBeEnabled();
+    expect(button).toHaveFocus();
+    fireEvent.click(button);
+
+    await act(async () =>
+      answer({ status: "granted", message: "Dale Ramsey now has the Editor role." }),
+    );
+    expect(await screen.findByText("Dale Ramsey now has the Editor role.")).toBeInTheDocument();
+    expect(action).toHaveBeenCalledOnce();
+    expect(button).toHaveFocus();
   });
 });

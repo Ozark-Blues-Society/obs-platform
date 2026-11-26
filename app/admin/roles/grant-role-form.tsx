@@ -12,8 +12,10 @@ type GrantRoleAction = (state: GrantRoleState, formData: FormData) => Promise<Gr
 export function GrantRoleForm({ action }: { action: GrantRoleAction }) {
   const [state, formAction, pending] = useActionState(action, { status: "idle" });
   const message = state.status === "error" ? state.message : undefined;
+  // Messages are hidden while the form sends again, so a repeated one is a new alert, which
+  // screen readers read out again.
   const errorOn = (field: GrantRoleField | null) =>
-    state.status === "error" && state.field === field;
+    !pending && state.status === "error" && state.field === field;
   // A field's message, as an alert so screen readers read it out.
   const fieldError = <span role="alert">{message}</span>;
 
@@ -48,13 +50,13 @@ export function GrantRoleForm({ action }: { action: GrantRoleAction }) {
           </option>
         ))}
       </SelectField>
-      <Button type="submit" variant="dark" disabled={pending} className="mt-4 w-full">
+      <Button type="submit" variant="dark" pending={pending} className="mt-4 w-full">
         {pending ? "Giving the role…" : "Give role"}
       </Button>
       {errorOn(null) && <FormError className="mt-2">{message}</FormError>}
       {/* Always in the page, so screen readers announce the message when it appears. */}
       <div role="status" className="mt-4">
-        {state.status === "granted" && <SuccessBox>{state.message}</SuccessBox>}
+        {!pending && state.status === "granted" && <SuccessBox>{state.message}</SuccessBox>}
       </div>
     </form>
   );

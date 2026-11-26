@@ -39,7 +39,8 @@ type Field = "file" | "title" | "audience" | "levels";
 
 type State =
   | { status: "idle" }
-  | { status: "error"; field: Field | null; message: string; announce?: boolean }
+  // `attempt` counts the failures, so a repeat of the last one is still a new alert (fieldError).
+  | { status: "error"; field: Field | null; message: string; announce?: boolean; attempt: number }
   | { status: "saved"; id: string; message: string };
 
 /** Where focus goes when a check fails on `field`: its first control. */
@@ -57,17 +58,26 @@ export function UploadFileForm({ prepare, save, upload = putFile }: Props) {
   const [audience, setAudience] = useState("members");
   const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const failures = useRef(0);
   const levelsErrorId = useId();
+  // While an upload is on its way, the last try's message is hidden: it isn't this upload's
+  // outcome, and the next message is then a new element, which screen readers read out even when
+  // it's the same.
+  const outcome: State = pending ? { status: "idle" } : state;
   const errorOn = (field: Field | null) =>
-    state.status === "error" && state.field === field ? state.message : undefined;
+    outcome.status === "error" && outcome.field === field ? outcome.message : undefined;
   // A field's message, as an alert when focus couldn't move to the field (see `fail`). The key
-  // makes an alert a new element, which screen readers announce, even if the same text was there.
+  // makes each failure's alert a new element, which screen readers announce, even if the same
+  // text was there.
   const fieldError = (field: Field, id?: string) => {
-    const message = errorOn(field);
-    if (!message) return undefined;
-    const announce = state.status === "error" && state.announce;
+    if (outcome.status !== "error" || outcome.field !== field) return undefined;
+    const { announce, attempt, message } = outcome;
     return (
-      <span key={announce ? "alert" : "text"} id={id} role={announce ? "alert" : undefined}>
+      <span
+        key={announce ? `alert-${attempt}` : "text"}
+        id={id}
+        role={announce ? "alert" : undefined}
+      >
         {message}
       </span>
     );
@@ -94,6 +104,7 @@ export function UploadFileForm({ prepare, save, upload = putFile }: Props) {
         field,
         message,
         announce: field !== null && controlOf(form, field) === document.activeElement,
+        attempt: ++failures.current,
       });
 
     const fileProblem = checkFile(file);
@@ -185,19 +196,19 @@ export function UploadFileForm({ prepare, save, upload = putFile }: Props) {
         )}
       </Fieldset>
       <div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" pending={pending}>
           {pending ? "Uploading…" : "Upload file"}
         </Button>
         {errorOn(null) && <FormError className="mt-2">{errorOn(null)}</FormError>}
       </div>
       {/* Always in the page, so screen readers announce the message when it appears. */}
       <div role="status">
-        {state.status === "saved" && (
+        {outcome.status === "saved" && (
           <SuccessBox>
-            <p>{state.message}</p>
+            <p>{outcome.message}</p>
             <p className="mt-2 flex flex-wrap items-center gap-2">
-              Code: <code className="break-all">{state.id}</code>
-              <CopyCodeButton code={state.id} label="Copy code for the new file" />
+              Code: <code className="break-all">{outcome.id}</code>
+              <CopyCodeButton code={outcome.id} label="Copy code for the new file" />
             </p>
           </SuccessBox>
         )}

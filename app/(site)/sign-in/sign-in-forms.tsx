@@ -22,15 +22,17 @@ export function EmailLinkForm({ action }: { action: EmailLinkAction }) {
         spellCheck={false}
         required
         defaultValue={state.status === "idle" ? "" : state.email}
-        // An alert, so screen readers read the message out when it appears.
-        error={state.status === "error" && <span role="alert">{state.message}</span>}
+        // An alert, so screen readers read the message out when it appears. Hidden while the form
+        // sends again, so the next message is a new alert, read out even if it's the same.
+        error={!pending && state.status === "error" && <span role="alert">{state.message}</span>}
       />
-      <Button type="submit" variant="dark" disabled={pending} className="mt-4 w-full">
+      <Button type="submit" variant="dark" pending={pending} className="mt-4 w-full">
         {pending ? "Sending…" : "Email me a sign-in link"}
       </Button>
-      {/* Always in the page, so screen readers announce the message when it appears. */}
+      {/* Always in the page, so screen readers announce the message when it appears. Emptied
+          while the form sends again, so the same message is announced again. */}
       <div role="status" className="mt-4">
-        {state.status === "sent" && (
+        {!pending && state.status === "sent" && (
           <SuccessBox>
             <p className="font-semibold">Check your email.</p>
             <p className="mt-1">
@@ -67,10 +69,11 @@ export function PasswordForm({ action, next }: { action: PasswordAction; next: s
         type="password"
         autoComplete="current-password"
         required
-        error={hasError && <span role="alert">{state.message}</span>}
+        // Hidden while the form sends again, so a repeated message is a new alert, read out again.
+        error={!pending && hasError && <span role="alert">{state.message}</span>}
         className="mt-4"
       />
-      <Button type="submit" variant="dark" disabled={pending} className="mt-4 w-full">
+      <Button type="submit" variant="dark" pending={pending} className="mt-4 w-full">
         {pending ? "Signing in…" : "Sign in"}
       </Button>
     </form>

@@ -14,9 +14,12 @@ type SetPasswordAction = (state: SetPasswordState, formData: FormData) => Promis
 
 export function SetPasswordForm({ action, email }: { action: SetPasswordAction; email: string }) {
   const [state, formAction, pending] = useActionState(action, { status: "idle" });
-  // The message goes on the field it's about, as an alert so screen readers read it out.
+  // The message goes on the field it's about, as an alert so screen readers read it out. It's
+  // hidden while the form sends again, so a repeated message is a new alert, read out again.
   const errorOn = (field: PasswordField) =>
-    state.status === "error" && state.field === field && <span role="alert">{state.message}</span>;
+    !pending && state.status === "error" && state.field === field ? (
+      <span role="alert">{state.message}</span>
+    ) : undefined;
 
   return (
     <form action={formAction} noValidate className="mt-8">
@@ -40,12 +43,13 @@ export function SetPasswordForm({ action, email }: { action: SetPasswordAction; 
         error={errorOn("confirm")}
         className="mt-4"
       />
-      <Button type="submit" variant="dark" disabled={pending} className="mt-4 w-full">
+      <Button type="submit" variant="dark" pending={pending} className="mt-4 w-full">
         {pending ? "Saving…" : "Save password"}
       </Button>
-      {/* Always in the page, so screen readers announce the message when it appears. */}
+      {/* Always in the page, so screen readers announce the message when it appears. Emptied
+          while the form sends again, so the same message is announced again. */}
       <div role="status" className="mt-4">
-        {state.status === "saved" && (
+        {!pending && state.status === "saved" && (
           <SuccessBox>
             <p className="font-semibold">Your new password is saved.</p>
             <p className="mt-1">

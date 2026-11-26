@@ -23,11 +23,16 @@ export function FileList({ files, action }: { files: MemberFileRow[]; action: Re
 
   return (
     <form action={formAction} className="mt-4">
-      {/* Always in the page, so screen readers announce the message when it appears. */}
+      {/* Always in the page, so screen readers announce the message when it appears. Messages
+          are hidden while the form sends again, so a repeated one is announced again. */}
       <div role="status">
-        {state.status === "removed" && <SuccessBox className="mb-4">{state.message}</SuccessBox>}
+        {!pending && state.status === "removed" && (
+          <SuccessBox className="mb-4">{state.message}</SuccessBox>
+        )}
       </div>
-      {state.status === "error" && <FormError className="mt-2 mb-4">{state.message}</FormError>}
+      {!pending && state.status === "error" && (
+        <FormError className="mt-2 mb-4">{state.message}</FormError>
+      )}
       {files.length === 0 ? (
         <p className="text-muted">No files yet.</p>
       ) : (
@@ -51,7 +56,7 @@ export function FileList({ files, action }: { files: MemberFileRow[]; action: Re
                   value={file.id}
                   size="sm"
                   variant="reject"
-                  disabled={pending}
+                  pending={pending}
                   aria-label={`Remove ${file.title}`}
                   onClick={(event) => {
                     const message = `Remove "${file.title}"? Links to it on the website will stop working.`;

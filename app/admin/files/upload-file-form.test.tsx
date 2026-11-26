@@ -151,6 +151,29 @@ describe("UploadFileForm", () => {
     expect(firstLevel).toHaveAccessibleDescription(FILE_MESSAGES.levelsMissing);
   });
 
+  it("reads out the message again each time Enter in the same empty box fails", async () => {
+    setup();
+    chooseFile(pdf());
+    const name = screen.getByLabelText("Name");
+    await submitFrom(name);
+    const first = screen.getByRole("alert");
+    await submitFrom(name);
+    // A new alert, which screen readers read out. The same one, unchanged, is read out by nobody.
+    expect(screen.getByRole("alert")).not.toBe(first);
+    expect(screen.getByRole("alert")).toHaveTextContent(FILE_MESSAGES.titleMissing);
+    expect(name).toHaveFocus();
+
+    fireEvent.change(name, { target: { value: "Board minutes" } });
+    fireEvent.click(screen.getByLabelText("Only some membership levels"));
+    const levels = screen.getByRole("group", { name: "Membership levels" });
+    const firstLevel = within(levels).getAllByRole("checkbox")[0];
+    await submitFrom(firstLevel);
+    const levelsAlert = screen.getByRole("alert");
+    await submitFrom(firstLevel);
+    expect(screen.getByRole("alert")).not.toBe(levelsAlert);
+    expect(screen.getByRole("alert")).toHaveTextContent(FILE_MESSAGES.levelsMissing);
+  });
+
   it("takes focus back to the field each time the same check fails", async () => {
     setup();
     const file = screen.getByLabelText("File");
@@ -177,6 +200,54 @@ describe("UploadFileForm", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(FILE_MESSAGES.uploadFailed),
     );
     expect(props.save).not.toHaveBeenCalled();
+  });
+
+  it("reads out the same problem again when the next upload fails the same way", async () => {
+    const props = setup({ upload: vi.fn(async () => false) });
+    chooseFile(pdf());
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Board minutes" } });
+    await submit();
+    const first = await screen.findByRole("alert");
+    await submit();
+
+    // A new alert, which screen readers read out. The same one, unchanged, is read out by nobody.
+    await waitFor(() => expect(screen.getByRole("alert")).not.toBe(first));
+    expect(screen.getByRole("alert")).toHaveTextContent(FILE_MESSAGES.uploadFailed);
+    expect(props.upload).toHaveBeenCalledTimes(2);
+  });
+
+  it("hides the last message while uploading, keeps the button focused and ignores another press", async () => {
+    let finishUpload: (stored: boolean) => void = () => {};
+    const props = setup({
+      upload: vi.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            finishUpload = resolve;
+          }),
+      ),
+    });
+    const name = screen.getByLabelText("Name");
+    chooseFile(pdf());
+    await submitFrom(name);
+    expect(screen.getByRole("alert")).toHaveTextContent(FILE_MESSAGES.titleMissing);
+
+    fireEvent.change(name, { target: { value: "Board minutes" } });
+    await submit();
+    const button = screen.getByRole("button", { name: "Uploading…" });
+    // The Name message is from the last try, so it's gone while this one is on its way.
+    expect(screen.queryByText(FILE_MESSAGES.titleMissing)).toBeNull();
+    expect(name).not.toHaveAttribute("aria-invalid");
+    // Announced as unavailable, but not disabled: browsers take focus away from a disabled button.
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toBeEnabled();
+    expect(button).toHaveFocus();
+    fireEvent.click(button);
+
+    await act(async () => finishUpload(false));
+    expect(screen.getByRole("alert")).toHaveTextContent(FILE_MESSAGES.uploadFailed);
+    expect(props.prepare).toHaveBeenCalledOnce();
+    expect(props.upload).toHaveBeenCalledOnce();
+    expect(button).toHaveFocus();
   });
 
   it("shows the server's message when it refuses", async () => {

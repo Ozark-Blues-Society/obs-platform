@@ -1,7 +1,25 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MESSAGES, type EmailLinkState, type PasswordState } from "@/lib/auth/sign-in-state";
 import { EmailLinkForm, PasswordForm } from "./sign-in-forms";
+
+const WRONG_PASSWORD: PasswordState = {
+  status: "error",
+  email: "avery@example.com",
+  message: MESSAGES.wrongPassword,
+};
+
+/** An action that answers only when the test says so, so the test can see the form sending. */
+function heldAction<S>() {
+  let resolveNext: (state: S) => void = () => {};
+  const action = vi.fn<(state: S, formData: FormData) => Promise<S>>(
+    () =>
+      new Promise((resolve) => {
+        resolveNext = resolve;
+      }),
+  );
+  return { action, answer: (state: S) => act(async () => resolveNext(state)) };
+}
 
 describe("EmailLinkForm", () => {
   it("labels the email field and says what the button does", () => {
@@ -53,6 +71,64 @@ describe("EmailLinkForm", () => {
     expect(email).toHaveAccessibleDescription(MESSAGES.emailInvalid);
     expect(email).toHaveValue("avery@example");
   });
+
+  it("reads out the same error again when the next request fails the same way", async () => {
+    const action = vi.fn(async (): Promise<EmailLinkState> => ({
+      status: "error",
+      email: "avery@example",
+      message: MESSAGES.emailInvalid,
+    }));
+    render(<EmailLinkForm action={action} />);
+    const button = screen.getByRole("button", { name: "Email me a sign-in link" });
+
+    fireEvent.click(button);
+    const first = await screen.findByRole("alert");
+    fireEvent.click(button);
+
+    // A new alert, which screen readers read out. The same one, unchanged, is read out by nobody.
+    await waitFor(() => expect(screen.getByRole("alert")).not.toBe(first));
+    expect(screen.getByRole("alert")).toHaveTextContent(MESSAGES.emailInvalid);
+    expect(action).toHaveBeenCalledTimes(2);
+  });
+
+  it("confirms a second request for a link again", async () => {
+    const action = vi.fn(async (): Promise<EmailLinkState> => ({
+      status: "sent",
+      email: "avery@example.com",
+    }));
+    render(<EmailLinkForm action={action} />);
+    const button = screen.getByRole("button", { name: "Email me a sign-in link" });
+
+    fireEvent.click(button);
+    const first = await screen.findByText("Check your email.");
+    fireEvent.click(button);
+
+    // The status region gets the message afresh, so screen readers announce it again.
+    await waitFor(() => expect(screen.getByText("Check your email.")).not.toBe(first));
+    expect(screen.getByRole("status")).toHaveTextContent("avery@example.com");
+    expect(action).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the button focused while sending, and ignores another press", async () => {
+    const { action, answer } = heldAction<EmailLinkState>();
+    render(<EmailLinkForm action={action} />);
+    const button = screen.getByRole("button", { name: "Email me a sign-in link" });
+
+    button.focus();
+    fireEvent.click(button);
+    expect(await screen.findByRole("button", { name: "Sending…" })).toBe(button);
+    // Announced as unavailable, but not disabled: browsers take focus away from a disabled button.
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toBeEnabled();
+    expect(button).toHaveFocus();
+    fireEvent.click(button);
+
+    await answer({ status: "sent", email: "avery@example.com" });
+    expect(await screen.findByText("Check your email.")).toBeInTheDocument();
+    expect(action).toHaveBeenCalledOnce();
+    expect(button).not.toHaveAttribute("aria-disabled");
+    expect(button).toHaveFocus();
+  });
 });
 
 describe("PasswordForm", () => {
@@ -83,5 +159,45 @@ describe("PasswordForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(MESSAGES.wrongPassword);
     expect(screen.getByLabelText("Password")).toHaveAccessibleDescription(MESSAGES.wrongPassword);
     expect(screen.getByLabelText("Email address")).toHaveValue("avery@example.com");
+  });
+
+  it("reads out the same error again when the next try fails the same way", async () => {
+    const action = vi.fn(async (): Promise<PasswordState> => WRONG_PASSWORD);
+    render(<PasswordForm action={action} next="/account" />);
+    const button = screen.getByRole("button", { name: "Sign in" });
+
+    fireEvent.click(button);
+    const first = await screen.findByRole("alert");
+    fireEvent.click(button);
+
+    // A new alert, which screen readers read out. The same one, unchanged, is read out by nobody.
+    await waitFor(() => expect(screen.getByRole("alert")).not.toBe(first));
+    expect(screen.getByRole("alert")).toHaveTextContent(MESSAGES.wrongPassword);
+    expect(action).toHaveBeenCalledTimes(2);
+  });
+
+  it("hides the last message while signing in again, keeps the button focused and ignores another press", async () => {
+    const { action, answer } = heldAction<PasswordState>();
+    render(<PasswordForm action={action} next="/account" />);
+    const button = screen.getByRole("button", { name: "Sign in" });
+    button.focus();
+    fireEvent.click(button);
+    await answer(WRONG_PASSWORD);
+    expect(screen.getByRole("alert")).toHaveTextContent(MESSAGES.wrongPassword);
+
+    fireEvent.click(button);
+    expect(await screen.findByRole("button", { name: "Signing in…" })).toBe(button);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByLabelText("Password")).not.toHaveAttribute("aria-invalid");
+    // Announced as unavailable, but not disabled: browsers take focus away from a disabled button.
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toBeEnabled();
+    expect(button).toHaveFocus();
+    fireEvent.click(button);
+
+    await answer(WRONG_PASSWORD);
+    expect(screen.getByRole("alert")).toHaveTextContent(MESSAGES.wrongPassword);
+    expect(action).toHaveBeenCalledTimes(2);
+    expect(button).toHaveFocus();
   });
 });
