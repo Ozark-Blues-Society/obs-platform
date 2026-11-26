@@ -50,6 +50,9 @@ describe("passwordUpdateProblem", () => {
     ["weak_password", PASSWORD_MESSAGES.weak],
     ["same_password", PASSWORD_MESSAGES.samePassword],
     ["reauthentication_needed", PASSWORD_MESSAGES.signInAgain],
+    // Supabase Auth's codes when "Require current password when updating" is on.
+    ["current_password_required", PASSWORD_MESSAGES.signInWithLink],
+    ["current_password_invalid", PASSWORD_MESSAGES.signInWithLink],
     ["over_request_rate_limit", PASSWORD_MESSAGES.tooManyAttempts],
     ["unexpected_failure", PASSWORD_MESSAGES.unavailable],
     [undefined, PASSWORD_MESSAGES.unavailable],
