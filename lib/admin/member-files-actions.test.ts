@@ -14,6 +14,7 @@ const db = vi.hoisted(() => ({
   signUploadError: null as object | null,
   info: { size: 1234, contentType: "application/pdf" } as object | null,
   insertError: null as { code: string; message: string } | null,
+  listed: [] as object[] | null,
   deleted: [] as object[],
   deleteError: null as { code: string; message: string } | null,
   calls: [] as unknown[][],
@@ -55,6 +56,9 @@ vi.mock("@/lib/supabase/server", () => ({
               resolve,
             );
           }
+          if (op === "select") {
+            return Promise.resolve({ data: db.listed, error: null }).then(resolve);
+          }
           return Promise.resolve({ data: db.deleted, error: db.deleteError }).then(resolve);
         },
       };
@@ -95,6 +99,7 @@ beforeEach(() => {
     signUploadError: null,
     info: { size: 1234, contentType: "application/pdf" },
     insertError: null,
+    listed: [],
     deleted: [],
     deleteError: null,
     calls: [],
@@ -208,7 +213,24 @@ describe("saveUploadedFile", () => {
       status: "error",
       message: FILE_MESSAGES.unavailable,
     });
+    expect(db.calls).toContainEqual(["select", "member_files", "object_path", PATH]);
     expect(db.calls).toContainEqual(["remove", "member-files", [PATH]]);
+  });
+
+  it("keeps the file if its path is already listed or the check fails", async () => {
+    // A repeated request for a saved file: the insert fails on the id, but the file is in use.
+    db.insertError = { code: "23505", message: "duplicate key value violates unique constraint" };
+    db.listed = [{ id: ID }];
+    expect(await saveUploadedFile(SAVE)).toEqual({
+      status: "error",
+      message: FILE_MESSAGES.unavailable,
+    });
+    db.listed = null;
+    expect(await saveUploadedFile(SAVE)).toEqual({
+      status: "error",
+      message: FILE_MESSAGES.unavailable,
+    });
+    expect(db.calls.some(([kind]) => kind === "remove")).toBe(false);
   });
 
   it("checks the name, who can download it and the path the browser sends back", async () => {

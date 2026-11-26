@@ -99,8 +99,13 @@ export async function saveUploadedFile(input: {
     refresh();
     if (error) {
       console.error("Adding a members-only file failed:", error.code, error.message);
-      // No row, so no member can reach the file; don't leave it in the bucket either.
-      await storage.remove([input.path]);
+      // No row, so no member can reach the file; don't leave it in the bucket either. Unless the
+      // path is already a listed file's (a repeated request): that file must keep its object.
+      const { data: listed } = await supabase
+        .from("member_files")
+        .select("id")
+        .eq("object_path", input.path);
+      if (listed && listed.length === 0) await storage.remove([input.path]);
       return { status: "error", message: FILE_MESSAGES.unavailable };
     }
     return {
