@@ -282,8 +282,8 @@
         "port": 465,
         "user": "resend",
         "pass": "env(RESEND_API_KEY)",
-        // Resend's shared test sender. Production uses an address on the Society's domain once its
-        // DNS records are in (decision 0004).
+        // Resend's shared test sender. Production sends from noreply@mail.<Society domain>
+        // (decision 0005) once that domain's DNS records are in (decision 0004).
         "admin_email": "onboarding@resend.dev",
         "sender_name": "Ozark Blues Society"
       },

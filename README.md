@@ -151,27 +151,39 @@ built-in sender is heavily rate-limited. The settings are in `supabase/config.js
 `auth.email.smtp`, switched off there so local email stays in Mailpit. For a hosted project, enter
 them in the Supabase dashboard (Authentication → Emails → SMTP settings):
 
-| Setting      | Value                                                                          |
-| ------------ | ------------------------------------------------------------------------------ |
-| Host         | `smtp.resend.com`                                                              |
-| Port         | `465`                                                                          |
-| Username     | `resend`                                                                       |
-| Password     | a Resend API key with sending access                                           |
-| Sender email | `onboarding@resend.dev` until the Society's domain is verified (decision 0004) |
-| Sender name  | `Ozark Blues Society`                                                          |
+| Setting      | Value                                           |
+| ------------ | ----------------------------------------------- |
+| Host         | `smtp.resend.com`                               |
+| Port         | `465`                                           |
+| Username     | `resend`                                        |
+| Password     | a Resend API key with sending access            |
+| Sender email | `noreply@mail.<Society domain>` (decision 0005) |
+| Sender name  | `Ozark Blues Society`                           |
+
+The address is on the `mail.` subdomain chosen in
+[decision 0005](docs/decisions/0005-resend-sending-subdomain.md). Resend accepts it only once that
+domain is verified in Resend, after its DNS records are added
+([decision 0004](docs/decisions/0004-email-dns-guide-launch-1.md)). Until then the sender has to be
+`onboarding@resend.dev`, which reaches test addresses only (see Test mode below).
 
 Also on the hosted project: paste the subject and HTML of `supabase/templates/magic-link.html`
 into the Magic link email template, set the site URL to the site's address, and set the email
-rate limit (Authentication → Rate limits) high enough for a busy sign-in day. Creating
-hosted projects and Resend accounts, and production settings, are human gates
-([`docs/HUMAN_GATES.md`](docs/HUMAN_GATES.md)).
+rate limit (Authentication → Rate limits) high enough for a busy sign-in day. Past that limit, no
+more sign-in emails go out that hour, but the form still says "Check your email" (so it never
+shows who is a member). The server logs a warning each time:
+`A sign-in link wasn't sent (Supabase email rate limit)`. Creating hosted projects and Resend
+accounts, and production settings, are human gates ([`docs/HUMAN_GATES.md`](docs/HUMAN_GATES.md)).
 
 Test mode: `onboarding@resend.dev` delivers only to Resend's test addresses (such as
 `delivered@resend.dev`) and the Resend account's owner, so it can't reach real members. To try
 Resend from your machine, put a test API key in `supabase/.env` as `RESEND_API_KEY=...`
 (git-ignored), set `"enabled": true` under `auth.email.smtp` without committing it, restart the
 stack, and request a link for a user whose address is `delivered@resend.dev` (add one in Studio).
-Resend's dashboard shows the delivery. Switch it off and restart again afterwards.
+Resend's dashboard shows the delivery. Switch it off and restart again afterwards. With SMTP on,
+the stack also applies `auth.rate_limit.email_sent` (2 an hour in `supabase/config.jsonc`), so the
+third link in an hour isn't sent, though the form still says it was. Raise the limit locally
+without committing it, or wait. (With SMTP off, the CLI sets that limit to 360000, which is why
+Mailpit never hits it.)
 
 ## Scripts
 

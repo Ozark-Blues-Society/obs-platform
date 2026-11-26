@@ -36,6 +36,16 @@ export async function sendSignInLink(
       options: { shouldCreateUser: false },
     });
     const result = emailLinkResult(email, error);
+    if (error?.code === "over_email_send_rate_limit") {
+      // The form still says "sent" (see emailLinkResult). Supabase uses this code both for a
+      // repeat request soon after the last link and for the project's hourly email cap, when no
+      // email goes out at all, so log it: a day that hits the cap then shows up in the logs.
+      console.warn(
+        "A sign-in link wasn't sent (Supabase email rate limit):",
+        error.code,
+        error.message,
+      );
+    }
     if (result.status === "error" && result.message === MESSAGES.unavailable) {
       console.error("Sending a sign-in link failed:", error?.code, error?.message);
     }
