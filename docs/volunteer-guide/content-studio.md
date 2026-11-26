@@ -72,7 +72,7 @@ board member:
 4. Select **Copy preview link**, then send the link to them.
 
 The person who opens the link sees the website with all current drafts, not only that page, under a
-yellow banner: "You're viewing a preview that includes unpublished changes". The banner's **Exit
+pale gold banner: "You're viewing a preview that includes unpublished changes". The banner's **Exit
 preview** button takes them back to the published website. A preview never unlocks members-only
 pages.
 

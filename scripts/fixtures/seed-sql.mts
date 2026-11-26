@@ -1,8 +1,8 @@
 /**
  * Builds supabase/seed.sql from the fixtures. `supabase db reset` loads it after the migrations.
  *
- * The seed loads only tables that exist. When a migration adds one (profiles and user_roles in
- * M-2, listings in K-1), add a section here and run `pnpm fixtures:generate`.
+ * The seed loads only tables that exist. When a migration adds one (listings in K-1), add a
+ * section here and run `pnpm fixtures:generate`.
  */
 import { fileURLToPath } from "node:url";
 import { MEMBERS, type FixtureMember } from "./members.mts";
@@ -15,6 +15,11 @@ export const FIXTURE_PASSWORD = "obs-local-dev";
 /** A single-quoted SQL string literal. */
 export function sqlString(value: string): string {
   return `'${value.replaceAll("'", "''")}'`;
+}
+
+/** A single-quoted SQL string literal, or null. */
+function sqlStringOrNull(value: string | null): string {
+  return value === null ? "null" : sqlString(value);
 }
 
 const HEADER = `-- Generated from scripts/fixtures/ by \`pnpm fixtures:generate\`. Don't edit it by hand.
@@ -63,6 +68,54 @@ select
 from new_user u;`;
 }
 
+function profilesSql(members: readonly FixtureMember[]): string {
+  const values = members
+    .map((m) => {
+      const columns = [
+        `${sqlString(m.id)}::uuid`,
+        sqlStringOrNull(m.phone),
+        sqlString(m.level),
+        sqlString(m.status),
+        m.expiresInDays,
+        m.years,
+        m.autoRenew,
+        sqlStringOrNull(m.notes),
+      ];
+      return `    (${columns.join(", ")})`;
+    })
+    .join(",\n");
+
+  return `-- Membership details. The sign-up trigger (supabase/migrations/) created each member's profile
+-- above, with their address and names; joined_at is the given number of years before expires_at.
+update public.profiles p
+set
+  phone = f.phone,
+  level = f.level::public.membership_level,
+  status = f.status::public.membership_status,
+  expires_at = now() + make_interval(days => f.expires_in_days),
+  joined_at = now() + make_interval(days => f.expires_in_days) - make_interval(years => f.years),
+  auto_renew = f.auto_renew,
+  notes = f.notes
+from (
+  values
+${values}
+) as f (id, phone, level, status, expires_in_days, years, auto_renew, notes)
+where p.id = f.id;`;
+}
+
+function userRolesSql(members: readonly FixtureMember[]): string {
+  const values = members
+    .flatMap((m) => m.roles.map((role) => `  (${sqlString(m.id)}::uuid, ${sqlString(role)})`))
+    .join(",\n");
+
+  return `-- Staff roles.
+insert into public.user_roles (profile_id, role)
+values
+${values};`;
+}
+
 export function buildSeedSql(members: readonly FixtureMember[] = MEMBERS): string {
-  return `${HEADER}\n\n${authUsersSql(members)}\n`;
+  const sections = [HEADER, authUsersSql(members), profilesSql(members)];
+  if (members.some((m) => m.roles.length > 0)) sections.push(userRolesSql(members));
+  return `${sections.join("\n\n")}\n`;
 }

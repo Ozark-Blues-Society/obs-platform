@@ -87,6 +87,9 @@ until `supabase stop` removes it. On Linux, `ss -ltn | grep ':543'` should then 
 ### Migrations and database tests
 
 - `supabase migration new <name>` creates a migration in `supabase/migrations/`.
+- Functions that policies or triggers call go in the `private` schema, which the Data API doesn't
+  expose. A SECURITY DEFINER function in `public` could be called by anyone at
+  `/rest/v1/rpc/<name>`, and it would skip row level security.
 - Every new table needs row level security, policies and pgTAP tests (see `CLAUDE.md`). Tests go in
   `supabase/tests/` as `<name>_test.sql`; `supabase test new <name>` writes a template.
 - `supabase/tests/rls_baseline_test.sql` fails if any table in `public` has row level security
@@ -106,11 +109,11 @@ Synthetic data lives in `scripts/fixtures/`. Real member data never goes in the 
 
 `supabase/seed.sql` is generated from the fixtures by `pnpm fixtures:generate`, and `pnpm test`
 fails if it's out of date. The seed loads only tables that exist. Today that's the members'
-sign-ins; profiles, roles (M-2) and listings (K-1) join it with their migrations.
+sign-ins, their profiles and the staff roles; listings (K-1) join it with their migration.
 
 Every fixture member can sign in locally with their address (for example
-`avery.collins@example.com`) and the password `obs-local-dev`. Staff roles take effect once M-2
-adds them:
+`avery.collins@example.com`) and the password `obs-local-dev`. These four have staff roles (see
+[Member profiles and staff roles](#member-profiles-and-staff-roles)):
 
 | Role               | Fixture member              |
 | ------------------ | --------------------------- |
@@ -186,6 +189,35 @@ the stack also applies `auth.rate_limit.email_sent` (2 an hour in `supabase/conf
 third link in an hour isn't sent, though the form still says it was. Raise the limit locally
 without committing it, or wait. (With SMTP off, the CLI sets that limit to 360000, which is why
 Mailpit never hits it.)
+
+## Member profiles and staff roles
+
+Each member has a row in `profiles`: name, address, phone, membership level, status, expiry date,
+auto-renew. Staff roles are rows in `user_roles`: `admin`, `membership_manager`, `moderator` or
+`editor`. The tables come from `supabase/migrations/20261126050904_profiles_and_roles.sql`, and
+`supabase/tests/profiles_test.sql` tests who can read and change what. There are no households:
+the board created no family memberships (board decisions §2).
+
+| Who                                  | `profiles`                                     | `user_roles`     |
+| ------------------------------------ | ---------------------------------------------- | ---------------- |
+| A visitor                            | nothing                                        | nothing          |
+| A member, moderators and editors too | reads their own; changes their name and phone  | reads their own  |
+| An administrator                     | reads every profile; changes their name, phone | reads every role |
+| A membership manager                 | reads every profile; changes their name, phone | reads their own  |
+| Server code using the service role   | everything                                     | everything       |
+
+- **Signing up creates the profile.** A trigger on `auth.users` copies the address, plus
+  `first_name` and `last_name` from the sign-up's user metadata (`options.data` in
+  `supabase.auth.signUp`). Level, status and the dates stay empty until the first payment. When a
+  member changes their address through Supabase Auth, the profile follows.
+- **Members can't change their membership.** Level, status, `expires_at`, auto-renew, the Stripe
+  customer, `joined_at` and the staff notes are written by server code with the service role (the
+  Stripe webhook, scheduled jobs, the importer). Column privileges block a member's own update of
+  them, whatever the policies say. Members can read their own staff notes.
+- **Role checks** in policies call `private.has_role(...)`, in the `private` schema (see
+  [Migrations and database tests](#migrations-and-database-tests)).
+- **Granting roles** gets a screen with A-2. Until then the local seed gives each role to a
+  fixture member (see [Fixtures and seed data](#fixtures-and-seed-data)).
 
 ## Content Studio (Sanity)
 
@@ -340,6 +372,14 @@ tools/          Helper scripts for the agent team
 
 Later backlog items add the rest of the target layout in
 [`docs/spec/architecture.md`](docs/spec/architecture.md): `emails/` and the rest of `scripts/`.
+
+## Design tokens
+
+Colors, fonts, type sizes, spacing and radii come from the approved concept
+(`docs/design/prototype.html`) and live in `app/globals.css` as Tailwind theme tokens. Use their
+classes (`bg-canvas`, `text-muted`, `rounded-card`), never hex values or Tailwind's own palette; a
+unit test fails on hard-coded colors. [`docs/design/tokens.md`](docs/design/tokens.md) lists the
+tokens, the WCAG contrast of each color pair, and how to swap in the Society's real brand.
 
 ## Next.js 16 notes
 
