@@ -72,13 +72,16 @@ A pair the site uses belongs here.
 | `primary`       | `primary-soft` | Default tags, calendar chips                           | 10.41:1 | 4.5:1    |
 | `accent-dark`   | `accent-soft`  | "Members only", "Pending", "Expiring soon" tags        | 5.43:1  | 4.5:1    |
 | `success`       | `success-soft` | "Active", "Published", "Live" tags                     | 4.79:1  | 4.5:1    |
-| `danger`        | `danger-soft`  | "Lapsed" tags, error alerts                            | 4.51:1  | 4.5:1    |
+| `danger`        | `danger-soft`  | "Lapsed" tags                                          | 4.51:1  | 4.5:1    |
+| `ink`           | `success-soft` | Text in success messages                               | 14.47:1 | 4.5:1    |
+| `ink`           | `danger-soft`  | Text in error alerts                                   | 13.27:1 | 4.5:1    |
 | `muted`         | `muted-soft`   | Neutral tags ("Weekly", "Expired")                     | 4.79:1  | 4.5:1    |
 | `white`         | `primary-dark` | Header, footer, hero and toast text                    | 17.48:1 | 4.5:1    |
 | `muted-on-dark` | `primary-dark` | Hero intro, nav links, footer text                     | 12.17:1 | 4.5:1    |
 | `accent-light`  | `primary-dark` | Logo tagline, the hero's "Next up" date                | 12.14:1 | 4.5:1    |
 | `accent`        | `primary-dark` | Eyebrows on the hero                                   | 6.64:1  | 4.5:1    |
 | `white`         | `primary`      | Page header, dark buttons, date badges, selected pills | 12.36:1 | 4.5:1    |
+| `white`         | `primary-light` | Dark buttons on hover                                 | 8.61:1  | 4.5:1    |
 | `muted-on-dark` | `primary`      | Page header intro                                      | 8.60:1  | 4.5:1    |
 | `accent-light`  | `primary`      | Date badge month                                       | 8.59:1  | 4.5:1    |
 | `primary-dark`  | `accent`       | Main buttons, call-to-action band; focus outline there | 6.64:1  | 4.5:1    |
