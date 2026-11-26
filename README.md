@@ -602,7 +602,8 @@ accounts"). So CI keeps runs short:
   up to the database tests runs while it starts.
 - The build restores the latest `develop` run's Next.js build cache (`.next/cache`, where Turbopack
   keeps its build cache since Next.js 16.3). Only pushes to `develop` save it.
-- The unit and end-to-end tests run two workers, one per CPU of the runner.
+- The unit tests run two workers, one per CPU of the runner. The end-to-end tests stay on one: with
+  two, the Sanity Studio test sometimes never drew its screen, even given 15 s.
 - A run that passes every check records the tree it tested as a `passed-tree-<tree>` artifact,
   kept 7 days. A later run of the same tree skips the checks and succeeds, with a notice that links
   the run that passed. That's usually the push to `develop` when a pull request merges into a
