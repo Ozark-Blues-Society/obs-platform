@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:db": "supabase test db",
+    "fixtures:generate": "node scripts/fixtures/generate.mts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

@@ -71,6 +71,8 @@ one-line reason, and what it blocks. Parker answers from his phone.
 - `pnpm dev` · `pnpm build` · `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm test:e2e`
 - `pnpm format` / `pnpm format:check` (Prettier) · first e2e run: `pnpm exec playwright install chromium`
 - `supabase start` / `supabase stop` · `supabase db reset` (re-applies migrations + seed)
+- `pnpm test:db` (pgTAP tests in `supabase/tests/`) · `pnpm fixtures:generate` (rebuilds `supabase/seed.sql`
+  from `scripts/fixtures/`; local sign-in for every fixture member: password `obs-local-dev`)
 - `stripe listen --forward-to localhost:3000/api/stripe/webhook` (test mode)
 
 (Scaffolded by F-1; update this list if a command changes. Next.js 16 differs from older versions:
