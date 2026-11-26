@@ -556,8 +556,9 @@ MailerLite sends it to the mailing list, which has people who aren't members.
   busy month stays far below the 102 KB at which Gmail clips an email (a test checks 20 posts).
 - **The screen** checks the role, lists the month's posts, shows the newsletter in a sandboxed
   frame and copies its HTML to the clipboard. Every MailerLite plan has the custom HTML editor
-  (pricing page, checked 2026-11-26). MailerLite stays out of this repository: no account, API key
-  or sending.
+  (pricing page, checked 2026-11-26). The newsletter needs no MailerLite API key: the site sends
+  MailerLite nothing for it. It can go to the mailing list or to the member groups the site keeps
+  in MailerLite ([below](#mailerlite-member-groups)).
 
 ## Daily jobs
 
@@ -576,6 +577,8 @@ runs `runDailyJobs()` (`lib/jobs/daily.ts`). Why Netlify, and the options it was
    not on yearly auto-renew (Stripe emails those who are), and the lapsed note (14 days after). The
    job claims each email in `membership_emails`, which holds one email of each kind per member and
    membership end, then renders it, sends it and records the email service's id.
+3. **Syncs the member groups in MailerLite**, with the statuses just updated, once
+   `MAILERLITE_API_KEY` is set ([MailerLite member groups](#mailerlite-member-groups)).
 
 Both functions are in `supabase/migrations/20261126143035_membership_emails.sql`, with the rules
 spelled out at the top; `20261126163935_membership_status_from_row.sql` replaced the refresh with one
@@ -610,6 +613,7 @@ renewal emails are Launch 2, decision 0002). In Netlify's environment variables:
 | `SITE_URL`            | `https://<Society domain>`                                         |
 | `EMAIL_FROM`          | `noreply@mail.<Society domain>` (decision 0005)                    |
 | `RESEND_API_KEY`      | A Resend API key with sending access                               |
+| `MAILERLITE_API_KEY`  | Optional: turns on the MailerLite group sync (below)               |
 
 Without `CRON_SECRET`, the function logs "The daily jobs are off" and does nothing.
 
@@ -637,7 +641,81 @@ June 2001, when only the members it creates are due, and checks the route refuse
 the secret. `lib/email/send.test.ts`, `lib/jobs/membership-store.test.ts`,
 `lib/jobs/daily-jobs-function.test.ts` and `app/api/cron/daily/route.test.ts` cover the rest.
 
-K-4 (listing expiry) and E-3 (the nightly MailerLite sync) add their jobs to `runDailyJobs()`.
+K-4 (listing expiry) adds its job to `runDailyJobs()`.
+
+## MailerLite member groups
+
+The site keeps seven groups in the Society's MailerLite account in step with the members' profiles
+(backlog E-3, `lib/mailerlite/sync.ts`), so the newsletter writer can send a campaign to the members
+who need it. Steps for volunteers:
+[`docs/volunteer-guide/mailerlite-groups.md`](docs/volunteer-guide/mailerlite-groups.md).
+
+| Group                         | Who's in it                                                        |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `Website: Active members`     | Members whose membership ends more than 30 days from now           |
+| `Website: Expiring members`   | Members whose membership ends within 30 days (auto-renew ones too) |
+| `Website: Lapsed members`     | Members whose membership has ended                                 |
+| `Website: Individual members` | Individual members whose membership hasn't ended                   |
+| `Website: Band members`       | Band members whose membership hasn't ended                         |
+| `Website: Business members`   | Business members whose membership hasn't ended                     |
+| `Website: Sponsor members`    | Sponsor members whose membership hasn't ended                      |
+
+A member is in their status's group and, until their membership lapses, their level's group. A
+profile with no level or status (never paid) isn't sent to MailerLite.
+
+- **When.** Every night, as step 3 of the daily jobs, right after the statuses are updated. And
+  after a change: server code that changes a membership, an address or a name (the Stripe webhook,
+  recording a payment, the importer, the profile form, as they're built) calls
+  `syncMembersToMailerLite([profileId])` (`lib/mailerlite/on-change.ts`) inside `after()`, once the
+  change is saved.
+- **Only what changed.** `mailerlite_subscribers`
+  (`supabase/migrations/20261126193121_mailerlite_subscribers.sql`) records what MailerLite was last
+  given for each member: the subscriber's MailerLite id, address, name and member groups. A run
+  compares that with the profiles and calls MailerLite only for the members whose groups, address
+  or name changed, so a quiet night costs one request (listing the groups), and running it again
+  changes nothing.
+- **One run per member at a time.** A run takes a member before working on them
+  (`claim_mailerlite_member`, a lease of a minute) and lets go as it records what it did
+  (`finish_mailerlite_member`). That statement reads the profile again, so a change made meanwhile
+  is synced by the same run, which goes round again, or by whoever made it, once the member is
+  free.
+- **The seven groups are the site's; the rest is MailerLite's.** The sync adds and removes members
+  of these groups and sets the subscriber's address and name (MailerLite's `name` and `last_name`
+  fields). It never sends a status. A new subscriber gets the account's default (active, or
+  unconfirmed with double opt-in), and someone who unsubscribed, bounced or marked a campaign as
+  spam stays that way: MailerLite refuses an upsert for them without a resubscribe, so they're added
+  to the groups one at a time. Their other groups are left alone. Someone who stops being a member
+  (a refund, a deleted account) leaves the seven groups and stays in MailerLite.
+- **A new address** is set on the same MailerLite subscriber, who keeps their status. If MailerLite
+  refuses (another subscriber has the address, or this one's address already changed this month),
+  the old subscriber leaves the groups and the member is added under the new address.
+- **Missing groups are made.** Each run finds the groups by name and makes any that's missing, so a
+  deleted group comes back with its members. A renamed group is no longer the site's.
+- **It stops in time.** The sync shares the daily run's 15 seconds and starts no request after
+  them, or once MailerLite answers 429 (it allows 120 requests a minute); the next run carries on.
+  A sync after a change gets 10 seconds. Adding a member takes one request and a change of status
+  two or three, so the first run with a few hundred members takes a few runs: press **Run now** on
+  the daily jobs' function a few times, or let the nights do it.
+- **The daily summary** says what it did under `mailerLite` (members synced, removed, left to
+  another run, left for the next run, failed), or `"off"`. Its errors, with profile ids and never
+  addresses, make the route answer 500.
+
+**Off until `MAILERLITE_API_KEY` is set.** Turning it on in production is a human gate (a production
+setting that sends real members' names and addresses to MailerLite). In MailerLite, open
+**Integrations**, choose **MailerLite API** and select **Generate new token**, named for instance
+"Website group sync - production"; set it in Netlify's environment variables as
+`MAILERLITE_API_KEY`. The next daily run makes the groups and adds every member with a membership,
+lapsed ones included. Adding someone to a group emails nobody; a campaign or an automation does.
+Leave the key empty locally and in CI: the tests use a stand-in for MailerLite's API
+(`lib/mailerlite/fake-api.ts`), and a local run would put the synthetic fixture members into a real
+account.
+
+**Tests.** `lib/mailerlite/sync.test.ts` runs the sync against the stand-in API (the groups, moves,
+removals, statuses left alone, new addresses, subscribers and groups deleted in MailerLite, a member
+another run has, the deadline, 429 and errors). `lib/mailerlite/client.test.ts` checks the requests
+and answers, `supabase/tests/mailerlite_subscribers_test.sql` the records, the lease and who can
+reach them, and `e2e/mailerlite-sync.spec.ts` runs the sync against the local database with the
+stand-in API, for the members it creates only.
 
 ## Scripts
 
@@ -742,7 +820,7 @@ accounts"). So CI keeps runs short:
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
 components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
-lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs
+lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs, the MailerLite sync
 netlify/        Netlify Functions: the daily jobs' schedule (netlify/functions/)
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests

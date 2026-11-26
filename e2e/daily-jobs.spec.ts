@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type APIRequestContext, type TestInfo } from "@playwright/test";
@@ -6,7 +5,7 @@ import { createMailpitSender, type SendEmail } from "../lib/email/send";
 import { runDailyJobs } from "../lib/jobs/daily";
 import { createMembershipStore } from "../lib/jobs/membership-store";
 import { clearInbox, emailsTo, MAILPIT_URL } from "./support/mailpit";
-import { SUPABASE_URL } from "./support/supabase-auth";
+import { secretKey, SUPABASE_URL } from "./support/supabase-auth";
 
 // The daily jobs (backlog E-2) against the local database and Mailpit. They don't use a page, so
 // they run once, in the desktop project.
@@ -21,16 +20,6 @@ const DESKTOP_ONLY = "No page: runs once, in the desktop project";
 
 const NOW = new Date("2001-06-15T13:00:00Z");
 const ADDRESS_PREFIX = "daily-jobs.";
-
-/** The service role's key: SUPABASE_SECRET_KEY, or what `supabase status` prints for the stack. */
-function secretKey(): string {
-  if (process.env.SUPABASE_SECRET_KEY) return process.env.SUPABASE_SECRET_KEY;
-  const status = JSON.parse(
-    execFileSync("supabase", ["status", "--output", "json"], { encoding: "utf8" }),
-  ) as { SECRET_KEY?: string };
-  if (!status.SECRET_KEY) throw new Error("`supabase status` printed no SECRET_KEY");
-  return status.SECRET_KEY;
-}
 
 /** Deletes this test's members, with their claims, including any an earlier run left behind. */
 async function deleteTestMembers(admin: SupabaseClient) {
