@@ -22,6 +22,9 @@ const MEMBERS = {
 
 const postUrl = (slug: string) => `/blog/${slug}`;
 
+// CI tests the production build (CI=1 runs `pnpm start`); locally Playwright runs the dev server.
+const productionServer = !!process.env.CI;
+
 async function signIn(page: Page, email: string) {
   await page.goto("/sign-in?next=%2Faccount");
   const form = page.getByRole("region", { name: "Sign in with a password" });
@@ -93,8 +96,13 @@ test.describe("a visitor", () => {
 
     // ...and a visitor asking straight after gets their own answer, with nothing members-only.
     const html = await request.get(path);
-    expect(html.headers()["cache-control"]).toContain("private");
-    expect(html.headers()["cache-control"]).toContain("no-store");
+    // No cache may keep a page like this, whose answer depends on who is asking. The production
+    // server sends `private, no-cache, no-store, max-age=0, must-revalidate`, and `private` keeps
+    // it out of shared caches such as a CDN. The dev server sends a plain `no-store` for every
+    // page instead, so `private` can only be checked against the production server.
+    const cacheControl = html.headers()["cache-control"];
+    expect(cacheControl).toContain("no-store");
+    if (productionServer) expect(cacheControl).toContain("private");
     const sent = await everythingSent(request, path);
     expect(sent).toContain(POSTS.members.title);
     expect(sent).not.toContain(MEMBERS_ONLY_MARKER);
@@ -174,6 +182,9 @@ test.describe("a preview (draft mode)", () => {
     // ...but the post stays locked.
     await expect(page.getByRole("heading", { name: "This post is for members" })).toBeVisible();
     const sent = await everythingSent(page.request, path);
+    // page.request carries the preview's cookie, so the server answered with the draft: the checks
+    // below can't pass just because the preview was off.
+    expect(sent).toContain("(draft)");
     expect(sent).not.toContain(MEMBERS_ONLY_MARKER);
     expect(sent).not.toContain(DRAFT_MARKER);
   });
