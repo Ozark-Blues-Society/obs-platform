@@ -313,6 +313,53 @@ so the Studio can sign in from there. Every address that serves the site needs t
   `"use cache"` function and resolve `getDynamicFetchOptions()` outside it, as in Sanity's guide
   [Sanity Live with Next.js Cache Components](https://www.sanity.io/docs/nextjs/cache-components).
 
+## Emails (React Email)
+
+The app's own emails (backlog E-1) are [React Email](https://react.email) templates in `emails/`.
+Launch 1 has two: `welcome.tsx`, for someone who has just joined, and `receipt.tsx`, the Society's
+confirmation of a dues payment, online or by check or cash. Stripe also emails its own receipt for
+online payments (decision 0002). The renewal, lapsed and listing emails follow in Launch 2. Sign-in
+emails belong to Supabase Auth (see [Sign-in](#sign-in-supabase-auth)).
+
+```bash
+pnpm email:preview   # preview server at http://localhost:3030
+```
+
+The preview shows each template with its sample props (`PreviewProps`), at desktop and phone
+width, as HTML and as plain text, and reloads as you edit. It also sends the rendered sample to
+React Email's spam checker at react.email, one more reason the sample props stay synthetic: never
+put real member data in them.
+
+- **Templates** get everything they show as props, so they never fetch anything or read the
+  environment. Each file's default export is the component, with a `subject` function and
+  `PreviewProps` attached. The layout (`emails/_components/layout.tsx`: a header with the logo, a
+  card for the content, a footer) and the pieces in `emails/_components/ui.tsx` are shared, for the
+  later templates to reuse. The preview lists every `.tsx` file in `emails/` except those in
+  folders that start with `_`.
+- **Sending.** `renderEmail(template, props)` (`emails/render.ts`) returns the subject, the HTML and
+  the plain-text version, to pass to Resend together. It works in Route Handlers. Links in an
+  email must be absolute, so every template takes the site's address as `siteUrl`. The sender's
+  address isn't in the templates: it's one setting that everything sending email shares (decision
+  0005: `noreply@mail.<Society domain>`, `onboarding@resend.dev` in test mode). Nothing in
+  `emails/` sends email; the backlog items that send these two (the Stripe webhook, recording check
+  and cash payments) call `renderEmail`.
+- **Brand.** Email clients can't read the site's CSS variables, so `emails/_lib/theme.ts` copies
+  the token values. A unit test fails when a copy no longer matches `app/globals.css`, or when a
+  color pair the emails use falls below WCAG AA. Most email clients don't load web fonts (and
+  loading them from Google would tell Google who opened an email), so headings fall back to
+  Georgia and text to Arial. The logo is a placeholder, the Society's name, until the real logo
+  arrives; it will be an image at an absolute address on the site.
+- **Data.** Dates show in Central Time (`SOCIETY_TIME_ZONE`), amounts are in cents (Stripe's unit),
+  and level names come from `MEMBERSHIP_LEVELS` (`sanity/schemas/options.ts`). The welcome email's
+  benefits are the site settings' benefits table rows for the member's level.
+- **Footer.** It says why the email was sent. Replies to a no-reply address go nowhere, so it
+  links to the contact page (`/contact`, backlog P-7) instead.
+- **Tests.** `emails/welcome.test.ts` and `emails/receipt.test.ts` render each template.
+  `emails/templates.test.ts` checks every template it finds (one title, the language, absolute
+  links, token colors only, a plain-text version with no gaps), so it covers a new template
+  without changes. `e2e/emails.spec.ts` loads each email in the browser at desktop and 390px
+  width.
+
 ## Scripts
 
 | Command                  | What it does                                                       |
@@ -327,6 +374,7 @@ so the Studio can sign in from there. Every address that serves the site needs t
 | `pnpm test:e2e`          | Playwright end-to-end tests (desktop and 390px phone, in Chromium) |
 | `pnpm test:db`           | Database tests (pgTAP) against the local Supabase stack            |
 | `pnpm fixtures:generate` | Regenerate `supabase/seed.sql` from `scripts/fixtures/`            |
+| `pnpm email:preview`     | Preview the email templates at http://localhost:3030               |
 | `pnpm format`            | Format the code with Prettier                                      |
 | `pnpm format:check`      | Check formatting without writing changes                           |
 
@@ -387,6 +435,7 @@ components/     Shared UI: form classes for now (D-3 adds the components)
 lib/            Server and shared code: Supabase clients, sign-in helpers
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
+emails/         Email templates (React Email)
 scripts/        Synthetic fixtures (scripts/fixtures/) and the seed generator
 sanity/         Sanity client, live preview helpers, Studio structure and content schemas
 supabase/       Local Supabase config, migrations, seed and pgTAP tests
@@ -395,7 +444,7 @@ tools/          Helper scripts for the agent team
 ```
 
 Later backlog items add the rest of the target layout in
-[`docs/spec/architecture.md`](docs/spec/architecture.md): `emails/` and the rest of `scripts/`.
+[`docs/spec/architecture.md`](docs/spec/architecture.md): the rest of `scripts/`.
 
 ## Design tokens
 

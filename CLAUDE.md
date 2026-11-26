@@ -73,6 +73,7 @@ one-line reason, and what it blocks. Parker answers from his phone.
 - `supabase start` / `supabase stop` · `supabase db reset` (re-applies migrations + seed)
 - `pnpm test:db` (pgTAP tests in `supabase/tests/`) · `pnpm fixtures:generate` (rebuilds `supabase/seed.sql`
   from `scripts/fixtures/`; local sign-in for every fixture member: password `obs-local-dev`)
+- `pnpm email:preview` (React Email preview of the templates in `emails/`, with their sample props, at localhost:3030)
 - `stripe listen --forward-to localhost:3000/api/stripe/webhook` (test mode)
 
 (Scaffolded by F-1; update this list if a command changes. Next.js 16 differs from older versions:
