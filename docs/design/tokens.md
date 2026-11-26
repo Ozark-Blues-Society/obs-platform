@@ -20,13 +20,13 @@ is for, not what it looks like, so the real brand goes in by changing values, no
 
 | Token           | Value     | Prototype                                                 | Use for                                                                              |
 | --------------- | --------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `primary-dark`  | `#0e1a2b` | `--night`                                                 | Header, footer, hero, toast; text on `accent`                                        |
+| `primary-dark`  | `#0e1a2b` | `--night`                                                 | Header, footer, hero, toast, the preview banner's button; text on `accent`           |
 | `primary`       | `#1d3557` | `--blue`                                                  | Page header band, dark buttons, date badges, selected pills                          |
 | `primary-light` | `#2b4c7e` | `--blue2`                                                 | Links                                                                                |
 | `primary-soft`  | `#e6ecf5` | `--blue-soft`                                             | Default tags, calendar chips                                                         |
 | `accent`        | `#c9973f` | `--brass`                                                 | Main buttons, call-to-action band, selected borders; as text only on dark            |
 | `accent-light`  | `#f0d49a` | `--brass-l`                                               | Accent text on `primary` and `primary-dark`                                          |
-| `accent-soft`   | `#f6e6c3` | brass tag background                                      | "Members only", "Pending" and "Expiring soon" tags                                   |
+| `accent-soft`   | `#f6e6c3` | brass tag background                                      | "Members only", "Pending" and "Expiring soon" tags; the preview banner               |
 | `accent-dark`   | `#7a5512` | brass tag text                                            | Accent text on light backgrounds: eyebrows, tags                                     |
 | `success`       | `#2b7349` | `--green` (`#2f7d4f`), darkened to pass AA on its tag     | "Active", "Published", "Live"; approve                                               |
 | `success-soft`  | `#dcefe3` | green tag background                                      | Success tags and messages                                                            |
@@ -55,49 +55,50 @@ text pair here is held to 4.5:1, headings included. `lib/design/tokens.test.ts` 
 ratio from `app/globals.css`, and fails when one is under its minimum or differs from this table.
 A pair the site uses belongs here.
 
-| Text or element | Background     | Where                                                  | Ratio   | AA needs |
-| --------------- | -------------- | ------------------------------------------------------ | ------- | -------- |
-| `ink`           | `canvas`       | Body text                                              | 15.56:1 | 4.5:1    |
-| `ink`           | `surface`      | Text on cards                                          | 17.08:1 | 4.5:1    |
-| `ink`           | `white`        | Text in form fields and filter pills                   | 17.36:1 | 4.5:1    |
-| `muted`         | `canvas`       | Secondary text                                         | 5.24:1  | 4.5:1    |
-| `muted`         | `surface`      | Secondary text on cards                                | 5.76:1  | 4.5:1    |
-| `muted`         | `white`        | Placeholder text in form fields, sponsor names         | 5.85:1  | 4.5:1    |
-| `primary-light` | `canvas`       | Links                                                  | 7.72:1  | 4.5:1    |
-| `primary-light` | `surface`      | Links on cards                                         | 8.47:1  | 4.5:1    |
-| `accent-dark`   | `canvas`       | Eyebrows on light backgrounds                          | 6.00:1  | 4.5:1    |
-| `accent-dark`   | `surface`      | Eyebrows on cards                                      | 6.59:1  | 4.5:1    |
-| `danger`        | `canvas`       | Error messages                                         | 5.29:1  | 4.5:1    |
-| `danger`        | `surface`      | Error messages on cards and forms                      | 5.81:1  | 4.5:1    |
-| `success`       | `canvas`       | Success messages                                       | 5.15:1  | 4.5:1    |
-| `primary`       | `primary-soft` | Default tags, calendar chips                           | 10.41:1 | 4.5:1    |
-| `accent-dark`   | `accent-soft`  | "Members only", "Pending", "Expiring soon" tags        | 5.43:1  | 4.5:1    |
-| `success`       | `success-soft` | "Active", "Published", "Live" tags                     | 4.79:1  | 4.5:1    |
-| `danger`        | `danger-soft`  | "Lapsed" tags                                          | 4.51:1  | 4.5:1    |
-| `ink`           | `success-soft` | Text in success messages                               | 14.47:1 | 4.5:1    |
-| `ink`           | `danger-soft`  | Text in error alerts                                   | 13.27:1 | 4.5:1    |
-| `ink`           | `accent-soft`  | Text in the preview banner                             | 14.08:1 | 4.5:1    |
-| `muted`         | `muted-soft`   | Neutral tags ("Weekly", "Expired")                     | 4.79:1  | 4.5:1    |
-| `white`         | `primary-dark` | Header, footer, hero and toast text                    | 17.48:1 | 4.5:1    |
-| `muted-on-dark` | `primary-dark` | Hero intro, nav links, footer text                     | 12.17:1 | 4.5:1    |
-| `accent-light`  | `primary-dark` | Logo tagline, phone menu group labels, "Next up" date | 12.14:1 | 4.5:1    |
-| `accent`        | `primary-dark` | Eyebrows on the hero                                   | 6.64:1  | 4.5:1    |
-| `white`         | `primary`      | Page header, dark buttons, date badges, selected pills | 12.36:1 | 4.5:1    |
-| `white`         | `primary-light` | Dark buttons on hover                                 | 8.61:1  | 4.5:1    |
-| `muted-on-dark` | `primary`      | Page header intro                                      | 8.60:1  | 4.5:1    |
-| `accent-light`  | `primary`      | Date badge month, page header eyebrow                  | 8.59:1  | 4.5:1    |
-| `accent-light`  | `primary-light` | Sponsor spotlight's name, at the panel's lightest corner | 5.98:1 | 4.5:1   |
-| `primary-dark`  | `accent`       | Main buttons, call-to-action band; focus outline there | 6.64:1  | 4.5:1    |
-| `white`         | `success`      | "Approve" button                                       | 5.75:1  | 4.5:1    |
-| `line-strong`   | `white`        | Form field border                                      | 3.71:1  | 3:1      |
-| `line-strong`   | `surface`      | Form field border on cards                             | 3.65:1  | 3:1      |
-| `line-strong`   | `canvas`       | Form field border on the page                          | 3.32:1  | 3:1      |
-| `focus`         | `canvas`       | Focus outline                                          | 3.33:1  | 3:1      |
-| `focus`         | `surface`      | Focus outline on cards                                 | 3.65:1  | 3:1      |
-| `focus`         | `white`        | Focus outline on white                                 | 3.71:1  | 3:1      |
-| `focus`         | `primary-dark` | Focus outline on the header, footer and hero           | 4.71:1  | 3:1      |
-| `focus`         | `primary`      | Focus outline on the page header                       | 3.33:1  | 3:1      |
-| `primary-dark`  | `accent-soft`  | Focus outline on the preview banner                    | 14.17:1 | 3:1      |
+| Text or element | Background      | Where                                                    | Ratio   | AA needs |
+| --------------- | --------------- | -------------------------------------------------------- | ------- | -------- |
+| `ink`           | `canvas`        | Body text                                                | 15.56:1 | 4.5:1    |
+| `ink`           | `surface`       | Text on cards                                            | 17.08:1 | 4.5:1    |
+| `ink`           | `white`         | Text in form fields and filter pills                     | 17.36:1 | 4.5:1    |
+| `muted`         | `canvas`        | Secondary text                                           | 5.24:1  | 4.5:1    |
+| `muted`         | `surface`       | Secondary text on cards                                  | 5.76:1  | 4.5:1    |
+| `muted`         | `white`         | Placeholder text in form fields, sponsor names           | 5.85:1  | 4.5:1    |
+| `primary-light` | `canvas`        | Links                                                    | 7.72:1  | 4.5:1    |
+| `primary-light` | `surface`       | Links on cards                                           | 8.47:1  | 4.5:1    |
+| `accent-dark`   | `canvas`        | Eyebrows on light backgrounds                            | 6.00:1  | 4.5:1    |
+| `accent-dark`   | `surface`       | Eyebrows on cards                                        | 6.59:1  | 4.5:1    |
+| `danger`        | `canvas`        | Error messages                                           | 5.29:1  | 4.5:1    |
+| `danger`        | `surface`       | Error messages on cards and forms                        | 5.81:1  | 4.5:1    |
+| `success`       | `canvas`        | Success messages                                         | 5.15:1  | 4.5:1    |
+| `primary`       | `primary-soft`  | Default tags, calendar chips                             | 10.41:1 | 4.5:1    |
+| `accent-dark`   | `accent-soft`   | "Members only", "Pending", "Expiring soon" tags          | 5.43:1  | 4.5:1    |
+| `success`       | `success-soft`  | "Active", "Published", "Live" tags                       | 4.79:1  | 4.5:1    |
+| `danger`        | `danger-soft`   | "Lapsed" tags                                            | 4.51:1  | 4.5:1    |
+| `ink`           | `success-soft`  | Text in success messages                                 | 14.47:1 | 4.5:1    |
+| `ink`           | `danger-soft`   | Text in error alerts                                     | 13.27:1 | 4.5:1    |
+| `ink`           | `accent-soft`   | Text in the preview banner                               | 14.08:1 | 4.5:1    |
+| `muted`         | `muted-soft`    | Neutral tags ("Weekly", "Expired")                       | 4.79:1  | 4.5:1    |
+| `white`         | `primary-dark`  | Header, footer, hero, toast; the preview banner's button | 17.48:1 | 4.5:1    |
+| `muted-on-dark` | `primary-dark`  | Hero intro, nav links, footer text                       | 12.17:1 | 4.5:1    |
+| `accent-light`  | `primary-dark`  | Logo tagline, phone menu group labels, "Next up" date    | 12.14:1 | 4.5:1    |
+| `accent`        | `primary-dark`  | Eyebrows on the hero                                     | 6.64:1  | 4.5:1    |
+| `white`         | `primary`       | Page header, dark buttons, date badges, selected pills   | 12.36:1 | 4.5:1    |
+| `white`         | `primary-light` | Dark buttons on hover                                    | 8.61:1  | 4.5:1    |
+| `muted-on-dark` | `primary`       | Page header intro                                        | 8.60:1  | 4.5:1    |
+| `accent-light`  | `primary`       | Date badge month, page header eyebrow                    | 8.59:1  | 4.5:1    |
+| `accent-light`  | `primary-light` | Sponsor spotlight's name, at the panel's lightest corner | 5.98:1  | 4.5:1    |
+| `primary-dark`  | `accent`        | Main buttons, call-to-action band; focus outline there   | 6.64:1  | 4.5:1    |
+| `white`         | `success`       | "Approve" button                                         | 5.75:1  | 4.5:1    |
+| `line-strong`   | `white`         | Form field border                                        | 3.71:1  | 3:1      |
+| `line-strong`   | `surface`       | Form field border on cards                               | 3.65:1  | 3:1      |
+| `line-strong`   | `canvas`        | Form field border on the page                            | 3.32:1  | 3:1      |
+| `focus`         | `canvas`        | Focus outline                                            | 3.33:1  | 3:1      |
+| `focus`         | `surface`       | Focus outline on cards                                   | 3.65:1  | 3:1      |
+| `focus`         | `white`         | Focus outline on white                                   | 3.71:1  | 3:1      |
+| `focus`         | `primary-dark`  | Focus outline on the header, footer and hero             | 4.71:1  | 3:1      |
+| `focus`         | `primary`       | Focus outline on the page header                         | 3.33:1  | 3:1      |
+| `primary-dark`  | `accent-soft`   | Focus outline on the preview banner                      | 14.17:1 | 3:1      |
+| `primary-dark`  | `danger-soft`   | Focus outline on a link or button in an error alert      | 13.36:1 | 3:1      |
 
 Some of the prototype's pairs fail AA. Don't copy these:
 
@@ -110,6 +111,9 @@ Some of the prototype's pairs fail AA. Don't copy these:
 - **The admin sidebar's section labels** (`#6d7380` on `#14181f`, 3.74:1). Pick a lighter label.
 - **The focus outline on `accent`** (the call-to-action band): `focus` there is 1.41:1, so elements
   on an `accent` background add `focus-visible:outline-primary-dark`.
+- **The focus outline on `danger-soft`** (error alerts): `focus` there is 2.84:1, under the 3:1 an
+  outline needs, so a link or button inside an error alert adds
+  `focus-visible:outline-primary-dark`.
 
 ## Type
 
