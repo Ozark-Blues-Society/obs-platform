@@ -103,6 +103,8 @@ export const RESERVED_PAGE_SLUGS = [
   "auth",
   "blog",
   "classifieds",
+  "design-preview", // the Design Approval package's sample pages (D-4), until P-1 and C-2 replace them
+  "dev", // the component gallery at /dev/components, in development only (D-3)
   "donate",
   "draft-mode",
   "events",

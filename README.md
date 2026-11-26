@@ -124,22 +124,33 @@ Every fixture member can sign in locally with their address (for example
 
 ## Sign-in (Supabase Auth)
 
-Members sign in at `/sign-in`, with a one-click link sent by email or with a password, and sign
-out from `/account`. `/account` is members-only (a placeholder until M-8 builds My Account).
+Members sign in at `/sign-in`, with a link sent by email or with a password, and sign out from
+`/account`. `/account` is members-only (a placeholder until M-8 builds My Account).
 Sign-in links never create accounts: people become members by joining.
 
 Locally, every email Auth sends lands in Mailpit at <http://127.0.0.1:54324>; nothing leaves the
-machine. Ask for a link for a fixture member (see the table above), open the email in Mailpit and
-follow its link. Or sign in with the fixture password `obs-local-dev`.
+machine. Ask for a link for a fixture member (see the table above), open the email in Mailpit,
+follow its link and press **Finish signing in**. Or sign in with the fixture password
+`obs-local-dev`.
 
 How it fits together:
 
 - **The sign-in email** is `supabase/templates/magic-link.html`, registered in
   `supabase/config.jsonc` (`auth.email.template.magic_link`). Its link goes to
-  `{site_url}/auth/confirm` with a one-time token hash. That route (`app/auth/confirm/route.ts`)
-  verifies it and starts the session, so a link opened on another device still works. After
-  changing the template settings or `auth.site_url`, restart the stack (`supabase stop`, then
-  `supabase start`); the data is kept.
+  `{site_url}/auth/confirm` with a one-time token hash. That page
+  (`app/(site)/auth/confirm/page.tsx`) has a **Finish signing in** button, which sends the token
+  hash to `confirmSignIn()` in `lib/auth/actions.ts`. It verifies the token hash on the server and
+  starts the session, so a link opened on another device still works. After changing the template
+  settings or `auth.site_url`, restart the stack (`supabase stop`, then `supabase start`); the
+  data is kept.
+- **Why the button:** some mail systems open the links in incoming email before the member does,
+  to scan them: link scanners such as Microsoft Defender Safe Links, and some gateways and link
+  previewers. If opening the link verified the token, the scan would use it up, and the member
+  would be told the link had expired or was already used. Scanners load the page but don't press
+  its button, so the link still works for the member. Don't make the page submit the form by
+  itself: scanners that run scripts would then use the link up again. Supabase's
+  [Auth email templates guide](https://supabase.com/docs/guides/auth/auth-email-templates#email-prefetching)
+  describes the problem ("Email prefetching").
 - **Sessions** live in cookies. `proxy.ts` (Next.js 16's name for middleware) refreshes an expired
   session on every request before the page renders, and sends visitors who open `/account` or an
   admin screen (`/admin`) to sign in first.
@@ -534,7 +545,7 @@ Supabase accounts for about one of them, mostly pulling its Docker images.
 ```
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
-components/     Shared UI: the layout shell (header, footer, page header) and form classes
+components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
 lib/            Server and shared code: Supabase clients, sign-in helpers
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
@@ -548,6 +559,25 @@ tools/          Helper scripts for the agent team
 
 Later backlog items add the rest of the target layout in
 [`docs/spec/architecture.md`](docs/spec/architecture.md): the rest of `scripts/`.
+
+## Components
+
+The shared components (backlog D-3) are in `components/ui/`: buttons, cards, tags, pill filters, a
+data table, form fields, a modal, toasts, the members-only lock overlay, and event, post and sponsor
+cards. With `pnpm dev` running, <http://localhost:3000/dev/components> shows them all with
+placeholder content (development only: a production build answers 404 there).
+[`docs/design/components.md`](docs/design/components.md) says what each one is for and the rules
+they follow, such as never passing members-only content to a component that blurs it.
+
+## Design Approval package
+
+`/design-preview` holds the home page and the four page templates with sample content (backlog
+D-4), for the Society's Design Approval. Unlike `/dev/components`, it's in production builds, so
+the preview deploy serves it; search engines are asked to skip it. The home page's sections, the
+page blocks and the templates live in `components/home/`, `components/blocks/` and
+`components/templates/`, where P-1 and C-2 fill them from the Studio.
+[`docs/design/approval-package.md`](docs/design/approval-package.md) lists the pages, the open
+questions and how a revision round works. Delete the folder before launch.
 
 ## Design tokens
 
