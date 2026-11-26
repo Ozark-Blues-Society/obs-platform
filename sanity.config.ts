@@ -10,8 +10,11 @@ import { resolve } from "@/sanity/presentation";
 import { schemaTypes } from "@/sanity/schemas";
 import { structure } from "@/sanity/structure";
 
-/** Actions a singleton never offers: the site needs exactly one published Site settings. */
-const SINGLETON_HIDDEN_ACTIONS = ["delete", "duplicate", "unpublish"];
+/**
+ * Actions a singleton never offers: the site needs exactly one published Site settings.
+ * unpublishVersion is "unpublish when the release publishes", for a document in a content release.
+ */
+const SINGLETON_HIDDEN_ACTIONS = ["delete", "duplicate", "unpublish", "unpublishVersion"];
 
 export default defineConfig({
   name: "default",

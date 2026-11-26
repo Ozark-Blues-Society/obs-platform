@@ -13,7 +13,8 @@ Open **Blog posts** and select **+** (Create).
 - **Post**: write it in the Studio, or paste it from Word or Google Docs and the formatting comes
   along. Add photos between paragraphs; each photo needs alt text.
 - **Who can see this post?**: see [Who can see it](content-studio.md#who-can-see-it). Visitors
-  who can't read a members-only post see its headline and summary with a prompt to join.
+  who can't read a members-only post see its headline and a prompt to join, not its summary or
+  the post.
 - **Include in the monthly email digest**: turn it on to add the headline and summary to the next
   digest email.
 - **When to publish**: the date the post shows, in Central Time. To schedule a post, choose a

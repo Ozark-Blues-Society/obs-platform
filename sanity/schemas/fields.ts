@@ -63,7 +63,7 @@ export const societyDatetimeOptions = {
 export function visibilityField(thing: "page" | "post" | "event") {
   const visitorsSee = {
     page: "Visitors who can't see it get a sign-in or join prompt instead.",
-    post: "Visitors who can't read it see the headline and summary with a join-to-read prompt.",
+    post: "Visitors who can't read it see the headline and a join-to-read prompt, not the summary or the post.",
     event: "Visitors who can't see it get the title and date, but not the place or details.",
   }[thing];
   return defineField({

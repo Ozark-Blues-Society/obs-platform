@@ -336,8 +336,8 @@ describe("featuredSponsorRule", () => {
       document: { _id: "drafts.sponsor-c" },
       fetch: () => ["Old Mill Music Hall", null, "Smokehouse BBQ"],
     });
-    expect(await featuredSponsorRule(true, ctx)).toMatch(
-      /Old Mill Music Hall, another sponsor and Smokehouse BBQ is featured now/,
+    expect(await featuredSponsorRule(true, ctx)).toBe(
+      "Only one sponsor can be featured at a time, and Old Mill Music Hall, another sponsor and Smokehouse BBQ are featured now. Turn off Featured there and publish those sponsors first.",
     );
   });
 

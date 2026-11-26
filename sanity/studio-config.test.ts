@@ -62,6 +62,25 @@ describe("the Content Studio", () => {
     }
   });
 
+  it("doesn't let a content release unpublish Site settings", () => {
+    // A document's copy in a release gets the release's actions instead. Sanity works out from the
+    // document ID that "siteSettings" is the singleton, so the context doesn't name it.
+    const actionsInRelease = (schemaType: string) =>
+      workspace.document
+        .actions({
+          schemaType,
+          documentId: schemaType,
+          versionType: "version",
+          releaseId: "rSpringUpdate",
+        })
+        .map((action) => action.action);
+    const settingsActions = actionsInRelease("siteSettings");
+    // Taking Site settings out of the release is fine: the published copy stays.
+    expect(settingsActions).toContain("discardVersion");
+    expect(settingsActions).not.toContain("unpublishVersion");
+    expect(actionsInRelease("page")).toContain("unpublishVersion");
+  });
+
   it("starts Site settings with the board's benefits table", () => {
     const template = workspace.templates.find((t) => t.id === "siteSettings");
     expect(template?.value).toEqual({ membershipBenefits: BOARD_BENEFITS });

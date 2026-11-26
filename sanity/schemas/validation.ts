@@ -179,7 +179,10 @@ export function spotlightTextRule(
 
 /**
  * Other published sponsors that are featured and haven't ended. Drafts don't count: they aren't on
- * the website, and publishing one runs this check again.
+ * the website. The Studio runs this check when a draft is opened or edited, and Publish reuses the
+ * last result unless the draft has changed since. So two sponsors can still both end up featured,
+ * for example when one draft sits open, unedited, while the other is published. The website must
+ * therefore pick one (P-4).
  */
 export const OTHER_FEATURED_SPONSORS_QUERY = `*[_type == "sponsor" && featured == true
   && _id != $publishedId && !(_id in path("drafts.**")) && !(_id in path("versions.**"))
@@ -200,5 +203,6 @@ export async function featuredSponsorRule(
     });
   if (names.length === 0) return true;
   const who = listOf(names.map((name) => name?.trim() || "another sponsor"));
-  return `Only one sponsor can be featured at a time, and ${who} is featured now. Turn off Featured there and publish that sponsor first.`;
+  const several = names.length > 1;
+  return `Only one sponsor can be featured at a time, and ${who} ${several ? "are" : "is"} featured now. Turn off Featured there and publish ${several ? "those sponsors" : "that sponsor"} first.`;
 }
