@@ -1,12 +1,18 @@
-# CI (backlog F-2): lint, typecheck, unit tests, build and Playwright end-to-end tests.
+# CI (backlog F-2): lint, typecheck, unit tests, build, database tests (pgTAP) and Playwright
+# end-to-end tests, with local Supabase (backlog F-3) running in the runner.
 #
 # One job runs every check in turn. Each check runs even when an earlier one failed, so a single
 # run reports every problem, and any failed check fails the job. It is one job rather than one per
 # check because the repository is private on GitHub's free plan: 2,000 Actions minutes a month,
 # with every job billed rounded up to the minute. One job installs dependencies once.
 #
-# No secrets: CI uses test-mode or dummy values only (CLAUDE.md hard rules).
-# Starting local Supabase for the end-to-end tests arrives with backlog F-3, which adds supabase/.
+# Local Supabase starts in the background right after the install. While it comes up, the job runs
+# lint, typecheck, the unit tests and the browser install. The database tests, the build and the
+# end-to-end tests run once it is up.
+#
+# No secrets: CI uses test-mode or dummy values only (CLAUDE.md hard rules). The Supabase URL and
+# key come from the local stack (`supabase status`): well-known demo values that only work against
+# a local stack.
 
 name: CI
 
@@ -57,7 +63,37 @@ jobs:
         id: install
         run: pnpm install --frozen-lockfile
 
-      # The checks below skip only when the install failed or the run was cancelled.
+      # 3.4.0 is the version the project was set up with; supabase/config.jsonc needs CLI 3.x. The
+      # database tests don't need the Node dependencies, so this runs even when the install failed.
+      - name: Set up the Supabase CLI
+        id: supabase-cli
+        if: ${{ !cancelled() }}
+        uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 3.4.0
+
+      # A fresh stack applies supabase/migrations/ and supabase/seed.sql. Starting it takes a while,
+      # mostly pulling Docker images, so it runs in the background and "Wait for local Supabase"
+      # picks up the result. Only Postgres and the services the app talks to start: the API gateway
+      # (kong), Auth (gotrue), the REST API (postgrest) and Mailpit, which catches Auth emails.
+      # When a test or a migration needs an excluded service (Storage, Realtime...), drop it from
+      # the --exclude lists.
+      - name: Start local Supabase in the background
+        id: supabase-start
+        if: ${{ !cancelled() && steps.supabase-cli.outcome == 'success' }}
+        run: |
+          (
+            status=0
+            supabase start \
+              --exclude studio,postgres-meta,storage-api,imgproxy,realtime \
+              --exclude edge-runtime,logflare,vector,supavisor \
+              || status=$?
+            echo "$status" > "$RUNNER_TEMP/supabase-start.status.tmp"
+            mv "$RUNNER_TEMP/supabase-start.status.tmp" "$RUNNER_TEMP/supabase-start.status"
+          ) > "$RUNNER_TEMP/supabase-start.log" 2>&1 < /dev/null &
+
+      # The checks below skip only when the run was cancelled or a step they need failed: the
+      # install, the build or local Supabase.
       - name: Lint
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm lint
@@ -70,21 +106,53 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm test
 
+      # Tests run headless, so the Chromium headless shell is all they need. Installing it before
+      # the wait below overlaps it with the Supabase start.
+      - name: Install Playwright's Chromium
+        id: browsers
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+
+      # Joins the background start: prints its output and fails if it failed. Then it passes the
+      # stack's API URL and publishable key to the later steps, so the build and the end-to-end
+      # tests use the local stack. F-4 (typed env config, .env.example) owns these variable names;
+      # keep the two in step.
+      - name: Wait for local Supabase
+        id: supabase
+        if: ${{ !cancelled() && steps.supabase-start.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          until [ -f "$RUNNER_TEMP/supabase-start.status" ]; do sleep 2; done
+          cat "$RUNNER_TEMP/supabase-start.log"
+          status="$(cat "$RUNNER_TEMP/supabase-start.status")"
+          if [ "$status" != 0 ]; then
+            echo "::error::supabase start failed with exit code $status"
+            docker ps --all
+            exit 1
+          fi
+          supabase status --output json > "$RUNNER_TEMP/supabase-status.json"
+          url="$(jq -er .API_URL "$RUNNER_TEMP/supabase-status.json")"
+          publishable_key="$(jq -er .PUBLISHABLE_KEY "$RUNNER_TEMP/supabase-status.json")"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$url"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$publishable_key"
+          } >> "$GITHUB_ENV"
+
+      - name: Database tests (pgTAP)
+        if: ${{ !cancelled() && steps.supabase.outcome == 'success' }}
+        run: pnpm test:db
+
       - name: Build
         id: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm build
 
-      # Tests run headless, so the Chromium headless shell is all they need.
-      - name: Install Playwright's Chromium
-        id: browsers
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: pnpm exec playwright install --with-deps --only-shell chromium
-
       # With CI set, playwright.config.ts serves the production build (`pnpm start`) on port 3000.
       - name: End-to-end tests
         id: e2e
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        if: >-
+          ${{ !cancelled() && steps.browsers.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.supabase.outcome == 'success' }}
         run: pnpm test:e2e
 
       - name: Upload Playwright report
