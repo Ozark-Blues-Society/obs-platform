@@ -12,7 +12,15 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.test.{ts,tsx}"],
-    // Playwright specs live in e2e/ and run with `pnpm test:e2e`.
-    exclude: ["node_modules/**", ".next/**", "e2e/**"],
+    exclude: [
+      "node_modules/**",
+      ".next/**",
+      // Playwright specs live in e2e/ and run with `pnpm test:e2e`.
+      "e2e/**",
+      // Local agent and issue-tracker state (agent worktrees live in .claude/worktrees/).
+      ".beads/**",
+      ".claude/**",
+      ".gc/**",
+    ],
   },
 });
