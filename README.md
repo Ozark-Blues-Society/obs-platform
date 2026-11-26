@@ -426,9 +426,9 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
   signed as the member, which works for 60 seconds and downloads the file. Members who may not have
   it get a short page saying why (renew, join, or not available to them). Nothing is cached.
 - Tests: `supabase/tests/member_files_test.sql` (every audience and level, the `expires_at`
-  boundary, editors) and `e2e/member-files.spec.ts` (Supabase's REST and Storage APIs as a visitor,
-  a lapsed member, a member at the wrong level and an allowed one, then the download link). CI starts
-  Storage for them.
+  boundary, editors, and moderators and membership managers, whose roles give them no files) and
+  `e2e/member-files.spec.ts` (Supabase's REST and Storage APIs as a visitor, a lapsed member, a
+  member at the wrong level and an allowed one, then the download link). CI starts Storage for them.
 - **Adding files.** Editors and administrators upload them at `/admin/files`
   (`app/admin/files/`, Server Functions in `lib/admin/member-files-actions.ts`). The browser sends
   the file straight to Storage through a one-time upload link the server makes for them, so large
