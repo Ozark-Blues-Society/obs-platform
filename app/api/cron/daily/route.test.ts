@@ -75,8 +75,8 @@ describe("POST /api/cron/daily", () => {
     const now = (options.now as Date).getTime();
     expect(now).toBeGreaterThanOrEqual(before);
     expect(now).toBeLessThanOrEqual(Date.now());
-    // Netlify gives the scheduled function 30 seconds in all.
-    expect(options.deadline - now).toBe(20_000);
+    // The scheduled function waits 28 seconds; the last email may take 10 more to send.
+    expect(options.deadline - now).toBe(15_000);
     expect(console.info).toHaveBeenCalledWith(`The daily jobs ran: ${JSON.stringify(SUMMARY)}`);
   });
 

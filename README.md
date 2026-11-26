@@ -547,16 +547,21 @@ runs `runDailyJobs()` (`lib/jobs/daily.ts`). Why Netlify, and the options it was
    membership end, then renders it, sends it and records the email service's id.
 
 Both functions are in `supabase/migrations/20261126143035_membership_emails.sql`, with the rules
-spelled out at the top. Days count on the Society's calendar, in Central Time. How the job behaves:
+spelled out at the top; `20261126163935_membership_status_from_row.sql` replaced the refresh with one
+that works each status out from the row it updates. Days count on the Society's calendar, in Central
+Time. How the job behaves:
 
 - **Nothing goes out twice.** A second run the same day, or two runs at once, find every email
   claimed. Netlify's **Run now** button is safe.
+- **A renewal during a run stands.** A member renewed while the refresh is running (by the Stripe
+  webhook, once it's built) keeps the status of their new expiry date.
 - **Failures are retried.** An email that fails loses its claim, so the next run sends it. Each email
   stays due for a few days after its day (the first reminder until 8 days before, the last until
   the membership ends, the lapsed note until 20 days after), so a missed run catches up, and nothing
   older is ever sent.
-- **It stops in time.** Netlify allows a scheduled function 30 seconds, so a run starts no email
-  after 20 seconds; the next run sends the rest.
+- **It stops in time.** Netlify allows a scheduled function 30 seconds, and the function waits 28 of
+  them for the route's answer. So a run starts no email after 15 seconds (sending one can take 10
+  more); the next run sends the rest.
 - **The answer is a summary**, with counts and no addresses: statuses moved, emails sent of each
   kind, failed, claimed by another run, left for the next run, and the errors (with profile ids).
   The route answers 500 if anything failed, so it shows in Netlify's log; both functions log the
@@ -577,10 +582,12 @@ renewal emails are Launch 2, decision 0002). In Netlify's environment variables:
 
 Without `CRON_SECRET`, the function logs "The daily jobs are off" and does nothing.
 
-**Running it locally.** Put any `CRON_SECRET` and the local `SUPABASE_SECRET_KEY` (`supabase status`
-prints it as `SECRET_KEY`) in `.env.local`, restart `pnpm dev`, then:
+**Running it locally.** In `.env.local`, set `SUPABASE_SECRET_KEY` to the local secret key
+(`supabase status` prints it as `SECRET_KEY`) and `CRON_SECRET` to any value, say `local-secret`.
+Restart `pnpm dev`, then send the same secret from your shell:
 
 ```bash
+export CRON_SECRET=local-secret   # the value in .env.local
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/daily
 ```
 
@@ -591,6 +598,8 @@ it updates the fixture members' statuses and claims their emails, so a second tr
 
 **Tests.** `supabase/tests/membership_emails_test.sql` tests the rules with a fake clock in June 2031
 (each boundary, Central Time's midnight, auto-renew, claims, who can reach what).
+`supabase/tests/membership_status_race_test.sql` runs a renewal and the refresh in two sessions,
+through dblink in a throwaway database, and checks that the renewal keeps its status.
 `lib/jobs/daily.test.ts` tests a run (claims, retries, the deadline, failures) with a fake clock and
 store. `e2e/daily-jobs.spec.ts` runs the jobs against the local database and Mailpit with a clock in
 June 2001, when only the members it creates are due, and checks the route refuses requests without

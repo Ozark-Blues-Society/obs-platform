@@ -33,7 +33,7 @@ Why:
 
 | Option | For | Against |
 | --- | --- | --- |
-| A. Netlify scheduled function that calls the app's route. **Chosen.** | Above. | Netlify stops a scheduled function after 30 seconds, so a run stops starting emails after 20 seconds and the next run sends the rest. Tied to Netlify. |
+| A. Netlify scheduled function that calls the app's route. **Chosen.** | Above. | Netlify stops a scheduled function after 30 seconds, so a run stops starting emails after 15 seconds (sending the last one can take 10 more) and the next run sends the rest. Tied to Netlify. |
 | B. Supabase pg_cron, calling the app's route through pg_net | Runs in the database, whatever hosts the site. | The schedule, the site's address and the secret live in each database, set by hand (not in the repository), so they drift. pg_net stops waiting for an answer after a few seconds and keeps answers for hours, so failures go unseen. |
 | C. A scheduled GitHub Actions workflow | Nothing to host. | Uses the Actions minutes CI already runs short of. GitHub delays scheduled runs at busy times. |
 

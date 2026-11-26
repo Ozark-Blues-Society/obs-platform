@@ -12,10 +12,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // 500 when something failed, so the scheduled function's log shows the failure.
 
 /**
- * How long a run may keep starting emails. Netlify stops a scheduled function after 30 seconds, and
- * the function waits for this answer, so a run stops early and the next one sends the rest.
+ * How long a run may keep starting emails; the next run sends the rest. Netlify stops a scheduled
+ * function after 30 seconds, and netlify/functions/daily-jobs.mts waits 28 of them for this answer.
+ * The last email started may take up to 10 seconds more to send (REQUEST_TIMEOUT_MS in
+ * lib/email/send.ts), and this route may have to start up first: 15 + 10 leaves a few seconds for
+ * that, so the scheduled function gets the answer instead of logging a timeout for a run that went
+ * fine.
  */
-const RUN_BUDGET_MS = 20_000;
+const RUN_BUDGET_MS = 15_000;
 
 export async function POST(request: Request): Promise<Response> {
   const secret = process.env.CRON_SECRET;
