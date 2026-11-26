@@ -28,10 +28,10 @@ Whoever sets up the Society's MailerLite account:
   **+ Add sending domain** and enter the sender address: FILL IN, an address at the main domain,
   such as `news@example.org`. Not an address at `mail.example.org`: that subdomain is Resend's
   (decision 0005). MailerLite advises against no-reply addresses.
-- **Setup:** MailerLite offers to add the records in GoDaddy for you. That's fine, but compare the
-  result with step 2 afterwards. MailerLite says this doesn't work if you sign in to GoDaddy with
-  Google or another social login. In that case, or if you prefer, choose **Authenticate manually**,
-  pick GoDaddy, and copy the values into step 2.
+- **Setup:** choose **Authenticate manually**, pick GoDaddy, and copy the three values into step 2.
+  Then M1, M2, M3 and D1 all go in during the step 5 session. MailerLite also offers to add the
+  records in GoDaddy for you: skip that, because steps 4 and 5 assume the records aren't there yet
+  (its GoDaddy setup adds only M1 and an SPF record).
 - **Domain alignment** (a card on the domain's page): skip it for now. MailerLite recommends it but
   doesn't require it, and DMARC passes without it (step 3). It adds three more records on a new
   subdomain, and turning it off later breaks the links in every newsletter sent while it was on. It
@@ -167,8 +167,8 @@ records:
    `[TEST]` label can put it there). Then request a sign-in link from the site to the same address,
    as in step 7 of the Resend guide. In Gmail, open each email, choose **⋮** → **Show original**,
    and check:
-   - The newsletter: `DKIM: 'PASS' with domain example.org` and `DMARC: 'PASS'`. SPF may name a
-     MailerLite domain, which is expected.
+   - The newsletter: `DKIM: 'PASS' with domain example.org` and `DMARC: 'PASS'`. Ignore its SPF
+     line: it checks a MailerLite domain, not `example.org` (step 3).
    - The sign-in email: SPF, DKIM (`mail.example.org`) and DMARC all say `PASS`.
 
 ## 7. Tighten the policy (DMARC tuning)
@@ -179,9 +179,10 @@ stages:
 1. **Stay at `p=none`** until at least one real newsletter has gone out, and the step 6.3 checks
    pass on real emails: that newsletter and a site email such as a sign-in link or a receipt.
 2. **Check that nothing else sends as the domain.** Today only Resend and MailerLite do (the board
-   said no email is used on the domain). Anything else that sends from an `@example.org` address,
-   such as a mailbox on the domain or another tool, needs its own SPF and DKIM records first, or its
-   email lands in spam after the next stage. The same applies to any sender added later.
+   said no email is used on the domain). Anything else that sends from an address at `example.org`
+   or one of its subdomains (D1 covers them too), such as a mailbox on the domain or another tool,
+   needs its own SPF and DKIM records first, or its email lands in spam after the next stage. The
+   same applies to any sender added later.
 3. **Set D1 to `v=DMARC1; p=quarantine`.** Email that fails DMARC then goes to spam. Then run the
    step 6.3 checks again.
 4. **`p=reject` is optional.** Failing email then bounces instead of going to spam, so email from a
