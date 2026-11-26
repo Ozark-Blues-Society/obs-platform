@@ -204,6 +204,12 @@ describe("getGatedItem", () => {
     await expect(
       getGatedItem("post", "x", '{ body[]{ ..., markDefs[]{ ..., "target": internal-> } } }'),
     ).rejects.toThrow("must follow each -> with a projection");
+    await expect(getGatedItem("post", "x", '{ "target": internal->{ "doc": @ } }')).rejects.toThrow(
+      "without ... or a bare @ or ^",
+    );
+    await expect(getGatedItem("post", "x", '{ "rel": documents::get(related) }')).rejects.toThrow(
+      "can't use documents:: functions",
+    );
     expect(mocks.getViewer).not.toHaveBeenCalled();
     expect(mocks.sanityFetch).not.toHaveBeenCalled();
   });
@@ -262,6 +268,9 @@ describe("listGatedItems", () => {
     await expect(
       listGatedItems("post", "{ body }", { filter: 'count(*[_type == "post"]) > 0' }),
     ).rejects.toThrow("The list filter can't use * outside quotes");
+    await expect(
+      listGatedItems("post", "{ body }", { filter: 'documents::get(related).title == "x"' }),
+    ).rejects.toThrow("The list filter can't use documents:: functions");
     expect(mocks.getViewer).not.toHaveBeenCalled();
     expect(mocks.sanityFetch).not.toHaveBeenCalled();
   });
