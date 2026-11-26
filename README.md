@@ -326,9 +326,56 @@ so the Studio can sign in from there. Every address that serves the site needs t
 - **Published changes.** `<SanityLive>` in `app/(site)/layout.tsx` listens for them and refreshes
   cached content. It needs no token, only the site's address in the CORS origins.
 - **Pages that show Sanity content** go under `app/(site)/`, the route group that holds the
-  draft-mode tools; the Studio stays outside it. With Cache Components, call `sanityFetch` inside a
-  `"use cache"` function and resolve `getDynamicFetchOptions()` outside it, as in Sanity's guide
+  draft-mode tools; the Studio stays outside it. They read pages, posts and events through
+  `sanity/content` (see [Members-only content](#members-only-content)). Inside `sanity/`, call
+  `sanityFetch` inside a `"use cache"` function and resolve `getDynamicFetchOptions()` outside it,
+  as in Sanity's guide
   [Sanity Live with Next.js Cache Components](https://www.sanity.io/docs/nextjs/cache-components).
+
+## Members-only content
+
+Any page, post or event can be limited to members, or to some membership levels (decision 0001,
+backlog M-7). The rules are in `lib/members/access.ts`:
+
+- `everyone`: anyone. `members`: any member whose membership is active. `levels`: an active member
+  at one of the ticked levels. A missing or unknown audience is open to nobody.
+- A membership is active while `profiles.expires_at` is in the future. Access ends at expires_at,
+  with no grace period (board-decisions §4).
+- Draft mode (Studio previews and shared preview links) never counts as a membership.
+
+**Reading content.** Pages, posts and events are read only through `sanity/content`:
+
+```ts
+const post = await getGatedItem("post", slug, "{ excerpt, body }");
+// post.access: { allowed: true }, or { allowed: false, reason: "sign-in" | "join" | "renew" | "level" }
+// post.content: { excerpt, body } when allowed, otherwise null
+```
+
+- The loader first works out who is viewing (`getViewer()` in `lib/members/viewer.ts`: the session,
+  then the member's own profile row). It then asks Sanity with the viewer's active level as
+  `$memberLevel`. The query (`sanity/content/gated-query.ts`) fills in `content` only when that
+  level can see the item, so a members-only body never leaves Sanity for anyone else. The loader
+  then checks again with `checkAccess`.
+- Each type's public fields are fixed in `PUBLIC_FIELDS`, after the approved concept. A locked post
+  shows its headline, category, date and cover photo, a locked event its title, date, time, prices
+  and photo (not the venue), and a locked page its title. Everything else goes in `content`.
+- `listGatedItems(type, content, { filter, params, order, limit })` does the same for lists, feeds
+  and sitemaps. Filter on public fields only.
+- Loaders run at request time and read the session, so call them inside `<Suspense>`. Results are
+  cached per query, viewer level and preview mode, never per person, so a visitor never gets an
+  entry a member's visit filled.
+- ESLint refuses `sanityFetch`, the Sanity `client` and `createClient` anywhere else
+  (`eslint.config.mjs`; `sanity/content/lint-guard.test.ts` proves the rule works). The menus
+  (`sanity/site-chrome.ts`: public page titles and links) and the draft-mode route are the only
+  exceptions. Put new reads in `sanity/content/`.
+
+**Checking the dataset is private.** `pnpm check:dataset` asks Sanity, without a token, for
+anything in the dataset named in `.env.local`, and fails (exit 1) if it gets any of it back. Sanity
+answers an anonymous query on a private dataset with 200 and an empty result, so the check reads the
+result, not the status. With `SANITY_API_READ_TOKEN` set, it also confirms there is published
+content to find; it exits 2 when it can't tell. Run it when a dataset is created or the plan
+changes: a lapsed trial or a downgrade turns private datasets public. The launch runbook (Q-5) runs
+it against production.
 
 ## Emails (React Email)
 
@@ -391,6 +438,7 @@ put real member data in them.
 | `pnpm test:e2e`          | Playwright end-to-end tests (desktop and 390px phone, in Chromium) |
 | `pnpm test:db`           | Database tests (pgTAP) against the local Supabase stack            |
 | `pnpm fixtures:generate` | Regenerate `supabase/seed.sql` from `scripts/fixtures/`            |
+| `pnpm check:dataset`     | Check that anonymous queries can't read the Sanity dataset         |
 | `pnpm email:preview`     | Preview the email templates at http://localhost:3030               |
 | `pnpm format`            | Format the code with Prettier                                      |
 | `pnpm format:check`      | Check formatting without writing changes                           |

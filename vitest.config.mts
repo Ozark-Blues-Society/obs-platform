@@ -5,8 +5,15 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    // Mirror the "@/*" path alias from tsconfig.json.
-    alias: { "@": fileURLToPath(new URL(".", import.meta.url)) },
+    alias: {
+      // Mirror the "@/*" path alias from tsconfig.json.
+      "@": fileURLToPath(new URL(".", import.meta.url)),
+      // Next.js handles `import "server-only"` itself, with no package installed; in tests it does
+      // nothing, as in Next.js's own server build.
+      "server-only": fileURLToPath(
+        new URL("./node_modules/next/dist/compiled/server-only/empty.js", import.meta.url),
+      ),
+    },
   },
   test: {
     environment: "jsdom",
