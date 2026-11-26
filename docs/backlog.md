@@ -107,7 +107,8 @@ doesn't slow Launch 1.
 - **E-5 Email authentication guide** (SPF/DKIM/DMARC records to add) — applying them is 🧑 (DNS).
   Split by decision 0004: the Resend records are Launch 1, in
   [`docs/launch/resend-dns-records.md`](launch/resend-dns-records.md); the MailerLite records and
-  DMARC stay Launch 2.
+  DMARC stay Launch 2, in
+  [`docs/launch/mailerlite-and-dmarc-dns-records.md`](launch/mailerlite-and-dmarc-dns-records.md).
 
 ## G — Migration
 
