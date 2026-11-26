@@ -1,4 +1,5 @@
 import { stegaClean } from "next-sanity";
+import { useId } from "react";
 import { Tag } from "@/components/ui/tag";
 import { isFileId, memberFilePath } from "@/lib/members/files";
 
@@ -21,19 +22,24 @@ export function MemberFiles({
   files: readonly MemberFileLink[] | null | undefined;
   headingLevel?: 2 | 3;
 }) {
+  const headingId = useId();
+  const listed = new Set<string>();
   const links = (files ?? []).flatMap((file) => {
     // In a preview, text carries invisible edit markers: clean the code before using it.
     const id = typeof file.fileId === "string" ? stegaClean(file.fileId).trim() : "";
     const title =
       typeof file.title === "string" && stegaClean(file.title).trim() !== "" ? file.title : "";
-    return isFileId(id) && title ? [{ id, title }] : [];
+    // A file attached twice is listed once, under its first link text.
+    if (!isFileId(id) || !title || listed.has(id)) return [];
+    listed.add(id);
+    return [{ id, title }];
   });
   if (links.length === 0) return null;
 
   const Heading = headingLevel === 3 ? "h3" : "h2";
   return (
-    <section aria-labelledby="member-files" className="mt-10">
-      <Heading id="member-files" className="text-h3">
+    <section aria-labelledby={headingId} className="mt-10">
+      <Heading id={headingId} className="text-h3">
         Files for members
       </Heading>
       <ul className="mt-3 grid gap-2">

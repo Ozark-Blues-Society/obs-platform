@@ -67,7 +67,7 @@ export default function WelcomeEmail(props: WelcomeEmailProps) {
       <PrimaryButton href={siteLink(siteUrl, "/account")}>Go to My Account</PrimaryButton>
       <Note>
         My Account shows your membership, your renewal date and your member perk code. To sign in,
-        enter the address this email was sent to, and we&apos;ll email you a one-click sign-in link.
+        enter the address this email was sent to, and we&apos;ll email you a sign-in link.
       </Note>
       <SignOff>See you at the next show,</SignOff>
     </EmailLayout>

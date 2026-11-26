@@ -26,7 +26,7 @@ const PAIRS: [text: Color, background: Color, where: string][] = [
   ["muted", "surface", "notes on the card"],
   ["accentDark", "surface", "eyebrow"],
   ["primaryLight", "surface", "links on the card"],
-  ["ink", "canvas", "values on the details panel"],
+  ["ink", "canvas", "values on the details panel, quoted notes"],
   ["muted", "canvas", "labels on the details panel, footer text"],
   ["primaryLight", "canvas", "footer links"],
   ["white", "primary", "button"],

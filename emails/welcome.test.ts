@@ -48,7 +48,7 @@ describe("welcome email", () => {
 
     expect(html).toContain('href="https://example.org/account"');
     expect(text).toContain("Go to My Account https://example.org/account");
-    expect(text).toContain("we'll email you a one-click sign-in link");
+    expect(text).toContain("we'll email you a sign-in link");
   });
 
   it("says when an auto-renewing membership renews", async () => {

@@ -1,9 +1,10 @@
 // The one way the site reads pages, posts and events from Sanity (decision 0001, backlog M-7).
 // Each loader works out who is viewing first, then asks Sanity for the item with its members-only
-// fields filled in only if that viewer can see it (./gated-query.ts), then checks again here. So a
-// members-only body is fetched and rendered only after the access check, whichever page, feed or
-// metadata route asks for it. ESLint stops other code from using the Sanity client directly
-// (eslint.config.mjs).
+// fields filled in only if that viewer can see it (./gated-query.ts), then checks again here. So an
+// item's members-only fields are fetched and rendered only after the access check, whichever page,
+// feed or metadata route asks for it. The check covers that item, so callers' GROQ must not read
+// other documents past their own gates (the rules at the top of ./gated-query.ts). ESLint stops
+// other code from using the Sanity client directly (eslint.config.mjs).
 //
 // Loaders run at request time and read the session, so call them inside a <Suspense> boundary.
 // Results are cached per query, viewer level and preview mode, never per person: two members at
@@ -23,6 +24,7 @@ import { isConfigured } from "../env";
 import { getDynamicFetchOptions, sanityFetch, type DynamicFetchOptions } from "../live";
 import { itemQuery, listQuery, type GatedType, type ListOptions } from "./gated-query";
 
+export { LINK_TARGET } from "./gated-query";
 export type { GatedType, ListOptions } from "./gated-query";
 
 /** The public fields of each type (PUBLIC_FIELDS in ./gated-query.ts), as Sanity stores them. */
@@ -58,6 +60,14 @@ export type GatedItem<T extends GatedType, Content> = PublicFields[T] & {
  * One page, post or event by its web address, or null if there's none (or no Sanity project yet).
  * `content` is a GROQ projection of the fields only viewers who can see it get, such as
  * `{ excerpt, body }`. Every other field is public: PUBLIC_FIELDS in ./gated-query.ts.
+ *
+ * The gate covers this item only. So `content` is a fixed string in the code, and:
+ * - No `*` or `documents::` outside quotes (refused). Load other pages, posts and events, and the
+ *   lists that fill a block, with their own loader call.
+ * - A dereference (`->`) skips the target's gate. Venues, people and sponsors can be dereferenced
+ *   freely. From a page, post or event (link.internal), take only LINK_TARGET: _type,
+ *   "slug": slug.current and title. Each `->` needs a projection listing the fields it reads,
+ *   without `...` or a bare `@` or `^` (refused; `@.slug.current` lists a field).
  */
 export async function getGatedItem<T extends GatedType, Content = Record<string, unknown>>(
   type: T,
@@ -73,8 +83,13 @@ export async function getGatedItem<T extends GatedType, Content = Record<string,
 
 /**
  * Pages, posts or events (none without a Sanity project), locked ones without their members-only
- * fields. `content` is as for getGatedItem. `params` are values the filter uses, such as
- * `{ category: "jam" }`.
+ * fields. `content` is as for getGatedItem, with the same rules: no `*` or `documents::`, and from
+ * a page, post or event a dereference takes only LINK_TARGET. `params` are values the filter uses,
+ * such as `{ category: "jam" }`.
+ *
+ * `filter` and `order` are fixed strings in the code too, with no `*` or `documents::` outside
+ * quotes. Values go in `params`, never built from request input. Use public fields only: a filter
+ * on a members-only field answers questions about it, and an order on one leaks its ranking.
  */
 export async function listGatedItems<T extends GatedType, Content = Record<string, unknown>>(
   type: T,

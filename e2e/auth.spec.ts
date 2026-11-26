@@ -15,6 +15,7 @@ import { restorePassword } from "./support/supabase-auth";
 const PASSWORD = "obs-local-dev";
 const MEMBERS = {
   emailLink: { desktop: "casey.brooks@example.com", phone: "robin.fields@example.com" },
+  scannedLink: { desktop: "nora.quinn@example.com", phone: "leon.pierce@example.com" },
   offSiteNext: { desktop: "marcus.lane@example.com", phone: "ruth.abbott@example.com" },
   password: { desktop: "jesse.carter@example.com", phone: "terry.mills@example.com" },
   signOut: { desktop: "glen.pruitt@example.com", phone: "june.little@example.com" },
@@ -50,6 +51,21 @@ async function requestSignInLink(page: Page, request: APIRequestContext, email: 
   return signInLinkFor(request, email);
 }
 
+/**
+ * Opens an emailed sign-in link. The link uses the stack's site URL, so open it on the server under
+ * test instead: the session cookie then lands on the site this test is browsing.
+ */
+async function openSignInLink(page: Page, link: URL) {
+  await page.goto(`${link.pathname}${link.search}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Finish signing in");
+}
+
+/** Opens an emailed sign-in link and presses the button on the page it opens. */
+async function finishSigningIn(page: Page, link: URL) {
+  await openSignInLink(page, link);
+  await page.getByRole("button", { name: "Finish signing in" }).click();
+}
+
 async function signInWithPassword(page: Page, email: string, password: string) {
   const form = passwordForm(page);
   await form.getByLabel("Email address").fill(email);
@@ -64,14 +80,42 @@ async function expectSignedInAs(page: Page, email: string) {
 }
 
 test.describe("email-link sign-in", () => {
-  test("a member signs in with the link from their email", async ({ page, request }, testInfo) => {
+  test("a member signs in with the link from their email", async ({
+    page,
+    context,
+    request,
+  }, testInfo) => {
     const email = member("emailLink", testInfo);
 
     const link = await emailedSignInLink(page, request, email);
     expect(link.pathname).toBe("/auth/confirm");
-    // The link uses the stack's site URL. Open it on the server under test, so the session
-    // cookie lands on the site this test is browsing.
-    await page.goto(`${link.pathname}${link.search}`);
+    // Opening the link only shows a button. The member is signed in once they press it.
+    await openSignInLink(page, link);
+    expect(await sessionCookies(context)).toEqual([]);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, "no sideways scrolling at phone width").toBeLessThanOrEqual(0);
+    await page.getByRole("button", { name: "Finish signing in" }).click();
+
+    await expectSignedInAs(page, email);
+  });
+
+  test("a link that the member's mail system opened first still signs them in", async ({
+    page,
+    request,
+  }, testInfo) => {
+    const email = member("scannedLink", testInfo);
+    const link = await emailedSignInLink(page, request, email);
+
+    // Link scanners such as Microsoft Defender Safe Links fetch the links in incoming email before
+    // the member sees them. The scan mustn't sign anyone in or use the link up.
+    const scan = await request.get(`${link.pathname}${link.search}`);
+    expect(scan.ok()).toBe(true);
+    const scannerCookies = (await request.storageState()).cookies;
+    expect(scannerCookies.filter((cookie) => SESSION_COOKIE.test(cookie.name))).toEqual([]);
+
+    await finishSigningIn(page, link);
 
     await expectSignedInAs(page, email);
   });
@@ -85,7 +129,7 @@ test.describe("email-link sign-in", () => {
 
     // Resolving the dot segment turns "/.//evil.example" into "//evil.example", another site.
     link.searchParams.set("next", "/.//evil.example");
-    await page.goto(`${link.pathname}${link.search}`);
+    await finishSigningIn(page, link);
 
     await expectSignedInAs(page, email);
   });
@@ -101,9 +145,19 @@ test.describe("email-link sign-in", () => {
 
   test("a used or expired link explains what happened", async ({ page }) => {
     await page.goto("/auth/confirm?token_hash=not-a-real-token&type=email");
+    await page.getByRole("button", { name: "Finish signing in" }).click();
 
     await expect(page).toHaveURL(/\/sign-in\?error=link-expired$/);
     // Scoped to <main>: Next.js adds its own (empty) role="alert" route announcer to every page.
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "expired or was already used",
+    );
+  });
+
+  test("a link that lost its token goes straight to the explanation", async ({ page }) => {
+    await page.goto("/auth/confirm?type=email");
+
+    await expect(page).toHaveURL(/\/sign-in\?error=link-expired$/);
     await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "expired or was already used",
     );
@@ -234,7 +288,7 @@ test.describe("setting a password", () => {
     await expect(emailLinkForm(page).getByLabel("Email address")).toBeInViewport();
 
     const link = await requestSignInLink(page, request, email);
-    await page.goto(`${link.pathname}${link.search}`);
+    await finishSigningIn(page, link);
     await expectSignedInAs(page, email);
 
     await page.getByRole("link", { name: "Set or change your password" }).click();

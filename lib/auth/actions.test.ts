@@ -4,11 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import { PASSWORD_MESSAGES } from "./password-state";
 
 // A stand-in for Supabase: signInWithOtp() answers with `otpError`, getClaims() finds a session
-// when `signedIn`, and updateUser() is a mock.
+// when `signedIn`, and updateUser() and verifyOtp() are mocks.
 const supabase = vi.hoisted(() => ({
   otpError: null as { code: string; message: string } | null,
   signedIn: true,
   updateUser: vi.fn(),
+  verifyOtp: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -26,11 +27,12 @@ vi.mock("@/lib/supabase/server", () => ({
             }
           : { data: null, error: null },
       updateUser: supabase.updateUser,
+      verifyOtp: supabase.verifyOtp,
     },
   }),
 }));
 
-const { sendSignInLink, setPassword } = await import("./actions");
+const { confirmSignIn, sendSignInLink, setPassword } = await import("./actions");
 
 const EMAIL = "casey.brooks@example.com";
 
@@ -87,6 +89,94 @@ describe("sendSignInLink", () => {
       email: EMAIL,
     });
     expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("confirmSignIn", () => {
+  // Shaped like the token hashes in the local stack's sign-in emails. Made up.
+  const TOKEN_HASH = "pkce_aaae5edb8e194c16ef3d8e7db84281734180e6bae15c4d401faf5847";
+  let error: MockInstance<typeof console.error>;
+
+  function confirmForm(fields: Record<string, string>): FormData {
+    const formData = new FormData();
+    for (const [name, value] of Object.entries(fields)) {
+      formData.set(name, value);
+    }
+    return formData;
+  }
+
+  /** What redirect() throws for `path`, as Next.js encodes it. */
+  function redirectTo(path: string) {
+    return { digest: expect.stringContaining(`;${path};`) };
+  }
+
+  beforeEach(() => {
+    error = vi.spyOn(console, "error").mockImplementation(() => {});
+    supabase.verifyOtp.mockReset();
+    supabase.verifyOtp.mockResolvedValue({ data: { user: {}, session: {} }, error: null });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("verifies the link's token hash and goes to the page that asked", async () => {
+    await expect(
+      confirmSignIn(confirmForm({ token_hash: TOKEN_HASH, next: "/events?month=12" })),
+    ).rejects.toMatchObject(redirectTo("/events?month=12"));
+    expect(supabase.verifyOtp).toHaveBeenCalledExactlyOnceWith({
+      type: "email",
+      token_hash: TOKEN_HASH,
+    });
+  });
+
+  it.each([
+    ["there's no next", {}],
+    ["next leads off the site", { next: "/.//evil.example" }],
+  ])("goes to My Account when %s", async (_case, fields) => {
+    await expect(
+      confirmSignIn(confirmForm({ token_hash: TOKEN_HASH, ...fields })),
+    ).rejects.toMatchObject(redirectTo("/account"));
+  });
+
+  it("sends a used or expired link to the sign-in page's explanation, and logs nothing", async () => {
+    supabase.verifyOtp.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { code: "otp_expired", message: "Email link is invalid or has expired" },
+    });
+
+    await expect(
+      confirmSignIn(confirmForm({ token_hash: TOKEN_HASH, next: "/events" })),
+    ).rejects.toMatchObject(redirectTo("/sign-in?error=link-expired"));
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it("doesn't ask Supabase when there's no token hash", async () => {
+    await expect(confirmSignIn(confirmForm({ token_hash: "" }))).rejects.toMatchObject(
+      redirectTo("/sign-in?error=link-expired"),
+    );
+    expect(supabase.verifyOtp).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "an error that isn't about the link",
+      () =>
+        supabase.verifyOtp.mockResolvedValue({
+          data: { user: null, session: null },
+          error: { code: "unexpected_failure", message: "Database error" },
+        }),
+    ],
+    ["a failed request", () => supabase.verifyOtp.mockRejectedValue(new TypeError("fetch failed"))],
+  ])("sends the member to the explanation, and logs why, after %s", async (_case, fail) => {
+    fail();
+
+    await expect(confirmSignIn(confirmForm({ token_hash: TOKEN_HASH }))).rejects.toMatchObject(
+      redirectTo("/sign-in?error=link-expired"),
+    );
+    expect(error).toHaveBeenCalledOnce();
+    // After a passing fault the link still works, so its token hash stays out of the logs.
+    expect(inspect(error.mock.calls)).not.toContain(TOKEN_HASH);
   });
 });
 

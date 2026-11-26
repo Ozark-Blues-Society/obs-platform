@@ -1,9 +1,11 @@
 -- Guards for everything in the public schema, which the Data API exposes. A table without row
 -- level security, a view that skips it, or a relation that can't have it (a materialized view or
--- a foreign table) lets anyone with the public API key read every row.
--- These cover future tables automatically; each table's own policies still need their own tests.
+-- a foreign table) lets anyone with the public API key read every row. A SECURITY DEFINER
+-- function there can do the same: anyone with that key can call it, and it skips row level
+-- security. These cover future tables and functions automatically; each table's own policies
+-- still need their own tests.
 begin;
-select plan(3);
+select plan(4);
 
 select is_empty(
   $$
@@ -46,6 +48,28 @@ select is_empty(
   'public has no materialized views or foreign tables, which row level security cannot cover: '
     || 'put each in a schema the API does not expose, or replace it with a security_invoker view '
     || 'or a function that checks the caller'
+);
+
+-- PostgREST serves every function in public at /rest/v1/rpc/<name>. A SECURITY DEFINER function
+-- runs as its owner, postgres for anything a migration creates, and row level security doesn't
+-- apply to postgres (it owns the tables and has BYPASSRLS). Supabase's default privileges let anon
+-- and authenticated execute new functions in public, and revoking execute from public leaves those
+-- grants in place. So this checks the schema, not the grants: a later grant can undo a revoke, but
+-- it can't expose a schema the API doesn't serve. Trigger functions are left out: Postgres runs
+-- them only as triggers, so the API can't call them. Supabase's database linter has a version
+-- that goes by the grants: anon_ and authenticated_security_definer_function_executable.
+select is_empty(
+  $$
+    select p.oid::regprocedure::text
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.prosecdef
+      and p.prorettype not in ('trigger'::regtype, 'event_trigger'::regtype)
+  $$,
+  'public has no SECURITY DEFINER functions apart from trigger functions, since anyone with the '
+    || 'public API key could call them and they skip row level security: move each to a schema '
+    || 'the API does not expose, such as private, or make it SECURITY INVOKER'
 );
 
 select * from finish();

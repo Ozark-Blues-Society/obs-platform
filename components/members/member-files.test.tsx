@@ -1,6 +1,15 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MemberFiles } from "./member-files";
+
+// The links must stay plain <a>s: next/link would prefetch /files/<code>, asking Storage for
+// download links nobody clicked. jsdom renders both as the same <a>, so a swap would pass every
+// test here unnoticed without this.
+vi.mock("next/link", () => ({
+  default: () => {
+    throw new Error("MemberFiles must link with a plain <a>, not next/link.");
+  },
+}));
 
 const CODE = "3f2b9c1e-8d4a-4e6f-9b2c-7a1d5e8f0c3b";
 const OTHER = "00000000-0000-4000-8920-000000000002";
@@ -70,5 +79,32 @@ describe("MemberFiles", () => {
   it("can sit under another heading", () => {
     render(<MemberFiles files={[{ title: "Minutes", fileId: CODE }]} headingLevel={3} />);
     expect(screen.getByRole("heading", { level: 3, name: "Files for members" })).toBeVisible();
+  });
+
+  it("lists a file attached twice only once", () => {
+    render(
+      <MemberFiles
+        files={[
+          { title: "Minutes", fileId: CODE },
+          { title: "Minutes again", fileId: CODE },
+        ]}
+      />,
+    );
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Minutes"]);
+  });
+
+  it("gives each list on a page its own heading id", () => {
+    render(
+      <>
+        <MemberFiles files={[{ title: "Minutes", fileId: CODE }]} />
+        <MemberFiles files={[{ title: "Booking guide", fileId: OTHER }]} />
+      </>,
+    );
+    const lists = screen.getAllByRole("region", { name: "Files for members" });
+    const headingIds = lists.map((list) => list.getAttribute("aria-labelledby"));
+    expect(new Set(headingIds).size).toBe(2);
+    lists.forEach((list, index) => {
+      expect(within(list).getByRole("heading")).toHaveAttribute("id", headingIds[index]);
+    });
   });
 });

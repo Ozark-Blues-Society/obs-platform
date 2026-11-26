@@ -86,6 +86,7 @@ A pair the site uses belongs here.
 | `white`         | `primary-light` | Dark buttons on hover                                 | 8.61:1  | 4.5:1    |
 | `muted-on-dark` | `primary`      | Page header intro                                      | 8.60:1  | 4.5:1    |
 | `accent-light`  | `primary`      | Date badge month, page header eyebrow                  | 8.59:1  | 4.5:1    |
+| `accent-light`  | `primary-light` | Sponsor spotlight's name, at the panel's lightest corner | 5.98:1 | 4.5:1   |
 | `primary-dark`  | `accent`       | Main buttons, call-to-action band; focus outline there | 6.64:1  | 4.5:1    |
 | `white`         | `success`      | "Approve" button                                       | 5.75:1  | 4.5:1    |
 | `line-strong`   | `white`        | Form field border                                      | 3.71:1  | 3:1      |

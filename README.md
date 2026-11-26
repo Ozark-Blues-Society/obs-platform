@@ -93,9 +93,11 @@ until `supabase stop` removes it. On Linux, `ss -ltn | grep ':543'` should then 
 - Every new table needs row level security, policies and pgTAP tests (see `CLAUDE.md`). Tests go in
   `supabase/tests/` as `<name>_test.sql`; `supabase test new <name>` writes a template.
 - `supabase/tests/rls_baseline_test.sql` fails if any table in `public` has row level security
-  off, any view there bypasses it (no `security_invoker`), or `public` holds a materialized view
-  or a foreign table. Those two can't have row level security, so keep them in a schema the API
-  doesn't expose.
+  off, any view there bypasses it (no `security_invoker`), or `public` holds a materialized view,
+  a foreign table or a SECURITY DEFINER function other than a trigger function (the API can't call
+  those). Materialized views and foreign tables can't have row level security, so keep them in a
+  schema the API doesn't expose. Put a SECURITY DEFINER function in `private`, or make it SECURITY
+  INVOKER: revoking EXECUTE doesn't count, because a later grant can undo it.
 
 ### Fixtures and seed data
 
@@ -124,22 +126,33 @@ Every fixture member can sign in locally with their address (for example
 
 ## Sign-in (Supabase Auth)
 
-Members sign in at `/sign-in`, with a one-click link sent by email or with a password, and sign
-out from `/account`. `/account` is members-only (a placeholder until M-8 builds My Account).
+Members sign in at `/sign-in`, with a link sent by email or with a password, and sign out from
+`/account`. `/account` is members-only (a placeholder until M-8 builds My Account).
 Sign-in links never create accounts: people become members by joining.
 
 Locally, every email Auth sends lands in Mailpit at <http://127.0.0.1:54324>; nothing leaves the
-machine. Ask for a link for a fixture member (see the table above), open the email in Mailpit and
-follow its link. Or sign in with the fixture password `obs-local-dev`.
+machine. Ask for a link for a fixture member (see the table above), open the email in Mailpit,
+follow its link and press **Finish signing in**. Or sign in with the fixture password
+`obs-local-dev`.
 
 How it fits together:
 
 - **The sign-in email** is `supabase/templates/magic-link.html`, registered in
   `supabase/config.jsonc` (`auth.email.template.magic_link`). Its link goes to
-  `{site_url}/auth/confirm` with a one-time token hash. That route (`app/auth/confirm/route.ts`)
-  verifies it and starts the session, so a link opened on another device still works. After
-  changing the template settings or `auth.site_url`, restart the stack (`supabase stop`, then
-  `supabase start`); the data is kept.
+  `{site_url}/auth/confirm` with a one-time token hash. That page
+  (`app/(site)/auth/confirm/page.tsx`) has a **Finish signing in** button, which sends the token
+  hash to `confirmSignIn()` in `lib/auth/actions.ts`. It verifies the token hash on the server and
+  starts the session, so a link opened on another device still works. After changing the template
+  settings or `auth.site_url`, restart the stack (`supabase stop`, then `supabase start`); the
+  data is kept.
+- **Why the button:** some mail systems open the links in incoming email before the member does,
+  to scan them: link scanners such as Microsoft Defender Safe Links, and some gateways and link
+  previewers. If opening the link verified the token, the scan would use it up, and the member
+  would be told the link had expired or was already used. Scanners load the page but don't press
+  its button, so the link still works for the member. Don't make the page submit the form by
+  itself: scanners that run scripts would then use the link up again. Supabase's
+  [Auth email templates guide](https://supabase.com/docs/guides/auth/auth-email-templates#email-prefetching)
+  describes the problem ("Email prefetching").
 - **Sessions** live in cookies. `proxy.ts` (Next.js 16's name for middleware) refreshes an expired
   session on every request before the page renders, and sends visitors who open `/account` or an
   admin screen (`/admin`) to sign in first.
@@ -354,18 +367,35 @@ const post = await getGatedItem("post", slug, "{ excerpt, body }");
 - The loader first works out who is viewing (`getViewer()` in `lib/members/viewer.ts`: the session,
   then the member's own profile row). It then asks Sanity with the viewer's active level as
   `$memberLevel`. The query (`sanity/content/gated-query.ts`) fills in `content` only when that
-  level can see the item, so a members-only body never leaves Sanity for anyone else. The loader
-  then checks again with `checkAccess`.
+  level can see the item, so the item's members-only fields never leave Sanity for anyone else.
+  The loader then checks again with `checkAccess`.
 - Each type's public fields are fixed in `PUBLIC_FIELDS`, after the approved concept. A locked post
   shows its headline, category, date and cover photo, a locked event its title, date, time, prices
   and photo (not the venue), and a locked page its title. Everything else goes in `content`.
 - `listGatedItems(type, content, { filter, params, order, limit })` does the same for lists, feeds
-  and sitemaps. Filter on public fields only.
+  and sitemaps.
+- The gate covers the item a loader returns, not other documents its GROQ reads. So `content`,
+  `filter` and `order` are fixed strings in the code. Values go in `params`, never built from
+  request input. And:
+  - No `*` outside quotes: the loaders refuse it, because a query of the whole dataset reads other
+    documents without their gates. Load other pages, posts and events, and the lists that fill a
+    block (upcoming events, sponsor logos, the venue directory), with their own loader call. They
+    refuse `documents::` functions too: `documents::get()` follows a reference the way `->` does.
+  - A dereference (`->`) skips the target's gate. Venues, people and sponsors can be dereferenced
+    freely. From a page, post or event (`link.internal`), take only `LINK_TARGET`:
+    `{ _type, "slug": slug.current, title }`. In `content`, each `->` needs a projection that lists
+    the fields it reads. The loaders refuse `internal->`, `internal->{ ... }`, and a bare `@` or `^`
+    inside the projection, where it stands for the whole other document: `internal->{ "doc": @ }`,
+    `internal->{ true => @ }`, `internal->{ "x": body[]{ "doc": ^ } }`. `@.slug.current` and
+    `@{ title }` list fields, and the `@` in an array filter (`tags[@ != "x"]`) is the element.
+  - `filter` and `order` use public fields only: a filter on a members-only field answers questions
+    about it, and an order on one leaks its ranking.
 - Loaders run at request time and read the session, so call them inside `<Suspense>`. Results are
   cached per query, viewer level and preview mode, never per person, so a visitor never gets an
   entry a member's visit filled.
-- ESLint refuses `sanityFetch`, the Sanity `client` and `createClient` anywhere else
-  (`eslint.config.mjs`; `sanity/content/lint-guard.test.ts` proves the rule works). The menus
+- ESLint refuses `sanityFetch`, the Sanity `client` and `createClient` anywhere else, and any
+  dynamic `import()` of their modules (`eslint.config.mjs`; `sanity/content/lint-guard.test.ts`
+  proves the rule works). The menus
   (`sanity/site-chrome.ts`: public page titles and links) and the draft-mode route are the only
   exceptions. Put new reads in `sanity/content/`.
 
@@ -421,10 +451,25 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
 ## Emails (React Email)
 
 The app's own emails (backlog E-1) are [React Email](https://react.email) templates in `emails/`.
-Launch 1 has two: `welcome.tsx`, for someone who has just joined, and `receipt.tsx`, the Society's
-confirmation of a dues payment, online or by check or cash. Stripe also emails its own receipt for
-online payments (decision 0002). The renewal, lapsed and listing emails follow in Launch 2. Sign-in
-emails belong to Supabase Auth (see [Sign-in](#sign-in-supabase-auth)).
+Sign-in emails belong to Supabase Auth (see [Sign-in](#sign-in-supabase-auth)).
+
+| Template                    | Sent when                                  | Sent by                                         |
+| --------------------------- | ------------------------------------------ | ----------------------------------------------- |
+| `welcome.tsx`               | Someone joins                              | Stripe webhook (M-5)                            |
+| `receipt.tsx`               | A dues payment, online or by check or cash | Stripe webhook (M-5), recording a payment (A-1) |
+| `renewal-reminder.tsx`      | 30 days before a membership ends           | Daily email job (E-2)                           |
+| `renewal-last-reminder.tsx` | 7 days before it ends                      | Daily email job (E-2)                           |
+| `membership-lapsed.tsx`     | Once, 14 days after it ended               | Daily email job (E-2)                           |
+| `listing-approved.tsx`      | A moderator approves a listing             | Moderation (K-2)                                |
+| `listing-rejected.tsx`      | A moderator rejects one, with a reason     | Moderation (K-2)                                |
+| `listing-expiring.tsx`      | 5 days before a listing expires            | Listing expiry (K-4)                            |
+
+Stripe also emails its own receipt for online payments (decision 0002), and its own notices to
+members on yearly auto-renew, who get no renewal reminders. Each email is about the recipient's own
+membership, payment or listing and promotes nothing, so none has an unsubscribe link. The lapsed
+note says that the membership has ended and how to renew, with no offers (Q-20261126-104811-8667
+asks Parker to confirm; a promotional email would also need the Society's postal address and an
+opt-out).
 
 ```bash
 pnpm email:preview   # preview server at http://localhost:3030
@@ -446,8 +491,10 @@ put real member data in them.
   email must be absolute, so every template takes the site's address as `siteUrl`. The sender's
   address isn't in the templates: it's one setting that everything sending email shares (decision
   0005: `noreply@mail.<Society domain>`, `onboarding@resend.dev` in test mode). Nothing in
-  `emails/` sends email; the backlog items that send these two (the Stripe webhook, recording check
-  and cash payments) call `renderEmail`.
+  `emails/` sends email; the backlog items in the table above call `renderEmail`.
+- **Links.** The renewal emails link to the Join page, where members renew (M-4). The listing
+  emails link to My listings and the classifieds, at `MY_LISTINGS_PATH` (`/account/listings`, K-4)
+  and `CLASSIFIEDS_PATH` (`/classifieds`, K-3) in `lib/site/navigation.ts`, which K-3 and K-4 build.
 - **Brand.** Email clients can't read the site's CSS variables, so `emails/_lib/theme.ts` copies
   the token values. A unit test fails when a copy no longer matches `app/globals.css`, or when a
   color pair the emails use falls below WCAG AA. Most email clients don't load web fonts (and
@@ -456,10 +503,13 @@ put real member data in them.
   arrives; it will be an image at an absolute address on the site.
 - **Data.** Dates show in Central Time (`SOCIETY_TIME_ZONE`), amounts are in cents (Stripe's unit),
   and level names come from `MEMBERSHIP_LEVELS` (`sanity/schemas/options.ts`). The welcome email's
-  benefits are the site settings' benefits table rows for the member's level.
+  benefits are the site settings' benefits table rows for the member's level. Listing titles and
+  moderators' notes appear as their authors wrote them, as text (never markup); each line of a note
+  becomes a paragraph.
 - **Footer.** It says why the email was sent. Replies to a no-reply address go nowhere, so it
   links to the contact page (`/contact`, backlog P-7) instead.
-- **Tests.** `emails/welcome.test.ts` and `emails/receipt.test.ts` render each template.
+- **Tests.** `emails/welcome.test.ts`, `emails/receipt.test.ts`, `emails/renewal.test.ts` (both
+  reminders and the lapsed note) and `emails/listing.test.ts` render each template.
   `emails/templates.test.ts` checks every template it finds (one title, the language, absolute
   links, token colors only, a plain-text version with no gaps), so it covers a new template
   without changes. `e2e/emails.spec.ts` loads each email in the browser at desktop and 390px
@@ -547,7 +597,7 @@ Supabase accounts for about one of them, mostly pulling its Docker images.
 ```
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
-components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/) and form classes
+components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
 lib/            Server and shared code: Supabase clients, sign-in helpers
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
@@ -570,6 +620,16 @@ cards. With `pnpm dev` running, <http://localhost:3000/dev/components> shows the
 placeholder content (development only: a production build answers 404 there).
 [`docs/design/components.md`](docs/design/components.md) says what each one is for and the rules
 they follow, such as never passing members-only content to a component that blurs it.
+
+## Design Approval package
+
+`/design-preview` holds the home page and the four page templates with sample content (backlog
+D-4), for the Society's Design Approval. Unlike `/dev/components`, it's in production builds, so
+the preview deploy serves it; search engines are asked to skip it. The home page's sections, the
+page blocks and the templates live in `components/home/`, `components/blocks/` and
+`components/templates/`, where P-1 and C-2 fill them from the Studio.
+[`docs/design/approval-package.md`](docs/design/approval-package.md) lists the pages, the open
+questions and how a revision round works. Delete the folder before launch.
 
 ## Design tokens
 

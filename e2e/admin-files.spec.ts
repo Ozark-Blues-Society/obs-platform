@@ -90,7 +90,7 @@ test.describe("an editor", () => {
     await expect(upload.getByText(`Added "${title}".`)).toBeVisible();
     const code = (await upload.locator("code").textContent()) ?? "";
     expect(code).toMatch(/^[0-9a-f-]{36}$/);
-    await upload.getByRole("button", { name: "Copy the new file's code" }).click();
+    await upload.getByRole("button", { name: "Copy code for the new file" }).click();
     await expect(upload.getByText("Code copied.")).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(code);
 
@@ -130,11 +130,23 @@ test.describe("an editor", () => {
     const title = fileTitle(testInfo);
     await signIn(page, EDITOR, "/admin/files");
     const upload = page.getByRole("region", { name: "Upload a file" });
+    // With nothing chosen, focus goes to the field to fix, which the message now describes.
+    await upload.getByRole("button", { name: "Upload file" }).click();
+    await expect(upload.getByLabel("File")).toBeFocused();
+    await expect(upload.getByLabel("File")).toHaveAccessibleDescription(
+      /Choose the file to upload\./,
+    );
     await upload.getByLabel("File").setInputFiles({
       name: "minutes.txt",
       mimeType: "text/plain",
       buffer: Buffer.from("Minutes"),
     });
+    // Enter in the empty Name box: focus is already there, so the message is announced instead.
+    await upload.getByLabel("Name").press("Enter");
+    await expect(upload.getByRole("alert")).toHaveText(
+      "Give the file a name members will recognize.",
+    );
+    await expect(upload.getByLabel("Name")).toBeFocused();
     await upload.getByLabel("Name").fill(title);
     await upload.getByRole("button", { name: "Upload file" }).click();
     await expect(upload.getByText(`Added "${title}".`)).toBeVisible();
