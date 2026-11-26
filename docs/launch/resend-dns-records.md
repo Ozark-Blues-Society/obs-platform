@@ -153,8 +153,9 @@ back, Resend can't send from the domain.
 
 ## 7. After it verifies
 
-- Tell the Foreman so this guide's status can be updated. The production sender address for
-  Supabase Auth and the app is set during launch prep (backlog Q-5, the launch runbook). Production
+- Tell the Foreman so this guide's status can be updated. The production sender address,
+  `noreply@mail.example.org` with the name "Ozark Blues Society" (decision 0005), is set for
+  Supabase Auth and the app during launch prep (backlog Q-5, the launch runbook). Production
   environment variables are a human gate.
 - At the Dec 9 launch rehearsal, request a sign-in link to your own address. In Gmail, open the
   email, choose **⋮** → **Show original**, and check that SPF and DKIM both say `PASS`.
