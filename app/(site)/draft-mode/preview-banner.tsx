@@ -18,13 +18,13 @@ export function PreviewBanner() {
   return (
     <aside
       aria-label="Preview"
-      className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 bg-amber-100 px-4 py-2 text-center text-sm text-neutral-900"
+      className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 bg-accent-soft px-4 py-2 text-center text-sm text-ink"
     >
       <p>You&rsquo;re viewing a preview that includes unpublished changes.</p>
       <form action={exitPreview}>
         <button
           type="submit"
-          className="rounded bg-neutral-900 px-3 py-1 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+          className="rounded bg-primary-dark px-3 py-1 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
         >
           Exit preview
         </button>

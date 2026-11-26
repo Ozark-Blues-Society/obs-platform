@@ -75,6 +75,7 @@ A pair the site uses belongs here.
 | `danger`        | `danger-soft`  | "Lapsed" tags                                          | 4.51:1  | 4.5:1    |
 | `ink`           | `success-soft` | Text in success messages                               | 14.47:1 | 4.5:1    |
 | `ink`           | `danger-soft`  | Text in error alerts                                   | 13.27:1 | 4.5:1    |
+| `ink`           | `accent-soft`  | Text in the preview banner                             | 14.08:1 | 4.5:1    |
 | `muted`         | `muted-soft`   | Neutral tags ("Weekly", "Expired")                     | 4.79:1  | 4.5:1    |
 | `white`         | `primary-dark` | Header, footer, hero and toast text                    | 17.48:1 | 4.5:1    |
 | `muted-on-dark` | `primary-dark` | Hero intro, nav links, footer text                     | 12.17:1 | 4.5:1    |
@@ -94,6 +95,7 @@ A pair the site uses belongs here.
 | `focus`         | `white`        | Focus outline on white                                 | 3.71:1  | 3:1      |
 | `focus`         | `primary-dark` | Focus outline on the header, footer and hero           | 4.71:1  | 3:1      |
 | `focus`         | `primary`      | Focus outline on the page header                       | 3.33:1  | 3:1      |
+| `primary-dark`  | `accent-soft`  | Focus outline on the preview banner                    | 14.17:1 | 3:1      |
 
 Some of the prototype's pairs fail AA. Don't copy these:
 
