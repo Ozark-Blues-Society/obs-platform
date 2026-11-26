@@ -4,6 +4,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "./next-path";
 import {
+  PASSWORD_MESSAGES,
+  checkNewPassword,
+  passwordUpdateProblem,
+  type SetPasswordState,
+} from "./password-state";
+import {
   MESSAGES,
   emailLinkResult,
   looksLikeEmail,
@@ -12,6 +18,7 @@ import {
   type EmailLinkState,
   type PasswordState,
 } from "./sign-in-state";
+import { requireUser } from "./user";
 
 /**
  * Emails a one-click sign-in link (supabase/templates/magic-link.html). It never creates an
@@ -84,6 +91,40 @@ export async function signInWithPassword(
 
   // Outside the try block: redirect() works by throwing.
   redirect(safeNextPath(formData.get("next")));
+}
+
+/**
+ * Sets a new password for the signed-in member: a first one (members who join online or are
+ * imported start with email links only), a change, or a replacement for a forgotten one after
+ * signing in with an email link. Supabase Auth also ends the member's other sessions.
+ */
+export async function setPassword(
+  _previous: SetPasswordState,
+  formData: FormData,
+): Promise<SetPasswordState> {
+  // Anyone can call a Server Function, so check the session here, not only on the page.
+  await requireUser("/account/password");
+
+  const check = checkNewPassword(formData.get("password"), formData.get("confirm"));
+  if (!check.ok) {
+    return { status: "error", field: check.field, message: check.message };
+  }
+
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.updateUser({ password: check.password });
+    if (error) {
+      const problem = passwordUpdateProblem(error);
+      if (problem.message === PASSWORD_MESSAGES.unavailable) {
+        console.error("Setting a password failed:", error.code, error.message);
+      }
+      return { status: "error", ...problem };
+    }
+  } catch (cause) {
+    console.error("Setting a password failed:", cause);
+    return { status: "error", field: "password", message: PASSWORD_MESSAGES.unavailable };
+  }
+  return { status: "saved" };
 }
 
 /** Signs out on this device only (other devices stay signed in) and returns to the home page. */
