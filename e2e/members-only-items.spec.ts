@@ -6,7 +6,7 @@ import {
   POSTS,
 } from "./fixtures/sanity-content.mts";
 import { FIXTURE_PASSWORD } from "./support/member-files";
-import { enterDraftMode } from "./support/sanity";
+import { openSharedPreviewLink } from "./support/sanity";
 
 // Members-only gating of content (backlog M-7, decision 0001), on blog posts from the e2e stand-in
 // for Sanity (e2e/fixtures/sanity-content.mts), with the synthetic fixture members
@@ -166,14 +166,9 @@ test.describe("a member", () => {
 });
 
 test.describe("a preview (draft mode)", () => {
-  test("never unlocks a members-only post for a visitor, drafts included", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
-    await enterDraftMode(context, baseURL!);
+  test("never unlocks a members-only post for a visitor, drafts included", async ({ page }) => {
     const path = postUrl(POSTS.members.slug);
-    await page.goto(path);
+    await openSharedPreviewLink(page, path);
     // The draft's headline shows, so the preview is on...
     await expect(page.getByRole("heading", { level: 1 })).toContainText("(draft)");
     // ...but the post stays locked.
@@ -183,10 +178,9 @@ test.describe("a preview (draft mode)", () => {
     expect(sent).not.toContain(DRAFT_MARKER);
   });
 
-  test("shows a member the draft of a post they may read", async ({ page, context, baseURL }) => {
+  test("shows a member the draft of a post they may read", async ({ page }) => {
     await signIn(page, MEMBERS.individual);
-    await enterDraftMode(context, baseURL!);
-    await page.goto(postUrl(POSTS.members.slug));
+    await openSharedPreviewLink(page, postUrl(POSTS.members.slug));
     await expect(page.getByText(DRAFT_MARKER).first()).toBeVisible();
   });
 });

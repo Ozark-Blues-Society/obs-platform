@@ -1,7 +1,8 @@
 /**
  * Synthetic Sanity documents that the e2e stand-in for Sanity serves (../support/sanity-stand-in.mts):
- * blog posts for each audience, one scheduled post and one draft. Each members-only field holds a
- * marker, so a test can check that no response reaches a viewer who may not see it.
+ * blog posts for each audience, one scheduled post and one draft, and the secret for shared preview
+ * links. Each members-only field holds a marker, so a test can check that no response reaches a
+ * viewer who may not see it.
  *
  * Nothing here is in a menu and there are no Site settings, so the header and footer stay the
  * built-in ones that other tests expect.
@@ -13,6 +14,8 @@ export const MEMBERS_ONLY_MARKER = "E2E-MEMBERS-ONLY-7f3a";
 export const DRAFT_MARKER = "E2E-DRAFT-ONLY-2c9d";
 /** A members-only file attached to the members' post (the link only; the file isn't created). */
 export const MEMBER_FILE_CODE = "00000000-0000-4000-8930-000000000001";
+/** The secret in the Studio's shared preview links (made-up, like everything here). */
+export const SHARED_PREVIEW_SECRET = "e2e-shared-preview-secret-4d8b";
 
 const DAY = 24 * 60 * 60 * 1000;
 const daysFromNow = (days: number) => new Date(Date.now() + days * DAY).toISOString();
@@ -94,5 +97,16 @@ export const DOCUMENTS = [
       { secret: `${MEMBERS_ONLY_MARKER} ${DRAFT_MARKER}` },
     ),
     _id: `drafts.post-${POSTS.members.slug}`,
+  },
+  // Preview sharing turned on in the Studio, as @sanity/preview-url-secret stores it. A shared link
+  // turns on draft mode only if its secret matches this one.
+  {
+    _id: "sanity-preview-url-secret.share-access",
+    _type: "sanity.previewUrlShareAccess",
+    _createdAt: daysFromNow(-10),
+    _updatedAt: daysFromNow(-10),
+    _rev: "e2e",
+    secret: SHARED_PREVIEW_SECRET,
+    studioUrl: "http://localhost:3000/studio",
   },
 ];

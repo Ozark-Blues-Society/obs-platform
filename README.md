@@ -635,7 +635,9 @@ K-4 (listing expiry) and E-3 (the nightly MailerLite sync) add their jobs to `ru
   same values: `NEXT_PUBLIC_SANITY_PROJECT_ID=e2estandin SANITY_API_HOST_STAND_IN=http://127.0.0.1:3400 SANITY_API_READ_TOKEN=e2e-stand-in-token pnpm build`
   (CI does). A dev server you started yourself doesn't have them: stop it and let Playwright start
   one. Add documents there for your own tests, kept out of menus so the layout tests still see the
-  built-in ones.
+  built-in ones. For draft mode, a test opens a shared preview link (`openSharedPreviewLink()` in
+  `e2e/support/sanity.ts`): the stand-in holds the link's secret, and the server sets its own
+  draft-mode cookie, so this works against both `pnpm dev` and the production build.
 
 ## Continuous integration
 

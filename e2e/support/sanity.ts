@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import type { BrowserContext, Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { SHARED_PREVIEW_SECRET } from "../fixtures/sanity-content.mts";
 
 /**
  * Keeps Sanity's servers out of a test: requests to them fail at once, as if offline. CI has no
@@ -12,28 +12,18 @@ export async function blockSanity(page: Page) {
 }
 
 /**
- * Turns on Next.js draft mode by setting its cookie. In real use /api/draft-mode/enable sets it,
- * after Sanity confirms the preview secret, which needs a Sanity project. `next build` writes the
- * cookie's value to .next/prerender-manifest.json; the dev server accepts any value.
+ * Opens a shared preview link to `path`, as someone it was sent to would: /api/draft-mode/enable
+ * checks the link's secret with Sanity (here the e2e stand-in), turns on draft mode and redirects to
+ * the page. The server sets the draft-mode cookie itself, because its value must be the running
+ * server's preview ID: `next start` uses the build's, and `next dev` makes a new one each time it
+ * starts.
  */
-export async function enterDraftMode(context: BrowserContext, baseURL: string) {
-  await context.addCookies([
-    {
-      name: "__prerender_bypass",
-      value: readPreviewModeId() ?? "development-id",
-      url: baseURL,
-      httpOnly: true,
-      sameSite: "Lax",
-    },
-  ]);
-}
-
-function readPreviewModeId(): string | undefined {
-  try {
-    const manifest = JSON.parse(readFileSync(".next/prerender-manifest.json", "utf8"));
-    const id: unknown = manifest?.preview?.previewModeId;
-    return typeof id === "string" && id ? id : undefined;
-  } catch {
-    return undefined;
-  }
+export async function openSharedPreviewLink(page: Page, path = "/") {
+  const link = `/api/draft-mode/enable?${new URLSearchParams({
+    "sanity-preview-secret": SHARED_PREVIEW_SECRET,
+    "sanity-preview-pathname": path,
+  })}`;
+  const response = await page.goto(link);
+  expect(response?.status(), `opening the shared preview link to ${path}`).toBe(200);
+  await expect(page).toHaveURL(path);
 }
