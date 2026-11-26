@@ -6,13 +6,18 @@
 # check because the repository is private on GitHub's free plan: 2,000 Actions minutes a month,
 # with every job billed rounded up to the minute. One job installs dependencies once.
 #
-# Local Supabase starts in the background right after the install. While it comes up, the job runs
-# lint, typecheck, the unit tests and the browser install. The database tests, the build and the
-# end-to-end tests run once it is up.
+# Keeping runs short (bead op-73f.15): starting local Supabase is the slowest step (about two
+# minutes, mostly pulling Docker images), so it starts in the background right after pnpm's setup,
+# and the Playwright browser install starts in the background after the install. While they run, the
+# job runs lint, typecheck, the unit tests and the build, which doesn't call Supabase. The database
+# tests and the end-to-end tests run once the stack is up. The build reuses the latest develop
+# run's Next.js cache, and the unit tests use both of the runner's CPUs. (The end-to-end tests
+# stay on one worker: with two, the Studio test sometimes never drew its screen.) A run of a tree
+# that an earlier run already passed skips the checks (see "Look for an earlier run that passed
+# this tree").
 #
 # No secrets: CI uses test-mode or dummy values only (CLAUDE.md hard rules). The Supabase URL and
-# key come from the local stack (`supabase status`): well-known demo values that only work against
-# a local stack.
+# key are the well-known local values from .env.example, which only work against a local stack.
 
 name: CI
 
@@ -22,9 +27,11 @@ on:
   push:
     branches: [develop]
 
-# CI only reads the code.
+# CI only reads the code, and the list of artifacts (see "Look for an earlier run that passed this
+# tree").
 permissions:
   contents: read
+  actions: read
 
 # A new push to a pull request cancels that pull request's older run. Each push to develop gets
 # its own run, so every merge is checked.
@@ -43,54 +50,121 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      # Local Supabase publishes ports 54320-54329 (supabase/config.jsonc), inside Linux's ephemeral
+      # range (32768-60999). An outgoing connection that holds one of them, open or in its 60 s
+      # TIME_WAIT, makes "supabase start" fail with "address already in use" (run 45829132016).
+      # Reserving them first, before any step opens a connection, keeps the kernel from handing
+      # them out. Explicit binds, like Docker's, still work.
+      - name: Keep local Supabase's ports out of the ephemeral range
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54320-54329
+
       # Actions are pinned to full commit SHAs; the release tag is in the comment.
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
+      # A run that passes every check records the tree it tested (the exact content of the
+      # commit) as an artifact named passed-tree-<tree>, kept 7 days (the last step). A later run of
+      # the same tree finds it and skips the checks: it still succeeds, costs one billed minute
+      # instead of four or five, and its notice links the run that passed. The usual case is a push
+      # to develop: when develop hasn't moved since a pull request's last run, the squash-merge
+      # commit has exactly the tree that run tested. If the lookup fails, every check runs. Markers
+      # from runs of a fork's pull request don't count: such a run uses the fork's own ci.yml.
+      - name: Look for an earlier run that passed this tree
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tree="$(git rev-parse 'HEAD^{tree}')"
+          echo "tree=$tree" >> "$GITHUB_OUTPUT"
+          runs="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs"
+          printf 'tree %s\ncommit %s\nrun %s\n' "$tree" "$GITHUB_SHA" "$runs/$GITHUB_RUN_ID" \
+            > "$RUNNER_TEMP/passed-tree.txt"
+          # On an HTTP error gh prints the error body, not a run ID; the case below rejects it.
+          passed_in="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=passed-tree-$tree" \
+            --jq '[.artifacts[] | select((.expired | not)
+              and .workflow_run.head_repository_id == .workflow_run.repository_id)
+              ][0].workflow_run.id // empty' \
+            2> /dev/null || true)"
+          case "$passed_in" in
+            "" | *[!0-9]*)
+              echo "run=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::notice::Run $runs/$passed_in already passed every check on this tree" \
+                "($tree), so this run skips them."
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
       - name: Set up pnpm (version from packageManager in package.json)
+        id: pnpm
+        if: ${{ !cancelled() && steps.scope.outputs.run == 'true' }}
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           cache: true
 
+      # 3.4.0 is the version the project was set up with; supabase/config.jsonc needs CLI 3.x.
+      - name: Set up the Supabase CLI
+        id: supabase-cli
+        if: ${{ !cancelled() && steps.scope.outputs.run == 'true' }}
+        uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 3.4.0
+
+      # A fresh stack applies supabase/migrations/ and supabase/seed.sql. It doesn't need the Node
+      # dependencies, so it starts in the background before they're installed, and "Wait for local
+      # Supabase" picks up the result. (Starting it before pnpm's setup made that step's cache
+      # download three times slower.) Only Postgres and the services the app talks to start: the
+      # API gateway (kong), Auth (gotrue), the REST API (postgrest), Storage (members-only files,
+      # backlog M-7) and Mailpit, which catches Auth emails. When a test or a migration needs an
+      # excluded service (Realtime...), drop it from the --exclude lists.
+      - name: Start local Supabase in the background
+        id: supabase-start
+        if: ${{ !cancelled() && steps.supabase-cli.outcome == 'success' }}
+        run: |
+          (
+            started="$(date +%s)"
+            status=0
+            supabase start \
+              --exclude studio,postgres-meta,imgproxy,realtime \
+              --exclude edge-runtime,logflare,vector,supavisor \
+              || status=$?
+            echo "supabase start took $(( $(date +%s) - started ))s"
+            echo "$status" > "$RUNNER_TEMP/supabase-start.status.tmp"
+            mv "$RUNNER_TEMP/supabase-start.status.tmp" "$RUNNER_TEMP/supabase-start.status"
+          ) > "$RUNNER_TEMP/supabase-start.log" 2>&1 < /dev/null &
+
       - name: Set up Node.js (version from .nvmrc)
+        id: node
+        if: ${{ !cancelled() && steps.scope.outputs.run == 'true' }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
 
       - name: Install dependencies
         id: install
+        if: >-
+          ${{ !cancelled() && steps.pnpm.outcome == 'success'
+          && steps.node.outcome == 'success' }}
         run: pnpm install --frozen-lockfile
 
-      # 3.4.0 is the version the project was set up with; supabase/config.jsonc needs CLI 3.x. The
-      # database tests don't need the Node dependencies, so this runs even when the install failed.
-      - name: Set up the Supabase CLI
-        id: supabase-cli
-        if: ${{ !cancelled() }}
-        uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
-        with:
-          version: 3.4.0
-
-      # A fresh stack applies supabase/migrations/ and supabase/seed.sql. Starting it takes a while,
-      # mostly pulling Docker images, so it runs in the background and "Wait for local Supabase"
-      # picks up the result. Only Postgres and the services the app talks to start: the API gateway
-      # (kong), Auth (gotrue), the REST API (postgrest), Storage (members-only files, backlog M-7)
-      # and Mailpit, which catches Auth emails. When a test or a migration needs an excluded service
-      # (Realtime...), drop it from the --exclude lists.
-      - name: Start local Supabase in the background
-        id: supabase-start
-        if: ${{ !cancelled() && steps.supabase-cli.outcome == 'success' }}
+      # Tests run headless, so the Chromium headless shell is all they need. Its system packages
+      # come from the Ubuntu mirror, which is sometimes slow (once six minutes for the fonts), so
+      # the install runs in the background and "Wait for Playwright's Chromium" picks up the result.
+      - name: Install Playwright's Chromium in the background
+        id: browsers-start
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           (
+            started="$(date +%s)"
             status=0
-            supabase start \
-              --exclude studio,postgres-meta,imgproxy,realtime \
-              --exclude edge-runtime,logflare,vector,supavisor \
-              || status=$?
-            echo "$status" > "$RUNNER_TEMP/supabase-start.status.tmp"
-            mv "$RUNNER_TEMP/supabase-start.status.tmp" "$RUNNER_TEMP/supabase-start.status"
-          ) > "$RUNNER_TEMP/supabase-start.log" 2>&1 < /dev/null &
+            pnpm exec playwright install --with-deps --only-shell chromium || status=$?
+            echo "playwright install took $(( $(date +%s) - started ))s"
+            echo "$status" > "$RUNNER_TEMP/browsers.status.tmp"
+            mv "$RUNNER_TEMP/browsers.status.tmp" "$RUNNER_TEMP/browsers.status"
+          ) > "$RUNNER_TEMP/browsers.log" 2>&1 < /dev/null &
 
       # The checks below skip only when the run was cancelled or a step they need failed: the
       # install, the build or local Supabase.
@@ -102,21 +176,63 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm typecheck
 
+      # Vitest's default leaves one of the runner's two CPUs idle.
       - name: Unit tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm test
+        run: pnpm test --maxWorkers=2
 
-      # Tests run headless, so the Chromium headless shell is all they need. Installing it before
-      # the wait below overlaps it with the Supabase start.
-      - name: Install Playwright's Chromium
-        id: browsers
+      # The build inlines the stack's API URL and publishable key, and it runs before the stack is
+      # up, so they come from .env.example: the well-known local values. F-4 (typed env config,
+      # .env.example) owns these variable names. Later steps get them too, and "End-to-end tests"
+      # first checks that the running stack reports the same ones.
+      - name: Use the local Supabase URL and key from .env.example
+        id: supabase-env
+        if: ${{ !cancelled() && steps.scope.outputs.run == 'true' }}
+        run: |
+          vars="$(grep -E '^NEXT_PUBLIC_SUPABASE_(URL|PUBLISHABLE_KEY)=' .env.example || true)"
+          if [ "$(printf '%s\n' "$vars" | wc -l)" != 2 ]; then
+            echo "::error::.env.example must set NEXT_PUBLIC_SUPABASE_URL and" \
+              "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY once each"
+            exit 1
+          fi
+          printf '%s\n' "$vars" >> "$GITHUB_ENV"
+
+      # Next.js keeps Turbopack's build cache in .next/cache (on by default since 16.3), and
+      # Turbopack rebuilds only what changed. Pull requests restore the latest develop run's cache
+      # but don't save their own, so the repository's 10 GB of cache storage holds develop's only.
+      - name: Restore the Next.js build cache
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm exec playwright install --with-deps --only-shell chromium
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .next/cache
+          key: next-build-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: next-build-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
 
-      # Joins the background start: prints its output and fails if it failed. Then it passes the
-      # stack's API URL and publishable key to the later steps, so the build and the end-to-end
-      # tests use the local stack. F-4 (typed env config, .env.example) owns these variable names;
-      # keep the two in step.
+      # Content in the end-to-end tests comes from a local stand-in for Sanity
+      # (e2e/support/sanity-stand-in.mts), not from Sanity: CI has no Sanity project. Next.js reads
+      # NEXT_PUBLIC_SANITY_PROJECT_ID when it builds, so the build gets the same made-up values that
+      # playwright.config.ts gives the server. The stand-in isn't running yet, so the build's own
+      # content reads fail at once and fall back, without calling Sanity.
+      - name: Build
+        id: build
+        if: >-
+          ${{ !cancelled() && steps.install.outcome == 'success'
+          && steps.supabase-env.outcome == 'success' }}
+        env:
+          NEXT_PUBLIC_SANITY_PROJECT_ID: e2estandin
+          SANITY_API_HOST_STAND_IN: http://127.0.0.1:3400
+          SANITY_API_READ_TOKEN: e2e-stand-in-token
+        run: pnpm build
+
+      # Local Supabase is usually still starting at this point, so saving costs little.
+      - name: Save the Next.js build cache
+        if: ${{ !cancelled() && github.event_name == 'push' && steps.build.outcome == 'success' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .next/cache
+          key: next-build-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+
+      # Joins the background start: prints its output and fails if it failed.
       - name: Wait for local Supabase
         id: supabase
         if: ${{ !cancelled() && steps.supabase-start.outcome == 'success' }}
@@ -131,38 +247,43 @@ jobs:
             exit 1
           fi
           supabase status --output json > "$RUNNER_TEMP/supabase-status.json"
-          url="$(jq -er .API_URL "$RUNNER_TEMP/supabase-status.json")"
-          publishable_key="$(jq -er .PUBLISHABLE_KEY "$RUNNER_TEMP/supabase-status.json")"
-          {
-            echo "NEXT_PUBLIC_SUPABASE_URL=$url"
-            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$publishable_key"
-          } >> "$GITHUB_ENV"
 
       - name: Database tests (pgTAP)
         if: ${{ !cancelled() && steps.supabase.outcome == 'success' }}
         run: pnpm test:db
 
-      # Content in the end-to-end tests comes from a local stand-in for Sanity
-      # (e2e/support/sanity-stand-in.mts), not from Sanity: CI has no Sanity project. Next.js reads
-      # NEXT_PUBLIC_SANITY_PROJECT_ID when it builds, so the build gets the same made-up values that
-      # playwright.config.ts gives the server. The stand-in isn't running yet, so the build's own
-      # content reads fail at once and fall back, without calling Sanity.
-      - name: Build
-        id: build
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        env:
-          NEXT_PUBLIC_SANITY_PROJECT_ID: e2estandin
-          SANITY_API_HOST_STAND_IN: http://127.0.0.1:3400
-          SANITY_API_READ_TOKEN: e2e-stand-in-token
-        run: pnpm build
+      # Joins the background browser install: prints its output and fails if it failed.
+      - name: Wait for Playwright's Chromium
+        id: browsers
+        if: ${{ !cancelled() && steps.browsers-start.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          until [ -f "$RUNNER_TEMP/browsers.status" ]; do sleep 2; done
+          cat "$RUNNER_TEMP/browsers.log"
+          status="$(cat "$RUNNER_TEMP/browsers.status")"
+          if [ "$status" != 0 ]; then
+            echo "::error::playwright install failed with exit code $status"
+            exit 1
+          fi
 
       # With CI set, playwright.config.ts serves the production build (`pnpm start`) on port 3000.
+      # The build used the URL and key from .env.example, so first check that the running stack
+      # reports the same ones.
       - name: End-to-end tests
         id: e2e
         if: >-
           ${{ !cancelled() && steps.browsers.outcome == 'success'
           && steps.build.outcome == 'success' && steps.supabase.outcome == 'success' }}
-        run: pnpm test:e2e
+        run: |
+          if ! jq -e --arg url "$NEXT_PUBLIC_SUPABASE_URL" \
+            --arg key "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" \
+            '.API_URL == $url and .PUBLISHABLE_KEY == $key' \
+            "$RUNNER_TEMP/supabase-status.json" > /dev/null; then
+            echo "::error::supabase status reports a different API URL or publishable key than" \
+              ".env.example, which the build used: update .env.example"
+            exit 1
+          fi
+          pnpm test:e2e
 
       - name: Upload Playwright report
         if: ${{ !cancelled() && steps.e2e.outcome == 'failure' }}
@@ -170,4 +291,13 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report/
+          retention-days: 7
+
+      # Runs only when every step passed.
+      - name: Record that this tree passed
+        if: ${{ success() && steps.scope.outputs.run == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: passed-tree-${{ steps.scope.outputs.tree }}
+          path: ${{ runner.temp }}/passed-tree.txt
           retention-days: 7

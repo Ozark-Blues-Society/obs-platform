@@ -560,16 +560,21 @@ into `develop` or `main`, and on every push to `develop`. One job installs depen
 local Supabase, and runs `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:db` (pgTAP),
 `pnpm build` and `pnpm test:e2e` (against the production build). Each check runs even when an
 earlier one fails, and any failure fails the run. A new push to a pull request cancels its older
-run. CI uses no secrets.
+run. A run of content that an earlier run already passed skips the checks (see below). CI uses no
+secrets.
 
-Local Supabase (CLI 3.4.0) starts in the background while lint, typecheck, the unit tests and the
-Playwright browser install run. A fresh stack applies the migrations and `supabase/seed.sql`, so
-the database and end-to-end tests see the fixture data. CI starts only Postgres, the API gateway,
-Auth, the REST API, Storage (for members-only files) and Mailpit. Studio, Realtime, Edge Functions
-and the logging services stay off because no test uses them yet. A change that needs one of them in CI drops it from the
-`--exclude` lists in `ci.yml`. The build and the end-to-end tests get the stack's URL and
-publishable key from `supabase status`, as `NEXT_PUBLIC_SUPABASE_URL` and
-`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. They're the well-known local demo values, not secrets.
+Local Supabase (CLI 3.4.0) starts in the background right after pnpm's setup, and the Playwright
+browser install starts in the background after the install. While they run, the job runs lint,
+typecheck, the unit tests and the build. A fresh stack applies the migrations and
+`supabase/seed.sql`, so the database and end-to-end tests see the fixture data. CI starts only
+Postgres, the API gateway, Auth, the REST API, Storage (for members-only files) and Mailpit.
+Studio, Realtime, Edge Functions and the logging services stay off because no test uses them yet.
+A change that needs one of them in CI drops it from the `--exclude` lists in `ci.yml`. The build
+runs before the stack is up (it doesn't call Supabase), so it takes `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from `.env.example`, and the end-to-end tests first check
+that `supabase status` reports the same values. They're the well-known local demo values, not
+secrets. The job's first step reserves the stack's ports (54320-54329) from Linux's ephemeral
+range, so no outgoing connection can hold one when Docker binds it.
 
 To reproduce a CI run locally:
 
@@ -589,8 +594,21 @@ When the end-to-end tests fail, the run keeps the Playwright HTML report for 7 d
 `pnpm exec playwright show-report`.
 
 CI is a single job because the repository is private on GitHub's free plan: 2,000 Actions minutes
-a month, with each job billed rounded up to the minute. A run takes about two minutes. Local
-Supabase accounts for about one of them, mostly pulling its Docker images.
+a month, with each job billed rounded up to the minute. A team that pushes around the clock uses
+that up in days, and paying for more minutes is a human decision (`docs/HUMAN_GATES.md`, "Money and
+accounts"). So CI keeps runs short:
+
+- Starting local Supabase takes about two minutes, mostly pulling its Docker images, so everything
+  up to the database tests runs while it starts.
+- The build restores the latest `develop` run's Next.js build cache (`.next/cache`, where Turbopack
+  keeps its build cache since Next.js 16.3). Only pushes to `develop` save it.
+- The unit tests run two workers, one per CPU of the runner. The end-to-end tests stay on one: with
+  two, the Sanity Studio test sometimes never drew its screen, even given 15 s.
+- A run that passes every check records the tree it tested as a `passed-tree-<tree>` artifact,
+  kept 7 days. A later run of the same tree skips the checks and succeeds, with a notice that links
+  the run that passed. That's usually the push to `develop` when a pull request merges into a
+  `develop` that hasn't moved since the pull request's last run. A run of a new tree runs every
+  check.
 
 ## Project layout
 
