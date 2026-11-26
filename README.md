@@ -124,22 +124,33 @@ Every fixture member can sign in locally with their address (for example
 
 ## Sign-in (Supabase Auth)
 
-Members sign in at `/sign-in`, with a one-click link sent by email or with a password, and sign
-out from `/account`. `/account` is members-only (a placeholder until M-8 builds My Account).
+Members sign in at `/sign-in`, with a link sent by email or with a password, and sign out from
+`/account`. `/account` is members-only (a placeholder until M-8 builds My Account).
 Sign-in links never create accounts: people become members by joining.
 
 Locally, every email Auth sends lands in Mailpit at <http://127.0.0.1:54324>; nothing leaves the
-machine. Ask for a link for a fixture member (see the table above), open the email in Mailpit and
-follow its link. Or sign in with the fixture password `obs-local-dev`.
+machine. Ask for a link for a fixture member (see the table above), open the email in Mailpit,
+follow its link and press **Finish signing in**. Or sign in with the fixture password
+`obs-local-dev`.
 
 How it fits together:
 
 - **The sign-in email** is `supabase/templates/magic-link.html`, registered in
   `supabase/config.jsonc` (`auth.email.template.magic_link`). Its link goes to
-  `{site_url}/auth/confirm` with a one-time token hash. That route (`app/auth/confirm/route.ts`)
-  verifies it and starts the session, so a link opened on another device still works. After
-  changing the template settings or `auth.site_url`, restart the stack (`supabase stop`, then
-  `supabase start`); the data is kept.
+  `{site_url}/auth/confirm` with a one-time token hash. That page
+  (`app/(site)/auth/confirm/page.tsx`) has a **Finish signing in** button, which sends the token
+  hash to `confirmSignIn()` in `lib/auth/actions.ts`. It verifies the token hash on the server and
+  starts the session, so a link opened on another device still works. After changing the template
+  settings or `auth.site_url`, restart the stack (`supabase stop`, then `supabase start`); the
+  data is kept.
+- **Why the button:** some mail systems open the links in incoming email before the member does,
+  to scan them: link scanners such as Microsoft Defender Safe Links, and some gateways and link
+  previewers. If opening the link verified the token, the scan would use it up, and the member
+  would be told the link had expired or was already used. Scanners load the page but don't press
+  its button, so the link still works for the member. Don't make the page submit the form by
+  itself: scanners that run scripts would then use the link up again. Supabase's
+  [Auth email templates guide](https://supabase.com/docs/guides/auth/auth-email-templates#email-prefetching)
+  describes the problem ("Email prefetching").
 - **Sessions** live in cookies. `proxy.ts` (Next.js 16's name for middleware) refreshes an expired
   session on every request before the page renders, and sends visitors who open `/account` or an
   admin screen (`/admin`) to sign in first.

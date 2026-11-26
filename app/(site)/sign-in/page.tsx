@@ -47,7 +47,7 @@ async function SignInForms({ searchParams }: Pick<PageProps<"/sign-in">, "search
           Email me a sign-in link
         </h2>
         <p className="mt-1 text-muted">
-          No password to remember. We&rsquo;ll email you a link that signs you in with one click.
+          No password to remember. We&rsquo;ll email you a link that signs you in.
         </p>
         <EmailLinkForm action={sendSignInLink} />
       </section>
