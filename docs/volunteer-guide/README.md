@@ -15,7 +15,8 @@ recorded training sessions walk through it.
 | [Sponsors](sponsors.md): sponsors, the featured sponsor and sponsor tiers                             | Editors | Draft  |
 | [People](people.md): authors and the board list                                                       | Editors | Draft  |
 | [Site settings](site-settings.md): footer, social links, membership benefits and menu links           | Editors | Draft  |
+| [Roles](roles.md): giving and removing volunteers' roles on the website | Administrators | Draft |
 
-The editing pages are drafts: the Studio forms they describe are built, and screenshots come once
-the Society's Studio is set up. Still to come: the member list and recording payments, and
-moderating classifieds.
+The pages are drafts: the Studio forms and admin screens they describe are built, and screenshots
+come once the Society's accounts are set up. Still to come: the member list and recording payments,
+and moderating classifieds.

@@ -70,14 +70,25 @@ describe("updateSession", () => {
     expect(location.searchParams.get("next")).toBe("/account/profile?tab=email");
   });
 
-  it("lets signed-in members into My Account", async () => {
+  it("sends visitors who open an admin screen to sign in, and back afterwards", async () => {
+    const response = await updateSession(request("/admin/roles"));
+
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/sign-in");
+    expect(location.searchParams.get("next")).toBe("/admin/roles");
+  });
+
+  it("lets signed-in members into My Account and on to the admin screens' own role check", async () => {
     supabase.claims = { sub: "member-1" };
 
     expect(passesThrough(await updateSession(request("/account")))).toBe(true);
+    expect(passesThrough(await updateSession(request("/admin/roles")))).toBe(true);
   });
 
   it("doesn't mistake look-alike paths for member-only ones", async () => {
     expect(passesThrough(await updateSession(request("/accounts-payable")))).toBe(true);
+    expect(passesThrough(await updateSession(request("/administration")))).toBe(true);
   });
 
   it("hands a refreshed session to the page and back to the browser", async () => {
