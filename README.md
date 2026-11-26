@@ -459,7 +459,7 @@ Supabase accounts for about one of them, mostly pulling its Docker images.
 ```
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
-components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/) and form classes
+components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
 lib/            Server and shared code: Supabase clients, sign-in helpers
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
@@ -482,6 +482,16 @@ cards. With `pnpm dev` running, <http://localhost:3000/dev/components> shows the
 placeholder content (development only: a production build answers 404 there).
 [`docs/design/components.md`](docs/design/components.md) says what each one is for and the rules
 they follow, such as never passing members-only content to a component that blurs it.
+
+## Design Approval package
+
+`/design-preview` holds the home page and the four page templates with sample content (backlog
+D-4), for the Society's Design Approval. Unlike `/dev/components`, it's in production builds, so
+the preview deploy serves it; search engines are asked to skip it. The home page's sections, the
+page blocks and the templates live in `components/home/`, `components/blocks/` and
+`components/templates/`, where P-1 and C-2 fill them from the Studio.
+[`docs/design/approval-package.md`](docs/design/approval-package.md) lists the pages, the open
+questions and how a revision round works. Delete the folder before launch.
 
 ## Design tokens
 

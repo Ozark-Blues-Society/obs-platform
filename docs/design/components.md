@@ -46,6 +46,18 @@ and desktop widths. The gallery exists in development only: a production build a
 | `EventCard` | `event-card.tsx` | An event in a list: date badge, tags (Members only, category, Weekly/Monthly), title linked to the event, venue and time, price and members' price. Leave `venue` out where the viewer may not see it. |
 | `PostCard` | `post-card.tsx` | A post in a list: cover (a `next/image` with `fill`, or a placeholder), tags, date, title and excerpt. `locked` shows the headline and a blurred stand-in sentence, and accepts no excerpt. |
 | `SponsorLogo` | `sponsor-logo.tsx` | A sponsor's logo, or its name in a dashed box until the logo arrives. `placement` is the sponsor tier's logo placement (`large`, `logo`, `name`). |
+| `SponsorSpotlight` | `sponsor-spotlight.tsx` | The featured sponsor (one at a time): a logo panel, the blurb and a Visit button. On the home page and the Sponsors page. |
+| `SectionHeading` | `section-heading.tsx` | A section's heading with an eyebrow above it and an optional "see everything" link at the right ("Full calendar"). |
+| `CardGrid` | `card-grid.tsx` | A list of cards in as many 260px columns as fit (one on a phone). Put each card in an `<li>`. |
+| `PlaceholderPhoto` | `placeholder-photo.tsx` | The concept's drawn stage scene where a photo goes, until the Society's photos arrive. Four tones; give it a `label` where it stands in for a meaningful photo, none where it's decoration. |
+
+## Home page sections, page blocks and templates
+
+D-4 (the Design Approval package) added the home page's sections (`components/home/`), a
+component for each page block (`components/blocks/`) and `PageTemplate`
+(`components/templates/`), which the sample pages at `/design-preview` use.
+[`approval-package.md`](approval-package.md) maps each Sanity block type to its component and
+says how the four templates differ.
 
 ## Tests
 
