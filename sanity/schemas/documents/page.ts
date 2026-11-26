@@ -1,5 +1,5 @@
 import { defineArrayMember, defineField, defineType } from "sanity";
-import { slugField, visibilityField } from "../fields";
+import { memberFilesField, slugField, visibilityField } from "../fields";
 import {
   AUDIENCES,
   MENU_PLACEMENTS,
@@ -66,6 +66,7 @@ export const page = defineType({
         "The page's sections, top to bottom. Add, move or remove blocks: each one keeps the Society's design.",
       validation: (rule) => rule.required().min(1),
     }),
+    memberFilesField("page"),
   ],
   preview: {
     select: { title: "title", template: "template", audience: "visibility.audience" },

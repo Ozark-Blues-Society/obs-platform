@@ -9,6 +9,7 @@ import { sponsor } from "./documents/sponsor";
 import { sponsorTier } from "./documents/sponsor-tier";
 import { venue } from "./documents/venue";
 import { link } from "./objects/link";
+import { memberFile } from "./objects/member-file";
 import { richText } from "./objects/rich-text";
 import { visibility } from "./objects/visibility";
 import { pageBlocks } from "./page-blocks";
@@ -33,6 +34,7 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   ...documentTypes,
   visibility,
   link,
+  memberFile,
   richText,
   ...pageBlocks,
 ];

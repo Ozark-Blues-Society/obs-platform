@@ -1,5 +1,11 @@
 import { defineField, defineType, type PreviewValue } from "sanity";
-import { imageField, slugField, societyDatetimeOptions, visibilityField } from "../fields";
+import {
+  imageField,
+  memberFilesField,
+  slugField,
+  societyDatetimeOptions,
+  visibilityField,
+} from "../fields";
 import { POST_CATEGORIES, SOCIETY_TIME_ZONE, optionList, optionTitle } from "../options";
 import { postPath } from "../../paths";
 
@@ -62,6 +68,7 @@ export const post = defineType({
         "Write the post, or paste it from Word or Google Docs and the formatting comes along. Add photos between paragraphs.",
       validation: (rule) => rule.required(),
     }),
+    memberFilesField("post"),
     visibilityField("post"),
     defineField({
       name: "includeInDigest",

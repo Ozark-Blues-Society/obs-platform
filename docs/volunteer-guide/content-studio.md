@@ -46,6 +46,10 @@ private.
 Photos are the exception: anyone who has a photo's web address can open it, even from a
 members-only post. Don't put anything private in a photo.
 
+Files are the same: never upload a private file to the Studio. Put files only members may download
+on the website's Members-only files screen, then add them to a page, post or event under
+**Members-only files** (see [Members-only files](members-only-files.md)).
+
 ## Photos and alt text
 
 Every photo needs **alt text**: a few words that describe it for people who can't see it, for
