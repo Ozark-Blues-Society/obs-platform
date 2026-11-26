@@ -155,8 +155,8 @@ When the end-to-end tests fail, the run keeps the Playwright HTML report for 7 d
 `pnpm exec playwright show-report`.
 
 CI is a single job because the repository is private on GitHub's free plan: 2,000 Actions minutes
-a month, with each job billed rounded up to the minute. Local Supabase adds about MEASURED_EXTRA to
-a run.
+a month, with each job billed rounded up to the minute. A run takes about two minutes. Local
+Supabase accounts for about one of them, mostly pulling its Docker images.
 
 ## Project layout
 
