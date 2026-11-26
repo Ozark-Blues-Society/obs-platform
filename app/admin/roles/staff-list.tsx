@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { ignorePress } from "@/components/ui/button";
 import { FormError, SuccessBox } from "@/components/ui/form-fields";
 import { removalValue, type RevokeRoleState, type StaffMember } from "@/lib/admin/roles-state";
 import { ROLE_LABELS } from "@/lib/auth/roles";
@@ -24,11 +25,16 @@ export function StaffList({
 
   return (
     <form action={formAction} className="mt-4">
-      {/* Always in the page, so screen readers announce the message when it appears. */}
+      {/* Always in the page, so screen readers announce the message when it appears. Messages
+          are hidden while the form sends again, so a repeated one is announced again. */}
       <div role="status">
-        {state.status === "revoked" && <SuccessBox className="mb-4">{state.message}</SuccessBox>}
+        {!pending && state.status === "revoked" && (
+          <SuccessBox className="mb-4">{state.message}</SuccessBox>
+        )}
       </div>
-      {state.status === "error" && <FormError className="mt-2 mb-4">{state.message}</FormError>}
+      {!pending && state.status === "error" && (
+        <FormError className="mt-2 mb-4">{state.message}</FormError>
+      )}
       <ul className="divide-y divide-line rounded-card border border-line bg-surface">
         {staff.map((person) => {
           const isYou = person.id === currentUserId;
@@ -49,13 +55,16 @@ export function StaffList({
                       type="submit"
                       name="remove"
                       value={removalValue(person.id, role)}
-                      disabled={pending}
+                      // While a removal is sending, presses do nothing, but the button keeps
+                      // focus (as Button's `pending` does).
+                      aria-disabled={pending || undefined}
+                      onClick={pending ? ignorePress : undefined}
                       aria-label={
                         isYou
                           ? `Remove your ${ROLE_LABELS[role]} role`
                           : `Remove the ${ROLE_LABELS[role]} role from ${person.name}`
                       }
-                      className="text-sm font-semibold text-primary-light underline hover:text-primary disabled:cursor-wait"
+                      className="text-sm font-semibold text-primary-light underline hover:text-primary aria-disabled:cursor-wait"
                     >
                       Remove
                     </button>

@@ -27,10 +27,15 @@ describe("FinishSignInForm", () => {
     );
     render(<FinishSignInForm action={action} tokenHash={TOKEN_HASH} next="/account" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Finish signing in" }));
-    const pending = await screen.findByRole("button", { name: "Signing in…" });
-    expect(pending).toBeDisabled();
-    fireEvent.click(pending);
+    const button = screen.getByRole("button", { name: "Finish signing in" });
+    button.focus();
+    fireEvent.click(button);
+    expect(await screen.findByRole("button", { name: "Signing in…" })).toBe(button);
+    // Announced as unavailable, but not disabled: browsers take focus away from a disabled button.
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toBeEnabled();
+    expect(button).toHaveFocus();
+    fireEvent.click(button);
 
     expect(action).toHaveBeenCalledOnce();
     const formData = action.mock.calls[0][0];
@@ -38,5 +43,6 @@ describe("FinishSignInForm", () => {
     expect(formData.get("next")).toBe("/account");
 
     await act(async () => finish());
+    expect(action).toHaveBeenCalledOnce();
   });
 });

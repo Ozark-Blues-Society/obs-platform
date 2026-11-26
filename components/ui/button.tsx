@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ComponentProps } from "react";
+import type { ComponentProps, MouseEvent } from "react";
 import { cx } from "@/lib/cx";
 
 export type ButtonVariant = "primary" | "dark" | "ghost" | "approve" | "reject";
@@ -8,10 +8,12 @@ export type ButtonSize = "md" | "sm";
 type ButtonStyle = { variant?: ButtonVariant; size?: ButtonSize };
 
 // Every variant has a 1.5px border, so all are the same size. A transparent border still shows in
-// forced-colors mode (Windows High Contrast), where background colors don't.
+// forced-colors mode (Windows High Contrast), where background colors don't. A pending button
+// (aria-disabled) looks like a disabled one.
 const BASE =
   "inline-flex items-center justify-center gap-2 rounded-full border-[1.5px] font-semibold " +
-  "no-underline transition disabled:cursor-not-allowed disabled:opacity-60";
+  "no-underline transition disabled:cursor-not-allowed disabled:opacity-60 " +
+  "aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   /** Brass: the main call to action. On a brass background, use `dark`. */
@@ -36,13 +38,44 @@ export function buttonClasses({ variant = "primary", size = "md" }: ButtonStyle 
   return cx(BASE, VARIANTS[variant], SIZES[size]);
 }
 
-type ButtonProps = ButtonStyle & ComponentProps<"button">;
+type ButtonProps = ButtonStyle &
+  ComponentProps<"button"> & {
+    /**
+     * Its form is sending (`pending` from useActionState, useTransition or useFormStatus, so in
+     * client components only). The button is announced as unavailable (aria-disabled) and ignores
+     * presses, so the form isn't sent twice, but it keeps focus. A disabled button would lose it:
+     * the browser moves focus to the page, and screen reader users lose their place.
+     */
+    pending?: boolean;
+  };
 
 /** A button. It's `type="button"` unless you say otherwise, so it never submits a form by accident. */
-export function Button({ variant, size, className, type = "button", ...props }: ButtonProps) {
+export function Button({
+  variant,
+  size,
+  className,
+  type = "button",
+  pending,
+  onClick,
+  ...props
+}: ButtonProps) {
   return (
-    <button type={type} className={cx(buttonClasses({ variant, size }), className)} {...props} />
+    <button
+      type={type}
+      aria-disabled={pending || undefined}
+      onClick={pending ? ignorePress : onClick}
+      className={cx(buttonClasses({ variant, size }), className)}
+      {...props}
+    />
   );
+}
+
+/**
+ * Cancels a press, which stops a submit button from sending its form. Enter in a text box sends a
+ * form by pressing its first submit button, so this covers that too.
+ */
+export function ignorePress(event: MouseEvent<HTMLElement>) {
+  event.preventDefault();
 }
 
 type ButtonLinkProps = ButtonStyle & ComponentProps<typeof Link>;

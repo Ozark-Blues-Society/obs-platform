@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ROLE_MESSAGES, type RevokeRoleState, type StaffMember } from "@/lib/admin/roles-state";
 import { StaffList } from "./staff-list";
@@ -69,5 +69,53 @@ describe("StaffList", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(ROLE_MESSAGES.lastAdmin);
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("reads out the same refusal again when the next press is refused the same way", async () => {
+    const action = answering({ status: "error", message: ROLE_MESSAGES.lastAdmin });
+    render(<StaffList staff={STAFF} currentUserId={AVERY} action={action} />);
+    const remove = screen.getByRole("button", { name: "Remove your Administrator role" });
+
+    fireEvent.click(remove);
+    const first = await screen.findByRole("alert");
+    fireEvent.click(remove);
+
+    // A new alert, which screen readers read out. The same one, unchanged, is read out by nobody.
+    await waitFor(() => expect(screen.getByRole("alert")).not.toBe(first));
+    expect(screen.getByRole("alert")).toHaveTextContent(ROLE_MESSAGES.lastAdmin);
+    expect(action).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the pressed button focused while removing, and ignores more presses", async () => {
+    let answer: (state: RevokeRoleState) => void = () => {};
+    const action = vi.fn<(state: RevokeRoleState, formData: FormData) => Promise<RevokeRoleState>>(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+    );
+    render(<StaffList staff={STAFF} currentUserId={AVERY} action={action} />);
+    const editor = screen.getByRole("button", { name: "Remove the Editor role from Dale Ramsey" });
+    const moderator = screen.getByRole("button", {
+      name: "Remove the Moderator role from Dale Ramsey",
+    });
+
+    editor.focus();
+    fireEvent.click(editor);
+    // Announced as unavailable, but not disabled: browsers take focus away from a disabled button.
+    await waitFor(() => expect(editor).toHaveAttribute("aria-disabled", "true"));
+    expect(moderator).toHaveAttribute("aria-disabled", "true");
+    expect(editor).toBeEnabled();
+    expect(editor).toHaveFocus();
+    fireEvent.click(editor);
+    fireEvent.click(moderator);
+
+    await act(async () =>
+      answer({ status: "revoked", message: "Dale Ramsey no longer has the Editor role." }),
+    );
+    expect(await screen.findByText("Dale Ramsey no longer has the Editor role.")).toBeVisible();
+    expect(action).toHaveBeenCalledOnce();
+    expect(editor).not.toHaveAttribute("aria-disabled");
+    expect(editor).toHaveFocus();
   });
 });

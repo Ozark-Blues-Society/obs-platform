@@ -116,11 +116,22 @@ test.describe("an administrator", () => {
 test("the last administrator can't be removed", async ({ page }) => {
   await signInTo(page, "/admin/roles", ADMIN.email);
 
-  await page.getByRole("button", { name: "Remove your Administrator role" }).click();
+  const remove = page.getByRole("button", { name: "Remove your Administrator role" });
+  await remove.click();
 
   const people = page.getByRole("region", { name: "People with roles" });
-  await expect(people.getByRole("alert")).toHaveText(
-    "You can't remove the last administrator. Give someone else the Administrator role first.",
-  );
+  const refusal = people.getByRole("alert");
+  const message =
+    "You can't remove the last administrator. Give someone else the Administrator role first.";
+  await expect(refusal).toHaveText(message);
   await expect(staffEntry(page, ADMIN.name)).toContainText("Administrator");
+
+  // Focus stays on the button (a disabled one would lose it while the form sends). Pressing it
+  // again shows the refusal in a new alert, which screen readers read out again.
+  await expect(remove).toBeFocused();
+  await refusal.evaluate((node) => node.setAttribute("data-first-try", ""));
+  await page.keyboard.press("Enter");
+  await expect(people.locator("[data-first-try]")).toHaveCount(0);
+  await expect(refusal).toHaveText(message);
+  await expect(remove).toBeFocused();
 });

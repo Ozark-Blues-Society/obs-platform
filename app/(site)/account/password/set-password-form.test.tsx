@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PASSWORD_MESSAGES, type SetPasswordState } from "@/lib/auth/password-state";
 import { SetPasswordForm } from "./set-password-form";
@@ -87,5 +87,51 @@ describe("SetPasswordForm", () => {
     expect(await screen.findByText("Your new password is saved.")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("sign in with your email address");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("reads out the same problem again when the next try fails the same way", async () => {
+    const action = answering({
+      status: "error",
+      field: "confirm",
+      message: PASSWORD_MESSAGES.mismatch,
+    });
+    render(<SetPasswordForm action={action} email={EMAIL} />);
+
+    submit("delta blues forever", "delta blues for ever");
+    const first = await screen.findByRole("alert");
+    submit("delta blues forever", "delta blues for ever");
+
+    // A new alert, which screen readers read out. The same one, unchanged, is read out by nobody.
+    await waitFor(() => expect(screen.getByRole("alert")).not.toBe(first));
+    expect(screen.getByRole("alert")).toHaveTextContent(PASSWORD_MESSAGES.mismatch);
+    expect(action).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the button focused while saving, and ignores another press", async () => {
+    let answer: (state: SetPasswordState) => void = () => {};
+    const action = vi.fn<
+      (state: SetPasswordState, formData: FormData) => Promise<SetPasswordState>
+    >(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+    );
+    render(<SetPasswordForm action={action} email={EMAIL} />);
+    const button = screen.getByRole("button", { name: "Save password" });
+
+    button.focus();
+    submit("delta blues forever", "delta blues forever");
+    expect(await screen.findByRole("button", { name: "Saving…" })).toBe(button);
+    // Announced as unavailable, but not disabled: browsers take focus away from a disabled button.
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toBeEnabled();
+    expect(button).toHaveFocus();
+    fireEvent.click(button);
+
+    await act(async () => answer({ status: "saved" }));
+    expect(await screen.findByText("Your new password is saved.")).toBeInTheDocument();
+    expect(action).toHaveBeenCalledOnce();
+    expect(button).toHaveFocus();
   });
 });

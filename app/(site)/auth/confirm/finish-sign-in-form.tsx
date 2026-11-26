@@ -34,10 +34,10 @@ export function FinishSignInForm({ action, tokenHash, next }: FinishSignInFormPr
 }
 
 function SubmitButton() {
-  // Disabled while signing in: a second press would find the link already used.
+  // Ignores presses while signing in: a second press would find the link already used.
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant="dark" disabled={pending} className="mt-4 w-full">
+    <Button type="submit" variant="dark" pending={pending} className="mt-4 w-full">
       {pending ? "Signing in…" : "Finish signing in"}
     </Button>
   );

@@ -187,6 +187,44 @@ test.describe("password sign-in", () => {
     await expect(form.getByLabel("Email address")).toHaveValue(email);
   });
 
+  test("a second wrong password is read out again, and the button keeps focus meanwhile", async ({
+    page,
+  }, testInfo) => {
+    const email = member("password", testInfo);
+    await page.goto("/sign-in");
+    const form = passwordForm(page);
+    const button = form.getByRole("button");
+    await signInWithPassword(page, email, "not-the-password");
+    const alert = form.getByRole("alert");
+    await expect(alert).toContainText("don't match");
+    // A disabled button would have lost focus while the form was sending.
+    await expect(button).toBeFocused();
+    await alert.evaluate((node) => node.setAttribute("data-first-try", ""));
+
+    // Hold the next try's request, to see the form while it's sending.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/sign-in", async (route) => {
+      if (route.request().method() === "POST") await held;
+      await route.continue();
+    });
+    await form.getByLabel("Password").fill("not-the-password");
+    await button.click();
+    await expect(button).toHaveText("Signing in…");
+    await expect(button).toHaveAttribute("aria-disabled", "true");
+    await expect(button).toBeFocused();
+    await expect(alert).toHaveCount(0);
+    release();
+
+    // The same message, in a new alert, which screen readers read out again.
+    await expect(alert).toContainText("don't match");
+    await expect(form.locator("[data-first-try]")).toHaveCount(0);
+    await expect(button).toHaveText("Sign in");
+    await expect(button).toBeFocused();
+  });
+
   test("the sign-in page fits a phone screen without scrolling sideways", async ({ page }) => {
     await page.goto("/sign-in");
     await expect(passwordForm(page)).toBeVisible();
