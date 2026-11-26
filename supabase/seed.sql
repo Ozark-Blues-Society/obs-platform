@@ -73,3 +73,67 @@ select
   jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true),
   'email', now(), now()
 from new_user u;
+
+-- Membership details. The sign-up trigger (supabase/migrations/) created each member's profile
+-- above, with their address and names; joined_at is the given number of years before expires_at.
+update public.profiles p
+set
+  phone = f.phone,
+  level = f.level::public.membership_level,
+  status = f.status::public.membership_status,
+  expires_at = now() + make_interval(days => f.expires_in_days),
+  joined_at = now() + make_interval(days => f.expires_in_days) - make_interval(years => f.years),
+  auto_renew = f.auto_renew,
+  notes = f.notes
+from (
+  values
+    ('00000000-0000-4000-8100-000000000001'::uuid, '(479) 555-0101', 'individual', 'active', 280, 6, true, null),
+    ('00000000-0000-4000-8100-000000000002'::uuid, '(479) 555-0102', 'individual', 'active', 145, 4, false, null),
+    ('00000000-0000-4000-8100-000000000003'::uuid, '(479) 555-0103', 'individual', 'active', 200, 3, false, null),
+    ('00000000-0000-4000-8100-000000000004'::uuid, '(479) 555-0104', 'individual', 'active', 364, 1, false, null),
+    ('00000000-0000-4000-8100-000000000005'::uuid, null, 'individual', 'active', 31, 2, false, null),
+    ('00000000-0000-4000-8100-000000000006'::uuid, '(479) 555-0106', 'individual', 'active', 90, 5, true, null),
+    ('00000000-0000-4000-8100-000000000007'::uuid, '(479) 555-0107', 'individual', 'active', 120, 2, false, null),
+    ('00000000-0000-4000-8100-000000000008'::uuid, '(479) 555-0108', 'individual', 'active', 240, 8, false, 'Paid by check at the door.'),
+    ('00000000-0000-4000-8100-000000000009'::uuid, '(479) 555-0109', 'individual', 'active', 60, 1, false, null),
+    ('00000000-0000-4000-8100-000000000010'::uuid, null, 'individual', 'active', 175, 3, false, null),
+    ('00000000-0000-4000-8100-000000000011'::uuid, '(479) 555-0111', 'individual', 'expiring', 30, 4, false, null),
+    ('00000000-0000-4000-8100-000000000012'::uuid, '(479) 555-0112', 'individual', 'expiring', 7, 2, false, null),
+    ('00000000-0000-4000-8100-000000000013'::uuid, '(479) 555-0113', 'individual', 'expiring', 14, 9, true, null),
+    ('00000000-0000-4000-8100-000000000014'::uuid, '(479) 555-0114', 'individual', 'lapsed', -14, 1, false, null),
+    ('00000000-0000-4000-8100-000000000015'::uuid, null, 'individual', 'lapsed', -45, 3, false, null),
+    ('00000000-0000-4000-8100-000000000016'::uuid, '(479) 555-0116', 'individual', 'lapsed', -400, 2, false, null),
+    ('00000000-0000-4000-8100-000000000017'::uuid, '(479) 555-0117', 'band', 'active', 150, 4, false, null),
+    ('00000000-0000-4000-8100-000000000018'::uuid, '(479) 555-0118', 'band', 'active', 220, 7, true, 'Books "Night Owls", a trio.'),
+    ('00000000-0000-4000-8100-000000000019'::uuid, '(479) 555-0119', 'band', 'active', 75, 2, false, null),
+    ('00000000-0000-4000-8100-000000000020'::uuid, null, 'band', 'active', 310, 5, false, null),
+    ('00000000-0000-4000-8100-000000000021'::uuid, '(479) 555-0121', 'band', 'active', 45, 3, false, null),
+    ('00000000-0000-4000-8100-000000000022'::uuid, '(479) 555-0122', 'band', 'active', 330, 1, false, null),
+    ('00000000-0000-4000-8100-000000000023'::uuid, '(479) 555-0123', 'band', 'expiring', 21, 6, false, null),
+    ('00000000-0000-4000-8100-000000000024'::uuid, '(479) 555-0124', 'band', 'expiring', 3, 2, false, null),
+    ('00000000-0000-4000-8100-000000000025'::uuid, null, 'band', 'lapsed', -1, 4, false, null),
+    ('00000000-0000-4000-8100-000000000026'::uuid, '(479) 555-0126', 'band', 'lapsed', -120, 2, false, null),
+    ('00000000-0000-4000-8100-000000000027'::uuid, '(479) 555-0127', 'business', 'active', 190, 5, true, null),
+    ('00000000-0000-4000-8100-000000000028'::uuid, '(479) 555-0128', 'business', 'active', 100, 3, false, null),
+    ('00000000-0000-4000-8100-000000000029'::uuid, '(479) 555-0129', 'business', 'active', 255, 2, false, null),
+    ('00000000-0000-4000-8100-000000000030'::uuid, null, 'business', 'active', 40, 6, false, null),
+    ('00000000-0000-4000-8100-000000000031'::uuid, '(479) 555-0131', 'business', 'active', 350, 1, false, null),
+    ('00000000-0000-4000-8100-000000000032'::uuid, '(479) 555-0132', 'business', 'expiring', 29, 4, false, null),
+    ('00000000-0000-4000-8100-000000000033'::uuid, '(479) 555-0133', 'business', 'expiring', 7, 3, true, null),
+    ('00000000-0000-4000-8100-000000000034'::uuid, '(479) 555-0134', 'business', 'lapsed', -15, 5, false, null),
+    ('00000000-0000-4000-8100-000000000035'::uuid, null, 'sponsor', 'active', 270, 8, true, null),
+    ('00000000-0000-4000-8100-000000000036'::uuid, '(479) 555-0136', 'sponsor', 'active', 160, 3, false, null),
+    ('00000000-0000-4000-8100-000000000037'::uuid, '(479) 555-0137', 'sponsor', 'active', 85, 2, true, null),
+    ('00000000-0000-4000-8100-000000000038'::uuid, '(479) 555-0138', 'sponsor', 'active', 300, 4, false, null),
+    ('00000000-0000-4000-8100-000000000039'::uuid, '(479) 555-0139', 'sponsor', 'expiring', 1, 5, false, null),
+    ('00000000-0000-4000-8100-000000000040'::uuid, null, 'sponsor', 'lapsed', -200, 3, false, null)
+) as f (id, phone, level, status, expires_in_days, years, auto_renew, notes)
+where p.id = f.id;
+
+-- Staff roles.
+insert into public.user_roles (profile_id, role)
+values
+  ('00000000-0000-4000-8100-000000000001'::uuid, 'admin'),
+  ('00000000-0000-4000-8100-000000000002'::uuid, 'membership_manager'),
+  ('00000000-0000-4000-8100-000000000003'::uuid, 'editor'),
+  ('00000000-0000-4000-8100-000000000017'::uuid, 'moderator');

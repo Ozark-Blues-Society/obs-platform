@@ -1,7 +1,8 @@
 -- The seed (supabase/seed.sql, generated from scripts/fixtures/) loads the fixture members as
--- working sign-ins. `supabase db reset` applies the seed. Fixture ids start 00000000-0000-4000-8100-.
+-- working sign-ins, with their profiles and staff roles. `supabase db reset` applies the seed.
+-- Fixture ids start 00000000-0000-4000-8100-.
 begin;
-select plan(4);
+select plan(8);
 
 select is(
   (select count(*)::int from auth.users where id::text like '00000000-0000-4000-8100-%'),
@@ -35,6 +36,56 @@ select ok(
     where id::text like '00000000-0000-4000-8100-%'
   ),
   'every fixture member signs in with the documented local password'
+);
+
+select is(
+  (select count(*)::int from public.profiles where id::text like '00000000-0000-4000-8100-%'),
+  40,
+  'every fixture member has a profile'
+);
+
+select ok(
+  (
+    select bool_and(
+      p.email = u.email
+      and p.first_name is not null
+      and p.level is not null
+      and p.status is not null
+      and p.joined_at < p.expires_at
+    )
+    from public.profiles p
+    join auth.users u on u.id = p.id
+    where p.id::text like '00000000-0000-4000-8100-%'
+  ),
+  'every fixture profile has the member''s address, name and membership dates'
+);
+
+select is(
+  (
+    select count(distinct (level, status))::int
+    from public.profiles
+    where id::text like '00000000-0000-4000-8100-%'
+  ),
+  12,
+  'the fixture profiles cover every level and status'
+);
+
+select results_eq(
+  $$
+    select p.email, r.role::text
+    from public.user_roles r
+    join public.profiles p on p.id = r.profile_id
+    where p.id::text like '00000000-0000-4000-8100-%'
+    order by r.role
+  $$,
+  $$
+    values
+      ('avery.collins@example.com', 'admin'),
+      ('jordan.ellis@example.com', 'membership_manager'),
+      ('dale.ramsey@example.com', 'moderator'),
+      ('morgan.hale@example.com', 'editor')
+  $$,
+  'each staff role belongs to the fixture member the README names'
 );
 
 select * from finish();

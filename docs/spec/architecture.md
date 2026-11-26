@@ -48,9 +48,8 @@ docs/                 specs, decisions, volunteer guide
 ## People and money (Supabase)
 
 ```
-profiles      id (auth.users), first, last, email, phone, level, status (active|expiring|lapsed),
-              expires_at, auto_renew, stripe_customer_id, household_id, joined_at, notes
-households    id, primary_profile_id                          -- family plans, up to 4 logins
+profiles      id (auth.users), first_name, last_name, email, phone, level, status (active|expiring|lapsed),
+              expires_at, auto_renew, stripe_customer_id, joined_at, notes
 payments      id, profile_id, kind (stripe|check|cash|import), amount, paid_at, stripe_ref, recorded_by
 user_roles    profile_id, role (admin|membership_manager|moderator|editor)
 listings      id, profile_id, category, title, body, price, photo_path, contact_pref,
@@ -61,7 +60,10 @@ stripe_events id, type, received_at                           -- webhook idempot
 
 RLS: a member reads/updates only their own profile (never their own level/status/expires_at). Live
 listings are public; owners manage their own; moderators update status. Admin views check user_roles.
-Every policy gets a test.
+Every policy gets a test. Functions that policies and triggers call live in the `private` schema,
+which the Data API doesn't expose.
+
+No households: the board created no family memberships (`board-decisions.md` §2).
 
 ## Stripe → Supabase (webhook, signature-verified, idempotent)
 
