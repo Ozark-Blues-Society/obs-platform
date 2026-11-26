@@ -1,0 +1,13 @@
+# Generated files
+pnpm-lock.yaml
+next-env.d.ts
+AGENTS.md
+
+# Human-authored specs and the handbook keep their own formatting
+docs/
+CLAUDE.md
+
+# Local agent and issue-tracker state
+.beads/
+.claude/
+.gc/

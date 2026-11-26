@@ -69,7 +69,9 @@ one-line reason, and what it blocks. Parker answers from his phone.
 ## Commands
 
 - `pnpm dev` · `pnpm build` · `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm test:e2e`
+- `pnpm format` / `pnpm format:check` (Prettier) · first e2e run: `pnpm exec playwright install chromium`
 - `supabase start` / `supabase stop` · `supabase db reset` (re-applies migrations + seed)
 - `stripe listen --forward-to localhost:3000/api/stripe/webhook` (test mode)
 
-(The app is scaffolded by backlog item F-1; update this list if a command changes.)
+(Scaffolded by F-1; update this list if a command changes. Next.js 16 differs from older versions:
+read `AGENTS.md` and the docs bundled in `node_modules/next/dist/docs/` before writing Next.js code.)
