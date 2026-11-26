@@ -33,32 +33,6 @@ Then open <http://localhost:3000>.
 No environment variables are needed yet. Typed environment config and `.env.example` arrive with
 backlog item F-4. Never commit secrets.
 
-## Scripts
-
-| Command                  | What it does                                                       |
-| ------------------------ | ------------------------------------------------------------------ |
-| `pnpm dev`               | Start the development server on port 3000                          |
-| `pnpm build`             | Production build                                                   |
-| `pnpm start`             | Serve the production build                                         |
-| `pnpm lint`              | ESLint (Next.js core-web-vitals and TypeScript rules)              |
-| `pnpm typecheck`         | Generate Next.js route types, then `tsc --noEmit` (strict mode)    |
-| `pnpm test`              | Unit tests with Vitest, once                                       |
-| `pnpm test:watch`        | Unit tests in watch mode                                           |
-| `pnpm test:e2e`          | Playwright end-to-end tests (desktop and 390px phone, in Chromium) |
-| `pnpm test:db`           | Database tests (pgTAP) against the local Supabase stack            |
-| `pnpm fixtures:generate` | Regenerate `supabase/seed.sql` from `scripts/fixtures/`            |
-| `pnpm format`            | Format the code with Prettier                                      |
-| `pnpm format:check`      | Check formatting without writing changes                           |
-
-## Tests
-
-- **Unit tests** (Vitest + Testing Library, jsdom) live next to the code as `*.test.ts` or
-  `*.test.tsx`. Vitest can't render `async` Server Components; cover those with end-to-end tests.
-- **End-to-end tests** (Playwright) live in `e2e/`. Every test runs at desktop size and at phone
-  width (390px). Locally, Playwright starts `pnpm dev`, or reuses a dev server already running on
-  port 3000. With `CI=1` it serves the production build instead, so run `pnpm build` first. Set
-  `E2E_PORT` to use another port.
-
 ## Local Supabase
 
 Auth, Postgres and file storage run locally in Docker through the Supabase CLI. Development only
@@ -119,15 +93,41 @@ adds them:
 | Editor             | `morgan.hale@example.com`   |
 | Moderator          | `dale.ramsey@example.com`   |
 
+## Scripts
+
+| Command                  | What it does                                                       |
+| ------------------------ | ------------------------------------------------------------------ |
+| `pnpm dev`               | Start the development server on port 3000                          |
+| `pnpm build`             | Production build                                                   |
+| `pnpm start`             | Serve the production build                                         |
+| `pnpm lint`              | ESLint (Next.js core-web-vitals and TypeScript rules)              |
+| `pnpm typecheck`         | Generate Next.js route types, then `tsc --noEmit` (strict mode)    |
+| `pnpm test`              | Unit tests with Vitest, once                                       |
+| `pnpm test:watch`        | Unit tests in watch mode                                           |
+| `pnpm test:e2e`          | Playwright end-to-end tests (desktop and 390px phone, in Chromium) |
+| `pnpm test:db`           | Database tests (pgTAP) against the local Supabase stack            |
+| `pnpm fixtures:generate` | Regenerate `supabase/seed.sql` from `scripts/fixtures/`            |
+| `pnpm format`            | Format the code with Prettier                                      |
+| `pnpm format:check`      | Check formatting without writing changes                           |
+
+## Tests
+
+- **Unit tests** (Vitest + Testing Library, jsdom) live next to the code as `*.test.ts` or
+  `*.test.tsx`. Vitest can't render `async` Server Components; cover those with end-to-end tests.
+- **End-to-end tests** (Playwright) live in `e2e/`. Every test runs at desktop size and at phone
+  width (390px). Locally, Playwright starts `pnpm dev`, or reuses a dev server already running on
+  port 3000. With `CI=1` it serves the production build instead, so run `pnpm build` first. Set
+  `E2E_PORT` to use another port.
+
 ## Project layout
 
 ```
-app/                Next.js App Router: pages, layouts, route handlers
-e2e/                Playwright end-to-end tests
-scripts/fixtures/   Synthetic members, listings and events; generates the seed
-supabase/           Local Supabase config, migrations, seed and pgTAP tests
-docs/               Specs, decisions, design concept, backlog
-tools/              Helper scripts for the agent team
+app/            Next.js App Router: pages, layouts, route handlers
+e2e/            Playwright end-to-end tests
+scripts/        Synthetic fixtures (scripts/fixtures/) and the seed generator
+supabase/       Local Supabase config, migrations, seed and pgTAP tests
+docs/           Specs, decisions, design concept, backlog
+tools/          Helper scripts for the agent team
 ```
 
 Later backlog items add the rest of the target layout in
