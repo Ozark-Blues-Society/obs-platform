@@ -17,6 +17,7 @@ recorded training sessions walk through it.
 | [Site settings](site-settings.md): footer, social links, membership benefits and menu links           | Editors | Draft  |
 | [Roles](roles.md): giving and removing volunteers' roles on the website | Administrators | Draft |
 | [Members-only files](members-only-files.md): uploading files only members can download, and adding them to pages | Editors | Draft |
+| [Membership statuses and automatic emails](membership-emails.md): what each status means, and the renewal emails members get | Membership manager, administrators | Draft |
 
 The pages are drafts: the Studio forms and admin screens they describe are built, and screenshots
 come once the Society's accounts are set up. Still to come: the member list and recording payments,
