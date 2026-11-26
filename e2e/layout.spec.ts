@@ -101,6 +101,19 @@ test("on a phone, the Menu button opens the menu and Escape closes it", async ({
   await expect(menu).toBeVisible();
   await menuButton.click();
   await expect(menu).toBeHidden();
+
+  // Leaving by a link that isn't in the menu (Sign in) closes it, and coming back doesn't reopen it.
+  await menuButton.click();
+  await header.getByRole("link", { name: "Sign in" }).click();
+  const signInForm = page.getByRole("region", { name: "Sign in with a password" });
+  await expect(signInForm).toBeVisible();
+  await expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  await page.goBack();
+  // The URL changes before the page does: wait until the sign-in page is hidden again.
+  await expect(signInForm).toBeHidden();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  await expect(menu).toBeHidden();
 });
 
 test("a signed-in member sees My Account instead of Sign in and Join", async ({

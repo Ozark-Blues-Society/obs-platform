@@ -16,7 +16,10 @@ function renderNav(pathname: string | null = "/") {
   const view = render(<HeaderNavView items={ITEMS} account={ACCOUNT} pathname={pathname} />);
   const menuButton = screen.getByRole("button", { name: "Menu" });
   const panel = () => document.getElementById(menuButton.getAttribute("aria-controls")!)!;
-  return { ...view, menuButton, panel };
+  // The visitor moves to another page (the header stays, with a new path from usePathname).
+  const goTo = (path: string) =>
+    view.rerender(<HeaderNavView items={ITEMS} account={ACCOUNT} pathname={path} />);
+  return { ...view, menuButton, panel, goTo };
 }
 
 describe("the phone menu", () => {
@@ -51,8 +54,22 @@ describe("the phone menu", () => {
     expect(menuButton).toHaveFocus();
   });
 
+  it("closes on Escape from a field on the page, leaving focus in the field", () => {
+    const { menuButton, panel } = renderNav();
+    render(<input aria-label="Email address" />);
+    const field = screen.getByRole("textbox", { name: "Email address" });
+    fireEvent.click(menuButton);
+    field.focus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    expect(panel()).not.toBeVisible();
+    expect(field).toHaveFocus();
+  });
+
   it("closes when a link in it is chosen, or the page changes", () => {
-    const { menuButton, panel, rerender } = renderNav();
+    const { menuButton, panel, goTo } = renderNav();
     // jsdom can't follow the link itself.
     const stayHere = (event: Event) => event.preventDefault();
     document.addEventListener("click", stayHere);
@@ -62,8 +79,21 @@ describe("the phone menu", () => {
     expect(menuButton).toHaveAttribute("aria-expanded", "false");
 
     fireEvent.click(menuButton);
-    rerender(<HeaderNavView items={ITEMS} account={ACCOUNT} pathname="/blog" />);
+    goTo("/blog");
     expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("stays closed when the visitor comes back to the page it was opened on", () => {
+    const { menuButton, panel, goTo } = renderNav("/");
+    fireEvent.click(menuButton);
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+
+    // A link outside the menu, such as Sign in, leaves the page; Back or the logo returns to it.
+    goTo("/sign-in");
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    goTo("/");
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    expect(panel()).not.toBeVisible();
   });
 
   it("toggles closed from its button", () => {
@@ -119,6 +149,21 @@ describe("the bar's menu", () => {
 
     fireEvent.focusOut(about, { relatedTarget: within(list).getByRole("link", { name: "Board" }) });
     expect(about).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("keeps a group closed when the visitor comes back to the page it was opened on", () => {
+    const { goTo } = renderNav("/");
+    const about = within(barMenu()).getByRole("button", { name: "About" });
+    const list = document.getElementById(about.getAttribute("aria-controls")!)!;
+    fireEvent.click(about);
+    expect(about).toHaveAttribute("aria-expanded", "true");
+
+    // Back with the group open, then Forward.
+    goTo("/sign-in");
+    expect(about).toHaveAttribute("aria-expanded", "false");
+    goTo("/");
+    expect(about).toHaveAttribute("aria-expanded", "false");
+    expect(list).not.toBeVisible();
   });
 
   it("marks the current page for screen readers", () => {

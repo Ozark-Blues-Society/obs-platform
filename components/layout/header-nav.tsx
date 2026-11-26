@@ -19,8 +19,10 @@ export function HeaderNav(props: HeaderNavProps) {
 /**
  * The header's menu and account links. From the `lg` breakpoint up, the menu sits in the bar and a
  * group opens as a dropdown. Below it, a Menu button opens the whole menu under the bar, and below
- * `sm` the account links move into it too. Escape closes what's open and returns focus to the
- * button that opened it. `pathname` is null while the route's path isn't known (site-header.tsx).
+ * `sm` the account links move into it too. Escape closes what's open and, if focus was in it,
+ * returns focus to the button that opened it. Moving to another page closes it, and it stays closed
+ * when the visitor comes back. `pathname` is null while the route's path isn't known
+ * (site-header.tsx).
  */
 export function HeaderNavView({
   items,
@@ -29,17 +31,23 @@ export function HeaderNavView({
 }: HeaderNavProps & { pathname: string | null }) {
   const menuId = useId();
   const menuButton = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   // The page the menu was opened on, so that moving to another page closes it.
   const [menuOpenOn, setMenuOpenOn] = useState<string | null>(null);
   const page = pathname ?? "";
+  // Once the page has changed, forget it, or coming back to it (Back, the logo) would show the menu
+  // open again. Setting state while rendering is React's way to adjust state when a prop changes.
+  if (menuOpenOn !== null && menuOpenOn !== page) setMenuOpenOn(null);
   const menuOpen = menuOpenOn === page;
 
   useEffect(() => {
     if (!menuOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      // Focus goes back to the button only from inside the menu, not from a field on the page.
+      const focusWasInMenu = panel.current?.contains(document.activeElement) ?? false;
       setMenuOpenOn(null);
-      menuButton.current?.focus();
+      if (focusWasInMenu) menuButton.current?.focus();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -66,6 +74,7 @@ export function HeaderNavView({
         <span className="max-[359px]:sr-only">Menu</span>
       </button>
       <div
+        ref={panel}
         id={menuId}
         hidden={!menuOpen}
         className="basis-full border-t border-white/15 pt-2 pb-5 lg:hidden"
@@ -87,6 +96,8 @@ const linkTone = (on: boolean) =>
 function DesktopMenu({ items, pathname }: { items: NavItem[]; pathname: string | null }) {
   // The open group, with the page it was opened on (moving to another page closes it).
   const [open, setOpen] = useState<{ label: string; on: string | null } | null>(null);
+  // As in HeaderNavView: forget it once the page has changed, so it doesn't reopen on coming back.
+  if (open !== null && open.on !== pathname) setOpen(null);
 
   return (
     <ul className="flex flex-wrap items-center justify-end gap-0.5">
