@@ -14,7 +14,7 @@ const live = vi.hoisted(() => ({
 }));
 vi.mock("next-sanity/live", () => live);
 
-const { getDynamicFetchOptions } = await import("./live");
+const { getDynamicFetchOptions, readStandInHost } = await import("./live");
 
 describe("getDynamicFetchOptions", () => {
   beforeEach(() => {
@@ -53,5 +53,24 @@ describe("getDynamicFetchOptions", () => {
       perspective: "published",
       stega: true,
     });
+  });
+});
+
+describe("readStandInHost", () => {
+  it("accepts only a loopback address, so the read token can't be sent elsewhere", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(readStandInHost(undefined)).toBeUndefined();
+    expect(readStandInHost(" ")).toBeUndefined();
+    expect(readStandInHost("http://127.0.0.1:3400")).toBe("http://127.0.0.1:3400");
+    expect(readStandInHost(" http://localhost:3587 ")).toBe("http://localhost:3587");
+    for (const host of [
+      "https://api.sanity.io",
+      "http://127.0.0.1.evil.example:3400",
+      "http://127.0.0.1:3400/path",
+      "http://10.0.0.5:3400",
+      "http://127.0.0.1",
+    ]) {
+      expect(readStandInHost(host), host).toBeUndefined();
+    }
   });
 });

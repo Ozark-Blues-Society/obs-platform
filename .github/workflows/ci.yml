@@ -202,11 +202,20 @@ jobs:
           key: next-build-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: next-build-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
 
+      # Content in the end-to-end tests comes from a local stand-in for Sanity
+      # (e2e/support/sanity-stand-in.mts), not from Sanity: CI has no Sanity project. Next.js reads
+      # NEXT_PUBLIC_SANITY_PROJECT_ID when it builds, so the build gets the same made-up values that
+      # playwright.config.ts gives the server. The stand-in isn't running yet, so the build's own
+      # content reads fail at once and fall back, without calling Sanity.
       - name: Build
         id: build
         if: >-
           ${{ !cancelled() && steps.install.outcome == 'success'
           && steps.supabase-env.outcome == 'success' }}
+        env:
+          NEXT_PUBLIC_SANITY_PROJECT_ID: e2estandin
+          SANITY_API_HOST_STAND_IN: http://127.0.0.1:3400
+          SANITY_API_READ_TOKEN: e2e-stand-in-token
         run: pnpm build
 
       # Local Supabase is usually still starting at this point, so saving costs little.
