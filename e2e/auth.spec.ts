@@ -1,4 +1,11 @@
-import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type BrowserContext,
+  type Page,
+  type TestInfo,
+} from "@playwright/test";
 import { clearInbox, signInLinkFor } from "./support/mailpit";
 
 // Sign-in against the local Supabase stack, with the synthetic fixture members
@@ -7,6 +14,7 @@ import { clearInbox, signInLinkFor } from "./support/mailpit";
 const PASSWORD = "obs-local-dev";
 const MEMBERS = {
   emailLink: { desktop: "casey.brooks@example.com", phone: "robin.fields@example.com" },
+  offSiteNext: { desktop: "marcus.lane@example.com", phone: "ruth.abbott@example.com" },
   password: { desktop: "jesse.carter@example.com", phone: "terry.mills@example.com" },
   signOut: { desktop: "glen.pruitt@example.com", phone: "june.little@example.com" },
   refresh: { desktop: "bev.grant@example.com", phone: "otis.ivy@example.com" },
@@ -22,6 +30,17 @@ function emailLinkForm(page: Page) {
 
 function passwordForm(page: Page) {
   return page.getByRole("region", { name: "Sign in with a password" });
+}
+
+/** Asks for a sign-in link on /sign-in and returns the link from the email that arrives. */
+async function emailedSignInLink(page: Page, request: APIRequestContext, email: string) {
+  await clearInbox(request, email);
+  await page.goto("/sign-in");
+  const form = emailLinkForm(page);
+  await form.getByLabel("Email address").fill(email);
+  await form.getByRole("button", { name: "Email me a sign-in link" }).click();
+  await expect(form.getByRole("status")).toContainText("Check your email.");
+  return signInLinkFor(request, email);
 }
 
 async function signInWithPassword(page: Page, email: string, password: string) {
@@ -40,18 +59,25 @@ async function expectSignedInAs(page: Page, email: string) {
 test.describe("email-link sign-in", () => {
   test("a member signs in with the link from their email", async ({ page, request }, testInfo) => {
     const email = member("emailLink", testInfo);
-    await clearInbox(request, email);
 
-    await page.goto("/sign-in");
-    const form = emailLinkForm(page);
-    await form.getByLabel("Email address").fill(email);
-    await form.getByRole("button", { name: "Email me a sign-in link" }).click();
-    await expect(form.getByRole("status")).toContainText("Check your email.");
-
-    const link = await signInLinkFor(request, email);
+    const link = await emailedSignInLink(page, request, email);
     expect(link.pathname).toBe("/auth/confirm");
     // The link uses the stack's site URL. Open it on the server under test, so the session
     // cookie lands on the site this test is browsing.
+    await page.goto(`${link.pathname}${link.search}`);
+
+    await expectSignedInAs(page, email);
+  });
+
+  test("a link whose next leads off the site lands on My Account", async ({
+    page,
+    request,
+  }, testInfo) => {
+    const email = member("offSiteNext", testInfo);
+    const link = await emailedSignInLink(page, request, email);
+
+    // Resolving the dot segment turns "/.//evil.example" into "//evil.example", another site.
+    link.searchParams.set("next", "/.//evil.example");
     await page.goto(`${link.pathname}${link.search}`);
 
     await expectSignedInAs(page, email);
