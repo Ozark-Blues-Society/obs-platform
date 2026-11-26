@@ -14,9 +14,9 @@ import { SUPABASE_URL } from "./support/supabase-auth";
 // synthetic fixture members (scripts/fixtures/members.mts):
 const MEMBERS = {
   // an active Band member;
-  band: "marcus.lane@example.com",
+  band: "tasha.moore@example.com",
   // an active Individual member: the wrong level for a file for Band and up;
-  individual: "casey.brooks@example.com",
+  individual: "shannon.oneal@example.com",
   // a Band member whose membership ended yesterday.
   lapsed: "mae.whitfield@example.com",
 };
