@@ -1,0 +1,1221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OBS Platform Concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#0e1a2b; --blue:#1d3557; --blue2:#2b4c7e; --blue-soft:#e6ecf5;
+  --brass:#c9973f; --brass-l:#f0d49a; --rust:#a8452f; --green:#2f7d4f;
+  --cream:#f7f2e8; --paper:#fffdf8; --ink:#1c1a17; --muted:#6b6458; --line:#e4dccb;
+  --serif:'DM Serif Display', Georgia, serif; --sans:'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
+  --r:10px; --shadow:0 1px 2px rgba(0,0,0,.06),0 6px 20px rgba(14,26,43,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--cream);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:400;line-height:1.15;margin:0 0 .4em}
+h1{font-size:clamp(32px,5vw,54px)} h2{font-size:clamp(24px,3vw,34px)} h3{font-size:20px}
+a{color:var(--blue2)}
+button{font:inherit;cursor:pointer}
+.wrap{max-width:1160px;margin:0 auto;padding:0 20px}
+.btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:10px 20px;font-weight:600;background:var(--brass);color:var(--night);text-decoration:none}
+.btn:hover{filter:brightness(1.05)}
+.btn.dark{background:var(--blue);color:#fff}
+.btn.ghost{background:transparent;border:1.5px solid currentColor;color:inherit}
+.btn.sm{padding:6px 14px;font-size:13px}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;background:var(--blue-soft);color:var(--blue)}
+.tag.brass{background:#f6e6c3;color:#7a5512}.tag.rust{background:#f4dcd5;color:var(--rust)}.tag.green{background:#dcefe3;color:var(--green)}.tag.grey{background:#ece8df;color:var(--muted)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.muted{color:var(--muted)} .small{font-size:13px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
+.section{padding:56px 0}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--brass)}
+
+/* ---------- prototype bar ---------- */
+#proto{position:sticky;top:0;z-index:50;background:#0a0a0c;color:#cfcac0;font-size:13px;border-bottom:1px solid #222}
+#proto .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding-top:8px;padding-bottom:8px}
+#proto b{color:#fff;font-weight:600}
+#proto .grp{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+#proto .grp span{color:#8a857b;margin-right:2px;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+#proto button{background:#1d1d22;color:#ddd;border:1px solid #2c2c33;border-radius:6px;padding:4px 9px;font-size:12px}
+#proto button.on{background:var(--brass);color:#111;border-color:var(--brass)}
+#proto .right{margin-left:auto;display:flex;gap:6px;align-items:center}
+
+/* ---------- site header ---------- */
+#site-head{background:var(--night);color:#fff}
+#site-head .wrap{display:flex;align-items:center;gap:20px;height:72px}
+.logo{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;cursor:pointer}
+.logo .mark{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 50% 50%,var(--night) 0 30%,var(--brass) 31% 36%,var(--blue2) 37% 100%);border:2px solid var(--brass)}
+.logo .t{font-family:var(--serif);font-size:20px;line-height:1}
+.logo .t small{display:block;font-family:var(--sans);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass-l);margin-top:3px}
+#nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+#nav a{color:#d9dfe9;text-decoration:none;padding:8px 10px;border-radius:6px;font-size:14px;cursor:pointer}
+#nav a:hover,#nav a.on{color:#fff;background:rgba(255,255,255,.08)}
+#head-cta{display:flex;gap:8px}
+#menu-btn{display:none;background:none;border:1px solid #445;color:#fff;border-radius:6px;padding:6px 10px}
+@media(max-width:980px){#nav{display:none;position:absolute;top:72px;left:0;right:0;background:var(--night);flex-direction:column;padding:8px 16px 16px}#nav.open{display:flex}#menu-btn{display:block;margin-left:auto}#site-head .wrap{position:relative}}
+
+/* ---------- views ---------- */
+.view{display:none}.view.on{display:block}
+footer.site{background:var(--night);color:#b9c2d0;padding:40px 0;font-size:14px}
+footer.site .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px}
+footer.site h4{color:#fff;font-family:var(--serif);font-weight:400;font-size:18px;margin:0 0 8px}
+
+/* home */
+.hero{background:linear-gradient(120deg,rgba(14,26,43,.96),rgba(29,53,87,.88)),repeating-linear-gradient(90deg,#1d3557 0 2px,#162a46 2px 9px);color:#fff;padding:72px 0 80px}
+.hero .wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:40px;align-items:center}
+.hero p.lead{font-size:18px;color:#cfd8e6;max-width:520px}
+.next-up{background:rgba(255,255,255,.06);border:1px solid rgba(240,212,154,.35);border-radius:14px;padding:22px}
+.next-up .date{font-family:var(--serif);font-size:44px;color:var(--brass-l);line-height:1}
+@media(max-width:820px){.hero .wrap{grid-template-columns:1fr}}
+.ev-card{padding:18px;display:flex;gap:16px}
+.ev-date{flex:none;width:58px;text-align:center;border-radius:8px;background:var(--blue);color:#fff;padding:8px 0}
+.ev-date b{display:block;font-family:var(--serif);font-size:26px;font-weight:400;line-height:1}
+.ev-date span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--brass-l)}
+.post-card{overflow:hidden}
+.post-card .img{height:150px;background:linear-gradient(135deg,var(--blue),var(--blue2));position:relative}
+.post-card .img.b{background:linear-gradient(135deg,#6b3a22,var(--rust))}
+.post-card .img.c{background:linear-gradient(135deg,#3b3a2e,#7a6a3a)}
+.post-card .img.d{background:linear-gradient(135deg,#1f3a35,#2f7d4f)}
+.post-card .img::after{content:"♪";position:absolute;right:16px;bottom:6px;font-size:54px;color:rgba(255,255,255,.18)}
+.post-card .body{padding:18px}
+.sponsor-band{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.sp-logos{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
+.sp-logo{border:1px dashed #cfc5b0;border-radius:8px;padding:14px 22px;font-family:var(--serif);font-size:18px;color:#5a5346;background:#fff}
+.cta-band{background:var(--brass);color:var(--night);padding:48px 0}
+.cta-band .wrap{display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between}
+
+/* page header */
+.phead{background:var(--blue);color:#fff;padding:40px 0 34px}
+.phead p{color:#cfd8e6;margin:0}
+
+/* calendar */
+.cal-wrap{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
+@media(max-width:900px){.cal-wrap{grid-template-columns:1fr}}
+.cal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr)}
+.cal .dow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:8px;border-bottom:1px solid var(--line)}
+.cal .day{min-height:96px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;font-size:12px}
+.cal .day:nth-child(7n){border-right:0}
+.cal .day.out{background:#faf7f0;color:#bbb}
+.cal .day .n{font-weight:600;font-size:12px;color:var(--muted)}
+.chip{display:block;width:100%;text-align:left;border:0;border-radius:4px;padding:3px 6px;margin-top:3px;font-size:11px;line-height:1.3;background:var(--blue-soft);color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip.mem{background:#f6e6c3;color:#7a5512}.chip.rec{background:#ece8df;color:#4e483d}
+@media(max-width:640px){.cal .day{min-height:64px;padding:3px}.chip{font-size:0;height:6px;padding:0}}
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px;font-size:13px;color:var(--ink)}
+.pill.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(10,14,22,.55);display:none;align-items:center;justify-content:center;z-index:80;padding:16px}
+#modal.on{display:flex}
+#modal .box{max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:28px;position:relative}
+#modal .x{position:absolute;right:14px;top:10px;border:0;background:none;font-size:24px;color:var(--muted)}
+
+/* lock */
+.locked{position:relative}
+.lock-over{position:absolute;inset:0;background:linear-gradient(180deg,rgba(247,242,232,.2),rgba(247,242,232,.97) 45%);display:flex;align-items:flex-end;justify-content:center;padding:24px;border-radius:var(--r)}
+.lock-box{text-align:center;max-width:420px}
+.lock-ico{font-size:30px}
+.blur{filter:blur(4px);user-select:none;pointer-events:none}
+
+/* forms */
+label.f{display:block;font-size:13px;font-weight:600;margin:12px 0 4px}
+input.i,select.i,textarea.i{width:100%;padding:10px 12px;border:1px solid #d7cfbd;border-radius:8px;background:#fff;font:inherit}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+.tier{padding:22px;cursor:pointer;border:2px solid var(--line);transition:.15s}
+.tier.on{border-color:var(--brass);box-shadow:0 0 0 4px rgba(201,151,63,.18)}
+.tier .price{font-family:var(--serif);font-size:38px;line-height:1}
+.tier ul{padding-left:18px;margin:12px 0 0;font-size:14px}
+.amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.amounts button{padding:14px;border:1.5px solid var(--line);background:#fff;border-radius:8px;font-weight:700;font-size:18px}
+.amounts button.on{border-color:var(--brass);background:#fbf1dc}
+.secure{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin-top:10px}
+
+/* portal + admin */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.kpi{padding:16px 18px}
+.kpi .v{font-family:var(--serif);font-size:32px;line-height:1.1}
+.kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.admin{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 44px)}
+.admin aside{background:#14181f;color:#c8ccd4;padding:18px 12px}
+.admin aside .brand{color:#fff;font-family:var(--serif);font-size:18px;padding:4px 10px 16px}
+.admin aside a{display:block;color:#c8ccd4;text-decoration:none;padding:8px 10px;border-radius:6px;font-size:14px;cursor:pointer}
+.admin aside a.on,.admin aside a:hover{background:#262c36;color:#fff}
+.admin aside .sec{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#6d7380;padding:14px 10px 4px}
+.admin main{padding:28px;background:#f3f1ec;min-width:0}
+@media(max-width:820px){.admin{grid-template-columns:1fr}.admin aside{display:flex;flex-wrap:wrap;gap:4px}.admin aside .sec,.admin aside .brand{display:none}.admin main{padding:16px}}
+table.t{width:100%;border-collapse:collapse;font-size:14px}
+table.t th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line);background:#faf8f3}
+table.t td{padding:10px 12px;border-bottom:1px solid #eee7d8}
+.tscroll{overflow-x:auto}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px;border-bottom:1px solid var(--line)}
+.toolbar .i{width:auto}
+.switch{position:relative;width:40px;height:22px;flex:none;border-radius:999px;background:#cfc8b8;border:0;padding:0}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.switch.on{background:var(--green)}.switch.on::after{left:21px}
+.auto{display:flex;gap:14px;align-items:center;padding:14px 16px;border-bottom:1px solid #eee7d8}
+.auto:last-child{border-bottom:0}
+.tpl{padding:16px;cursor:pointer;border:2px solid var(--line)}
+.tpl.on{border-color:var(--brass)}
+.tpl .thumb{height:70px;border-radius:6px;background:#efe9dc;margin-bottom:10px;display:grid;gap:4px;padding:8px}
+.tpl .thumb i{display:block;background:#d9cfba;border-radius:3px}
+.editor{display:grid;grid-template-columns:1fr 260px;gap:0}
+.editor .canvas{padding:24px;border-right:1px solid var(--line);min-height:320px}
+.editor .side{padding:18px}
+@media(max-width:820px){.editor{grid-template-columns:1fr}.editor .canvas{border-right:0;border-bottom:1px solid var(--line)}}
+.block{border:1px dashed #d3c8b0;border-radius:8px;padding:12px;margin-bottom:10px;background:#fff}
+
+/* notes */
+#notes{position:fixed;right:16px;bottom:16px;width:340px;max-width:calc(100vw - 32px);z-index:60;background:#fffbea;border:1px solid #e9d48f;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:13.5px}
+#notes header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0e2b0;font-weight:700;color:#6b5210}
+#notes header button{border:0;background:none;color:#6b5210;font-size:18px;line-height:1}
+#notes .c{padding:10px 14px 14px}
+#notes ul{margin:6px 0 0;padding-left:18px}
+#notes li{margin:3px 0}
+#notes.hide{display:none}
+
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--night);color:#fff;padding:12px 18px;border-radius:10px;z-index:90;transition:.25s;font-size:14px;max-width:90vw}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- sample imagery ---------- */
+.hero{position:relative;overflow:hidden}.hero .wrap{position:relative}.hero-ph{position:absolute;inset:0;opacity:.3}
+.post-card .img::after{content:none}
+.help{font-size:12px;color:#777;margin-top:4px}
+
+/* ---------- overview: architecture + costs ---------- */
+.pad{padding:24px}
+.arch{display:flex;flex-direction:column;align-items:center;gap:10px}
+.arch-users{padding:16px 22px;text-align:center;max-width:540px;width:100%}
+.arch-arrow{font-size:26px;color:var(--brass);line-height:1}
+.arch-core{background:var(--night);color:#fff;border-radius:14px;padding:24px 28px;text-align:center;max-width:760px;width:100%;border:2px solid var(--brass)}
+.arch-core h2{color:#fff;margin:6px 0}
+.arch-svcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;width:100%}
+.svc{padding:16px;border-top:4px solid var(--blue2)}
+.svc .who{font-size:12px;color:var(--muted);margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+.svc .cost{float:right;font-weight:700;font-size:13px;color:var(--green)}
+.cost-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:20px;align-items:start}
+.calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:4px 12px;margin:4px 0 18px}
+.money{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+tr.total td{font-weight:700;border-top:2px solid var(--ink)}
+
+/* ---------- content studio ---------- */
+.st-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 16px;background:#101317;color:#e8e8e8;font-size:13px}
+.st-top .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.studio{display:grid;grid-template-columns:190px 250px minmax(0,1fr) minmax(0,400px);min-height:calc(100vh - 90px);background:#fff;font-size:14px}
+.st-nav{background:#f6f6f7;border-right:1px solid #e6e6e8;padding:12px 8px}
+.st-nav a{display:flex;gap:8px;padding:8px 10px;border-radius:6px;color:#1f2329;text-decoration:none;cursor:pointer}
+.st-nav a.on,.st-nav a:hover{background:#e7ecf7;color:#1a3fa0}
+.st-nav .sec{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#8a8f99;padding:12px 10px 4px}
+.st-list{border-right:1px solid #e6e6e8;overflow:auto;max-height:calc(100vh - 90px)}
+.st-lhead{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #eee}
+.st-item{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #f0f0f2;background:#fff;padding:10px 12px;color:var(--ink)}
+.st-item b{display:block;font-weight:600;font-size:13.5px;line-height:1.3}
+.st-item span{font-size:12px;color:#777}
+.st-item.on{background:#eef2fb;box-shadow:inset 3px 0 0 #2b5cd6}
+.st-edit{display:flex;flex-direction:column;min-width:0;border-right:1px solid #e6e6e8}
+.st-dochead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 22px;border-bottom:1px solid #eee}
+.st-dochead h3{font-family:var(--sans);font-weight:700;font-size:18px;margin:0}
+.st-form{padding:18px 22px;flex:1;overflow:auto;max-height:calc(100vh - 230px)}
+.fld{margin-bottom:16px}
+.fld>label{display:block;font-weight:600;font-size:13px;margin-bottom:5px}
+.st-foot{display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:12px 22px;border-top:1px solid #eee;background:#fafafa;flex-wrap:wrap}
+.st-foot .small{margin-right:auto}
+.st-prev{background:#eceae4;padding:16px;overflow:auto;max-height:calc(100vh - 90px)}
+.st-prev-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:10px}
+.st-prev.mobile #st-prev{max-width:330px;margin:0 auto}
+.img-fld{display:grid;grid-template-columns:170px 1fr;gap:12px;align-items:start}
+.img-fld .ph{position:relative;height:105px;border-radius:8px;overflow:hidden}
+.hot{position:absolute;left:40%;top:38%;width:24px;height:24px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px rgba(0,0,0,.35);cursor:move}
+.rte{border:1px solid #d7cfbd;border-radius:8px;overflow:hidden}
+.rte-bar{display:flex;flex-wrap:wrap;gap:2px;padding:6px;background:#f6f4ef;border-bottom:1px solid #e6dfcf}
+.rte-bar>*{padding:3px 8px;border-radius:4px;font-size:12px;cursor:pointer;font-style:normal}
+.rte-bar>*:hover{background:#e9e3d5}
+.rte-body{padding:12px;min-height:110px;outline:none;font-size:14px}
+.rte-body p{margin:0 0 8px}
+.blk{display:flex;gap:10px;align-items:center;border:1px solid #e1dccf;border-radius:8px;padding:9px 12px;margin-bottom:8px;background:#fff}
+.blk .h{cursor:grab;color:#aaa}
+.blk .tp{flex:1;font-size:13px}
+.blk button{border:1px solid #e1dccf;background:#fff;border-radius:6px;padding:2px 8px;font-size:12px}
+.blk button:disabled{opacity:.35}
+.prev-page{background:var(--cream);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.prev-page .bar{background:var(--night);color:#fff;font-family:var(--serif);padding:10px 14px;font-size:14px}
+.prev-page .pb{padding:14px;display:grid;gap:12px}
+@media(max-width:1250px){.studio{grid-template-columns:170px minmax(0,1fr) minmax(0,360px)}.st-list{display:none}}
+@media(max-width:860px){.studio{grid-template-columns:1fr}.st-nav{display:flex;flex-wrap:wrap;gap:4px;border-right:0}.st-nav .sec{display:none}.st-form,.st-prev,.st-list{max-height:none}.st-edit{border-right:0}.img-fld{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- ============ PROTOTYPE CONTROL BAR (not part of the real site) ============ -->
+<div id="proto">
+  <div class="wrap">
+    <b>OBS Platform — Design Concept</b>
+    <div class="grp"><span>Overview</span><button data-go="arch">How it fits</button><button data-go="costs">Costs</button></div>
+    <div class="grp"><span>Public</span>
+      <button data-go="home">Home</button><button data-go="events">Events</button><button data-go="news">Blog</button><button data-go="classifieds">Classifieds</button><button data-go="join">Join</button><button data-go="donate">Donate</button><button data-go="sponsors">Sponsors</button><button data-go="about">About</button><button data-go="directory">Members-only page</button>
+    </div>
+    <div class="grp"><span>Member</span><button data-go="portal">My Account</button></div>
+    <div class="grp"><span>Editing</span><button data-go="st-event">Event</button><button data-go="st-page">Page</button><button data-go="st-post">Blog post</button><button data-go="st-sponsor">Sponsor</button></div>
+    <div class="grp"><span>Admin</span><button data-go="a-members">Members</button><button data-go="a-classifieds">Moderation</button><button data-go="a-email">Email</button></div>
+    <div class="right">
+      <span>View as:</span>
+      <button id="as-visitor" class="on">Visitor</button><button id="as-member">Member</button>
+      <button id="notes-toggle" class="on">Notes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PUBLIC SITE HEADER ============ -->
+<header id="site-head">
+  <div class="wrap">
+    <a class="logo" data-go="home"><div class="mark"></div><div class="t">Ozark Blues Society<small>Keeping the blues alive</small></div></a>
+    <button id="menu-btn" aria-label="Menu">☰</button>
+    <nav id="nav">
+      <a data-go="events">Events</a><a data-go="news">Blog</a><a data-go="classifieds">Classifieds</a><a data-go="sponsors">Sponsors</a><a data-go="about">About &amp; Volunteer</a><a data-go="directory">Member Resources</a><a data-go="donate">Donate</a>
+    </nav>
+    <div id="head-cta"></div>
+  </div>
+</header>
+
+<!-- ============ HOME ============ -->
+<section class="view" id="v-home">
+  <div class="hero">
+    <div class="hero-ph" id="hero-ph"></div>
+    <div class="wrap">
+      <div>
+        <div class="eyebrow">Since 19XX · A community nonprofit</div>
+        <h1>Live music, local players, and the people who keep the blues alive.</h1>
+        <p class="lead">Concerts, jams, workshops, and a home for Ozarks musicians. Become a member and get discounts, members-only events, and first word on everything we do.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
+          <button class="btn" data-go="join">Become a Member</button>
+          <button class="btn ghost" data-go="events" style="color:#fff">See Upcoming Shows</button>
+        </div>
+      </div>
+      <div class="next-up" id="next-up"></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="wrap">
+      <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <div><div class="eyebrow">On the calendar</div><h2>Upcoming events</h2></div>
+        <button class="btn dark sm" data-go="events">Full calendar →</button>
+      </div>
+      <div class="grid3" id="home-events"></div>
+    </div>
+  </div>
+  <div class="section" style="padding-top:0">
+    <div class="wrap">
+      <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <div><div class="eyebrow">From the blog</div><h2>News, recaps &amp; band spotlights</h2></div>
+        <button class="btn dark sm" data-go="news">All posts →</button>
+      </div>
+      <div class="grid3" id="home-posts"></div>
+    </div>
+  </div>
+  <div class="sponsor-band section" style="padding:40px 0">
+    <div class="wrap" style="text-align:center">
+      <div class="eyebrow">Made possible by</div>
+      <h3 style="margin-bottom:18px">Our sponsors</h3>
+      <div class="sp-logos" id="home-sponsors"></div>
+      <p style="margin-top:18px"><a style="cursor:pointer" data-go="sponsors">Become a sponsor →</a></p>
+    </div>
+  </div>
+  <div class="cta-band">
+    <div class="wrap">
+      <div><h2 style="margin:0">Membership starts at $25 a year.</h2><p style="margin:4px 0 0">Discounted shows, members-only socials, the musician classifieds, and more.</p></div>
+      <button class="btn dark" data-go="join">See membership benefits</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EVENTS ============ -->
+<section class="view" id="v-events">
+  <div class="phead"><div class="wrap"><h1>Events</h1><p>Concerts, jams, workshops and society gatherings.</p></div></div>
+  <div class="section" style="padding-top:28px">
+    <div class="wrap">
+      <div class="filters" id="ev-filters" style="margin-bottom:16px"></div>
+      <div class="cal-wrap">
+        <div class="card" style="overflow:hidden">
+          <div class="cal-head"><button class="pill" id="cal-prev">‹</button><h3 style="margin:0" id="cal-title"></h3><button class="pill" id="cal-next">›</button></div>
+          <div class="cal" id="cal"></div>
+        </div>
+        <div>
+          <h3>Coming up</h3>
+          <div id="ev-list" style="display:grid;gap:12px"></div>
+          <p class="small muted" style="margin-top:14px">🗓 Subscribe to this calendar in Google / Apple / Outlook</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BLOG ============ -->
+<section class="view" id="v-news">
+  <div class="phead"><div class="wrap"><h1>The Blog</h1><p>Replacing the printed newsletter — every post can also go out by email.</p></div></div>
+  <div class="section" style="padding-top:28px">
+    <div class="wrap">
+      <div class="filters" id="post-filters" style="margin-bottom:18px"></div>
+      <div class="grid3" id="post-list"></div>
+      <div class="card" style="margin-top:28px;padding:24px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between">
+        <div><h3 style="margin:0">Get the blog in your inbox</h3><p class="muted" style="margin:4px 0 0">A monthly digest of new posts and upcoming shows. Members get it automatically.</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="i" style="width:240px" placeholder="you@example.com"><button class="btn dark" onclick="toast('Subscribed — sample only')">Subscribe</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CLASSIFIEDS ============ -->
+<section class="view" id="v-classifieds">
+  <div class="phead"><div class="wrap"><h1>Musician Classifieds</h1><p>Find bandmates, gigs, lessons and gear. Free for members, reviewed before posting.</p></div></div>
+  <div class="section" style="padding-top:28px">
+    <div class="wrap">
+      <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div class="filters" id="cl-filters"></div>
+        <button class="btn" id="post-listing">+ Post a listing</button>
+      </div>
+      <div class="grid3" id="cl-list"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ JOIN / BENEFITS ============ -->
+<section class="view" id="v-join">
+  <div class="phead"><div class="wrap"><h1>Membership</h1><p>Support live blues in the Ozarks — and get a lot back.</p></div></div>
+  <div class="section" style="padding-top:32px">
+    <div class="wrap">
+      <h2>Member benefits</h2>
+      <div class="grid3" style="margin-bottom:36px">
+        <div class="card" style="padding:18px"><h3>🎟 Show discounts</h3><p class="muted small">Member pricing on society concerts and partner venues — applied automatically when you're signed in.</p></div>
+        <div class="card" style="padding:18px"><h3>🎸 Classifieds</h3><p class="muted small">Post free listings to find bandmates, gigs, students and gear buyers.</p></div>
+        <div class="card" style="padding:18px"><h3>🔑 Members-only resources</h3><p class="muted small">Venue &amp; booking directory, board notes, and member socials.</p></div>
+        <div class="card" style="padding:18px"><h3>🗳 A vote</h3><p class="muted small">Vote in board elections and help shape the society's year.</p></div>
+      </div>
+      <h2>Choose a membership</h2>
+      <p class="muted small">Prices are placeholders — set by the board.</p>
+      <div class="tiers" id="tiers"></div>
+      <div class="card" style="margin-top:28px;padding:24px;max-width:640px">
+        <h3>Checkout</h3>
+        <div class="row2"><div><label class="f">First name</label><input class="i" value="Jordan"></div><div><label class="f">Last name</label><input class="i" value="Ellis"></div></div>
+        <label class="f">Email</label><input class="i" value="jordan@example.com">
+        <label class="f">Card</label><input class="i" placeholder="4242 4242 4242 4242    MM/YY    CVC">
+        <label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px"><input type="checkbox" checked> Renew automatically each year (cancel anytime)</label>
+        <label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:14px"><input type="checkbox"> Add a $10 donation</label>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;flex-wrap:wrap;gap:10px">
+          <div><span class="muted small">Total today</span><div style="font-family:var(--serif);font-size:28px" id="join-total">$25.00</div></div>
+          <button class="btn dark" id="join-submit">Complete membership</button>
+        </div>
+        <div class="secure">🔒 Payments processed securely by Stripe. Card numbers never touch our website. · Prefer to pay by check? <a href="#" onclick="toast('Admins can record check/cash payments manually');return false">Here's how</a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DONATE ============ -->
+<section class="view" id="v-donate">
+  <div class="phead"><div class="wrap"><h1>Donate</h1><p>Your gift funds Blues in the Schools, free community jams, and youth scholarships.</p></div></div>
+  <div class="section" style="padding-top:32px">
+    <div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px;align-items:start">
+      <div>
+        <h2>Where it goes</h2>
+        <p>Every dollar stays local. Example impact copy — the society would supply real numbers.</p>
+        <ul><li><b>$25</b> buys a harmonica for a student in Blues in the Schools</li><li><b>$100</b> covers a month of free community jams</li><li><b>$500</b> funds a youth scholarship to a blues camp</li></ul>
+        <p class="small muted">The Ozark Blues Society is a 501(c)(3) nonprofit. Donations are tax-deductible; a receipt is emailed automatically.</p>
+      </div>
+      <div class="card" style="padding:24px">
+        <div class="filters" style="margin-bottom:14px"><button class="pill on" id="d-once">One-time</button><button class="pill" id="d-month">Monthly</button></div>
+        <div class="amounts" id="amounts"></div>
+        <label class="f">Dedicate this gift (optional)</label><input class="i" placeholder="In honor of…">
+        <label class="f">Card</label><input class="i" placeholder="4242 4242 4242 4242    MM/YY    CVC">
+        <button class="btn dark" style="width:100%;justify-content:center;margin-top:16px" id="donate-btn">Donate $50</button>
+        <div class="secure">🔒 Secure donation form by Zeffy (free for nonprofits) · Tax receipt emailed instantly</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SPONSORS ============ -->
+<section class="view" id="v-sponsors">
+  <div class="phead"><div class="wrap"><h1>Our Sponsors</h1><p>The businesses that keep the music playing.</p></div></div>
+  <div class="section" style="padding-top:32px">
+    <div class="wrap">
+      <div id="sp-featured"></div>
+      <div id="sponsor-tiers"></div>
+      <div class="cta-band" style="border-radius:var(--r);margin-top:36px;padding:32px">
+        <div class="wrap" style="padding:0"><div><h3 style="margin:0">Become a sponsor</h3><p style="margin:4px 0 0">Tiered packages with logo placement, event mentions and newsletter features.</p></div><button class="btn dark" onclick="toast('Opens sponsor inquiry form')">Request sponsor packet</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ABOUT & VOLUNTEER ============ -->
+<section class="view" id="v-about">
+  <div class="phead"><div class="wrap"><h1>About &amp; Volunteer</h1><p>Who we are, what we do, and how to pitch in.</p></div></div>
+  <div class="section" style="padding-top:32px">
+    <div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:32px">
+      <div>
+        <h2>Our mission</h2>
+        <p>Placeholder mission statement — to preserve, promote and celebrate blues music in the Ozarks through live performance, education, and community.</p>
+        <h3 style="margin-top:24px">Board of directors</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px">
+          <div class="card" style="padding:12px;text-align:center"><div style="width:56px;height:56px;border-radius:50%;background:var(--blue-soft);margin:0 auto 6px"></div><b class="small">Name</b><div class="small muted">President</div></div>
+          <div class="card" style="padding:12px;text-align:center"><div style="width:56px;height:56px;border-radius:50%;background:var(--blue-soft);margin:0 auto 6px"></div><b class="small">Name</b><div class="small muted">Treasurer</div></div>
+          <div class="card" style="padding:12px;text-align:center"><div style="width:56px;height:56px;border-radius:50%;background:var(--blue-soft);margin:0 auto 6px"></div><b class="small">Name</b><div class="small muted">Events Chair</div></div>
+        </div>
+      </div>
+      <div class="card" style="padding:24px">
+        <h2>Volunteer with us</h2>
+        <p class="muted small">Sign-ups go straight to the volunteer coordinator's inbox and a volunteer list in the admin.</p>
+        <label class="f">Name</label><input class="i">
+        <label class="f">Email</label><input class="i">
+        <label class="f">I can help with…</label>
+        <div style="display:grid;gap:4px;font-size:14px">
+          <label><input type="checkbox"> Door / merch table at shows</label>
+          <label><input type="checkbox"> Blues in the Schools</label>
+          <label><input type="checkbox"> Social media &amp; photography</label>
+          <label><input type="checkbox"> Festival setup &amp; teardown</label>
+        </div>
+        <button class="btn dark" style="margin-top:14px" onclick="toast('Thanks! The coordinator will reach out.')">Sign me up</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MEMBERS-ONLY PAGE ============ -->
+<section class="view" id="v-directory">
+  <div class="phead"><div class="wrap"><span class="tag brass" style="margin-bottom:8px">Members only</span><h1>Venue &amp; Booking Directory</h1><p>Built from the "Directory" page template. Visibility: Members only.</p></div></div>
+  <div class="section" style="padding-top:28px">
+    <div class="wrap">
+      <div class="card locked" id="dir-card">
+        <div class="tscroll" id="dir-content">
+          <table class="t"><thead><tr><th>Venue</th><th>Booking contact</th><th>Capacity</th><th>Pays</th><th>Notes</th></tr></thead><tbody id="dir-rows"></tbody></table>
+        </div>
+        <div class="lock-over" id="dir-lock">
+          <div class="lock-box card" style="padding:24px">
+            <div class="lock-ico">🔒</div>
+            <h3>This page is for members</h3>
+            <p class="muted small">Sign in to see the venue directory, or join for $25/year.</p>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn dark sm" onclick="setMember(true)">Sign in</button><button class="btn sm" data-go="join">Join now</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MEMBER PORTAL ============ -->
+<section class="view" id="v-portal">
+  <div class="phead"><div class="wrap"><h1>Welcome back, Jordan</h1><p>Your membership, listings and member perks in one place.</p></div></div>
+  <div class="section" style="padding-top:28px">
+    <div class="wrap" id="portal-body"></div>
+  </div>
+</section>
+
+<!-- ============ OVERVIEW: HOW IT FITS ============ -->
+<section class="view" id="v-arch">
+  <div class="phead"><div class="wrap"><div class="eyebrow">Overview</div><h1>How the platform fits together</h1><p>We build the Society's website. Trusted specialist services handle logins, payments and email.</p></div></div>
+  <div class="section" style="padding-top:32px"><div class="wrap">
+    <div class="arch">
+      <div class="arch-users card">👥 <b>Visitors &amp; members</b><div class="small muted">Browse shows, read the blog, join, renew, post classifieds, open members-only pages</div></div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-core">
+        <div class="eyebrow">Built for the Society · owned by the Society</div>
+        <h2>The Society's website</h2>
+        <div>Public pages · events calendar · blog · sponsors · donate · My Account · members-only pages · classifieds · admin screens</div>
+        <div class="small" style="opacity:.7;margin-top:8px">Custom code (Next.js) · stored in the Society's GitHub account · hosted on Netlify or Vercel</div>
+      </div>
+      <div class="arch-arrow">⇅</div>
+      <div class="arch-svcs">
+        <div class="card svc"><span class="cost">$0/mo</span><b>✏️ Content Studio</b><div class="small muted">Sanity</div><p class="small">Volunteers edit pages, events, blog posts, sponsors and photos — with a live preview.</p><div class="who">Used by: editors &amp; volunteers</div></div>
+        <div class="card svc"><span class="cost">$25/mo</span><b>🔑 Logins &amp; member records</b><div class="small muted">Supabase</div><p class="small">Member accounts (email-link sign in), membership status, classifieds. Daily backups.</p><div class="who">Used by: membership chair, through our admin screens</div></div>
+        <div class="card svc"><span class="cost">fees only</span><b>💳 Dues &amp; payments</b><div class="small muted">Stripe</div><p class="small">Card payments, yearly auto-renew, receipts, renewal reminders, and a page where members update their own card.</p><div class="who">Used by: treasurer</div></div>
+        <div class="card svc"><span class="cost">$0–39/mo</span><b>✉️ Email</b><div class="small muted">Resend + MailerLite</div><p class="small">Automatic emails (welcome, listing approved) plus newsletters to member groups that sync on their own.</p><div class="who">Used by: newsletter writer</div></div>
+        <div class="card svc"><span class="cost">$0</span><b>🎁 Donations</b><div class="small muted">Zeffy</div><p class="small">Free donation forms for nonprofits with instant tax receipts. Donors can add an optional tip.</p><div class="who">Used by: treasurer</div></div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:48px">Who works where</h2>
+    <div class="card tscroll"><table class="t">
+      <thead><tr><th>Who</th><th>Where they work</th><th>What they do there</th></tr></thead>
+      <tbody>
+        <tr><td><b>Editors / communications</b></td><td>Content Studio <span class="muted">(yoursite.org/studio)</span></td><td>Pages, blog posts, events, sponsors, directory, photos</td></tr>
+        <tr><td><b>Membership chair</b></td><td>Admin → Members <span class="muted">(yoursite.org/admin)</span></td><td>Search, filter &amp; export members, record check/cash payments</td></tr>
+        <tr><td><b>Classifieds moderator</b></td><td>Admin → Moderation</td><td>Approve or reject listings — nothing else</td></tr>
+        <tr><td><b>Treasurer</b></td><td>Stripe &amp; Zeffy dashboards</td><td>Payments, payouts, refunds, reports</td></tr>
+        <tr><td><b>Newsletter writer</b></td><td>MailerLite</td><td>Monthly newsletter &amp; announcements to synced member groups</td></tr>
+        <tr><td><b>Members</b></td><td>My Account</td><td>Renew, update card, manage listings, members-only resources</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="grid3" style="margin-top:28px">
+      <div class="card pad"><h3>🧰 Nothing to patch</h3><p class="small muted">No plugins or themes to update. Logins, payments and email run on services whose whole job is keeping them secure.</p></div>
+      <div class="card pad"><h3>🏠 The Society owns it</h3><p class="small muted">The code is in the Society's GitHub account, and every service account is in the Society's name. Any web developer can pick it up.</p></div>
+      <div class="card pad"><h3>💵 Low, predictable costs</h3><p class="small muted">About $30–70 a month, plus standard card fees. No per-member pricing.</p></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============ OVERVIEW: COSTS ============ -->
+<section class="view" id="v-costs">
+  <div class="phead"><div class="wrap"><div class="eyebrow">Overview</div><h1>What it costs</h1><p>A one-time build, then low monthly running costs paid directly by the Society.</p></div></div>
+  <div class="section" style="padding-top:32px"><div class="wrap">
+    <div class="cost-grid">
+      <div class="card pad">
+        <div class="eyebrow">One-time</div><h2>$5,000 build</h2>
+        <div class="tscroll"><table class="t">
+          <tr><td>Discovery &amp; content plan</td><td class="money">$300</td></tr>
+          <tr><td>Design &amp; page templates</td><td class="money">$600</td></tr>
+          <tr><td>Content Studio setup (volunteer editing)</td><td class="money">$600</td></tr>
+          <tr><td>Public site: pages, blog, events calendar, sponsors, donate</td><td class="money">$1,000</td></tr>
+          <tr><td>Member logins, dues &amp; My Account</td><td class="money">$1,000</td></tr>
+          <tr><td>Admin: member list, export, roles, check payments</td><td class="money">$400</td></tr>
+          <tr><td>Musician classifieds + moderation</td><td class="money">$450</td></tr>
+          <tr><td>Email setup: automatic emails + newsletter sync</td><td class="money">$250</td></tr>
+          <tr><td>Member move from ClubExpress</td><td class="money">$150</td></tr>
+          <tr><td>Training, how-to guides, launch, 30-day support</td><td class="money">$250</td></tr>
+          <tr class="total"><td>Total</td><td class="money">$5,000</td></tr>
+        </table></div>
+        <p class="small muted" style="margin-bottom:0">Paid 40% at start · 30% at design approval · 30% at launch</p>
+      </div>
+      <div class="card pad">
+        <div class="eyebrow">Every month</div><h2>~$27–86 / month</h2>
+        <div class="tscroll"><table class="t">
+          <tr><td><b>Website hosting</b><div class="small muted">Netlify free tier, or Vercel Pro</div></td><td class="money">$0–20</td></tr>
+          <tr><td><b>Content Studio</b><div class="small muted">Sanity free plan (up to 20 editors)</div></td><td class="money">$0</td></tr>
+          <tr><td><b>Logins &amp; member database</b><div class="small muted">Supabase Pro (daily backups)</div></td><td class="money">$25</td></tr>
+          <tr><td><b>Automatic emails</b><div class="small muted">Resend free (3,000/mo)</div></td><td class="money">$0</td></tr>
+          <tr><td><b>Newsletters</b><div class="small muted">MailerLite: free ≤500, ~$15 ≤1,000, ~$39 ≤5,000</div></td><td class="money">$0–39</td></tr>
+          <tr><td><b>Domain name</b></td><td class="money">~$2</td></tr>
+          <tr><td><b>Code storage</b><div class="small muted">GitHub free</div></td><td class="money">$0</td></tr>
+          <tr><td><b>Donations</b><div class="small muted">Zeffy, free for nonprofits</div></td><td class="money">$0</td></tr>
+          <tr class="total"><td>Monthly platform total</td><td class="money">$27–86</td></tr>
+        </table></div>
+        <p class="small muted" style="margin-bottom:0"><b>Plus per payment:</b> Stripe 2.9% + 30¢ (any platform charges this), and 0.7% on auto-renewing dues.</p>
+      </div>
+    </div>
+
+    <div class="card pad" style="margin-top:20px">
+      <div class="eyebrow">Your numbers</div><h2>Yearly cost calculator</h2>
+      <div class="calc">
+        <div><label class="f">Members</label><input class="i" id="c-mem" type="number" min="0" value="400" oninput="calc()"></div>
+        <div><label class="f">Average yearly dues ($)</label><input class="i" id="c-dues" type="number" min="0" value="30" oninput="calc()"></div>
+        <div><label class="f">% on auto-renew</label><input class="i" id="c-auto" type="number" min="0" max="100" value="60" oninput="calc()"></div>
+        <div><label class="f">Email list size</label><select class="i" id="c-mail" onchange="calc()"><option value="0">Up to 500 — free</option><option value="15">Up to 1,000 — ~$15/mo</option><option value="27" selected>Up to 2,500 — ~$25–30/mo (est.)</option><option value="39">Up to 5,000 — ~$39/mo</option></select></div>
+        <div><label class="f">Hosting</label><select class="i" id="c-host" onchange="calc()"><option value="0">Netlify free tier</option><option value="20">Vercel Pro — $20/mo</option></select></div>
+        <div><label class="f">ClubExpress today ($/yr)</label><input class="i" id="c-ce" type="number" min="0" placeholder="ask the board" oninput="calc()"></div>
+      </div>
+      <div class="kpis" id="c-out"></div>
+      <p id="c-cmp" style="margin:14px 0 0"></p>
+    </div>
+    <p class="small muted" style="margin-top:16px">Estimates based on published vendor pricing as of October 2026 — confirmed before signing. Stripe's nonprofit discount applies only when 80%+ of payments are donations, so dues are priced at Stripe's standard rate. If members-only content needs Sanity's private storage, that adds about $15 per editor per month (confirmed during discovery).</p>
+  </div></div>
+</section>
+
+<!-- ============ CONTENT STUDIO (editing) ============ -->
+<section class="view" id="v-studio">
+  <div class="st-top"><b>✏️ OBS Content Studio</b><span style="opacity:.6">yoursite.org/studio</span><div class="sp"><span style="opacity:.7">Signed in as Dee (Editor)</span><button class="btn sm" data-go="home">View site ↗</button></div></div>
+  <div class="studio">
+    <nav class="st-nav">
+      <div class="sec">Content</div>
+      <a data-go="st-page">📄 Pages</a>
+      <a data-go="st-event">🗓 Events</a>
+      <a data-go="st-post">📰 Blog posts</a>
+      <a data-go="st-sponsor">⭐ Sponsors</a>
+      <a onclick="toast('Venues: name, address, map, booking contact — reused by every event')">📍 Venues</a>
+      <a onclick="toast('Directory entries feed the members-only directory page')">📇 Directory entries</a>
+      <div class="sec">Library</div>
+      <a onclick="toast('Every uploaded photo, searchable, with alt text')">🖼 Media library</a>
+      <div class="sec">Settings</div>
+      <a onclick="toast('Menus, footer, social links, membership benefits text')">⚙️ Site settings</a>
+    </nav>
+    <div class="st-list" id="st-list"></div>
+    <div class="st-edit" id="st-edit"></div>
+    <div class="st-prev" id="st-prev-wrap">
+      <div class="st-prev-head"><span>Live preview</span><span><button class="pill on" id="pv-desk" onclick="stPrevMode(false)">Desktop</button> <button class="pill" id="pv-mob" onclick="stPrevMode(true)">Phone</button></span></div>
+      <div id="st-prev"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ADMIN SHELL VIEWS ============ -->
+<section class="view" id="v-admin">
+  <div class="admin">
+    <aside>
+      <div class="brand">OBS Admin</div>
+      <div class="sec">Society</div>
+      <a data-go="a-members">👥 Members</a>
+      <a data-go="a-classifieds">📋 Classifieds queue <span class="tag rust" id="q-badge" style="padding:1px 6px;margin-left:4px"></span></a>
+      <a data-go="a-email">✉️ Email &amp; automations</a>
+      <div class="sec">Other tools</div>
+      <a data-go="st-event">✏️ Edit content (Studio)</a>
+      <a onclick="toast('Opens the Stripe dashboard — payments, payouts, refunds')">💳 Payments (Stripe) ↗</a>
+      <a onclick="toast('Opens MailerLite — newsletters to synced member groups')">📨 Newsletters (MailerLite) ↗</a>
+      <div class="sec">Site</div>
+      <a data-go="home">← View site</a>
+    </aside>
+    <main>
+      <!-- Members -->
+      <div class="apanel" id="p-a-members">
+        <h2>Members</h2>
+        <div class="kpis" style="margin-bottom:20px" id="kpis"></div>
+        <div class="card">
+          <div class="toolbar">
+            <input class="i" id="m-search" placeholder="Search name or email" style="min-width:200px">
+            <select class="i" id="m-status"><option value="">All statuses</option><option>Active</option><option>Expiring soon</option><option>Lapsed</option></select>
+            <select class="i" id="m-level"><option value="">All levels</option><option>Individual</option><option>Family</option><option>Musician</option><option>Patron</option></select>
+            <span class="muted small" id="m-count" style="margin-left:auto"></span>
+            <button class="btn sm" id="m-export">⬇ Export CSV</button>
+            <button class="btn sm dark" id="m-email">✉ Email these members</button>
+          </div>
+          <div class="tscroll"><table class="t"><thead><tr><th>Name</th><th>Email</th><th>Level</th><th>Status</th><th>Expires</th><th>Joined</th></tr></thead><tbody id="m-rows"></tbody></table></div>
+        </div>
+      </div>
+      <!-- Moderation -->
+      <div class="apanel" id="p-a-classifieds">
+        <h2>Classifieds moderation</h2>
+        <p class="muted">New listings wait here until a moderator approves them. Moderators can only see this screen — not member data or site settings.</p>
+        <div id="queue" style="display:grid;gap:12px"></div>
+        <h3 style="margin-top:28px">Rules (set once)</h3>
+        <div class="card">
+          <div class="auto"><button class="switch on" onclick="this.classList.toggle('on')"></button><div><b>Require approval for new listings</b><div class="small muted">Email the moderator when something is waiting.</div></div></div>
+          <div class="auto"><button class="switch on" onclick="this.classList.toggle('on')"></button><div><b>Auto-expire listings after 60 days</b><div class="small muted">Poster gets a "renew your listing?" email 5 days before.</div></div></div>
+          <div class="auto"><button class="switch" onclick="this.classList.toggle('on')"></button><div><b>Allow non-members to post</b><div class="small muted">Off = posting is a member benefit.</div></div></div>
+        </div>
+      </div>
+      <!-- Email -->
+      <div class="apanel" id="p-a-email">
+        <h2>Email &amp; automations</h2>
+        <div class="kpis" style="margin-bottom:20px">
+          <div class="card kpi"><div class="l">Subscribers</div><div class="v">1,184</div></div>
+          <div class="card kpi"><div class="l">Last open rate</div><div class="v">52%</div></div>
+          <div class="card kpi"><div class="l">Sent this month</div><div class="v">3</div></div>
+        </div>
+        <h3>Automatic emails <span class="muted small" style="font-family:var(--sans)">— set up once, run forever</span></h3>
+        <div class="card" id="autos"></div>
+        <h3 style="margin-top:28px">Send a campaign <span class="muted small" style="font-family:var(--sans)">— written in MailerLite; member groups below stay in sync automatically</span></h3>
+        <div class="card" style="padding:20px">
+          <div class="row2"><div><label class="f" style="margin-top:0">Send to</label><select class="i"><option>All active members (412)</option><option>Members expiring in 30 days (23)</option><option>Lapsed members (88)</option><option>Musician level only (61)</option><option>Everyone incl. non-member subscribers (1,184)</option></select></div>
+          <div><label class="f" style="margin-top:0">Template</label><select class="i"><option>Monthly newsletter (pulls latest blog posts + events)</option><option>Event announcement</option><option>Plain letter from the board</option></select></div></div>
+          <label class="f">Subject</label><input class="i" value="November at the Ozark Blues Society 🎸">
+          <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button class="btn sm ghost" onclick="toast('Test email sent to you')">Send test</button><button class="btn sm ghost" onclick="toast('Scheduled for Fri 9:00 AM')">Schedule</button><button class="btn sm dark" onclick="toast('Campaign queued — sample only')">Send now</button></div>
+        </div>
+      </div>
+      <!-- Pages -->
+      <div class="apanel" id="p-a-pages">
+        <h2>Create a page</h2>
+        <p class="muted">Pick a template, fill in the blanks, choose who can see it. The design stays consistent — volunteers can't accidentally break the layout.</p>
+        <div class="grid3" id="tpls" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px"></div>
+        <div class="card editor" style="margin-top:20px">
+          <div class="canvas" id="tpl-canvas"></div>
+          <div class="side">
+            <b>Visibility</b>
+            <div style="display:grid;gap:6px;margin:8px 0 16px;font-size:14px">
+              <label><input type="radio" name="vis" value="Public" checked> Public — anyone</label>
+              <label><input type="radio" name="vis" value="Members only"> Members only</label>
+              <label><input type="radio" name="vis" value="Musician & Patron levels"> Specific levels…</label>
+            </div>
+            <b>Show in menu</b>
+            <select class="i" style="margin:8px 0 16px"><option>Member Resources</option><option>About</option><option>Don't add to menu</option></select>
+            <button class="btn dark" style="width:100%;justify-content:center" id="tpl-publish">Publish page</button>
+            <p class="small muted" style="margin-top:10px">Can also save as draft or schedule for later.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<footer class="site" id="site-foot">
+  <div class="wrap">
+    <div><h4>Ozark Blues Society</h4><p>A community nonprofit. Mailing address · email · phone</p></div>
+    <div><h4>Explore</h4><a style="color:#b9c2d0;cursor:pointer" data-go="events">Events</a><br><a style="color:#b9c2d0;cursor:pointer" data-go="news">Blog</a><br><a style="color:#b9c2d0;cursor:pointer" data-go="classifieds">Classifieds</a></div>
+    <div><h4>Support</h4><a style="color:#b9c2d0;cursor:pointer" data-go="join">Membership</a><br><a style="color:#b9c2d0;cursor:pointer" data-go="donate">Donate</a><br><a style="color:#b9c2d0;cursor:pointer" data-go="sponsors">Sponsor</a></div>
+    <div><h4>Stay in touch</h4><p>Facebook · Instagram · YouTube</p></div>
+  </div>
+</footer>
+
+<div id="modal"><div class="box card"><button class="x" onclick="closeModal()">×</button><div id="modal-body"></div></div></div>
+<div id="notes"><header><span>💡 How this works</span><button onclick="toggleNotes()" aria-label="Hide">×</button></header><div class="c" id="notes-body"></div></div>
+<div id="toast"></div>
+
+<script>
+/* ===================== SAMPLE DATA (all fictional) ===================== */
+const EVENTS = [
+  {d:'2026-11-06',t:'First Friday Blues Jam',v:'The Riverside Tap',time:'7:00 PM',price:'Free',cat:'Jam'},
+  {d:'2026-11-07',t:'Delta Night: Mavis Crane Band',v:'Old Mill Music Hall',time:'8:00 PM',price:'$15 · Members $10',cat:'Concert'},
+  {d:'2026-11-12',t:'Blues in the Schools — Volunteer Orientation',v:'Public Library, Room B',time:'6:00 PM',price:'Free',cat:'Society'},
+  {d:'2026-11-14',t:'Ozark Blues Challenge — Band Auditions',v:'Old Mill Music Hall',time:'1:00 PM',price:'$10 · Members free',cat:'Concert'},
+  {d:'2026-11-20',t:'Harmonica Workshop with Lou "Reed Man" Tate',v:'Riverbend Brewing Co.',time:'6:30 PM',price:'$20 · Members $12',cat:'Workshop'},
+  {d:'2026-11-21',t:'Members’ Holiday Social',v:'Private — address in email',time:'7:00 PM',price:'Members only',cat:'Society',mem:true},
+  {d:'2026-11-27',t:'Black Friday Blues Bash',v:'The Riverside Tap',time:'8:00 PM',price:'$12 · Members $8',cat:'Concert'},
+  {d:'2026-12-05',t:'Winter Blues Revue',v:'Old Mill Music Hall',time:'7:30 PM',price:'$18 · Members $12',cat:'Concert'},
+  {d:'2026-12-12',t:'Annual Meeting & Board Election',v:'Riverbend Brewing Co.',time:'5:00 PM',price:'Members only',cat:'Society',mem:true},
+];
+// recurring Tuesday jam
+for(const day of ['2026-11-03','2026-11-10','2026-11-17','2026-11-24','2026-12-01','2026-12-08','2026-12-15']) EVENTS.push({d:day,t:'Tuesday Open Jam',v:'Riverbend Brewing Co.',time:'7:00 PM',price:'Free',cat:'Jam',rec:true});
+EVENTS.sort((a,b)=>a.d.localeCompare(b.d));
+
+const POSTS = [
+  {t:'Fall Fest Recap: 1,200 Fans and a Whole Lot of Slide Guitar',cat:'Recap',date:'Oct 14',img:'',x:'Two days, eleven bands, and one very muddy field. Here are the highlights and photo gallery.'},
+  {t:'Band Spotlight: The Muddy Ridge Trio',cat:'Band Spotlight',date:'Oct 8',img:'b',x:'Three friends, one beat-up Silvertone, and a sound that’s pure hill-country.'},
+  {t:'Board Notes — October',cat:'Society News',date:'Oct 3',img:'c',x:'Budget update, venue partnerships, and planning for the Blues Challenge.',mem:true},
+  {t:'Why We’re Moving the Newsletter to the Blog',cat:'Society News',date:'Sep 28',img:'d',x:'Same news, faster — and you can still get it by email every month.'},
+  {t:'Gear Talk: Choosing Your First Harmonica',cat:'Education',date:'Sep 19',img:'',x:'Lou Tate breaks down keys, brands and why you should start in C.'},
+  {t:'Volunteer of the Year: Dee Harmon',cat:'Society News',date:'Sep 10',img:'b',x:'Twelve years at the door table and still the warmest welcome in town.'},
+];
+
+let LISTINGS = [
+  {t:'Bass player needed — Chicago-style blues band',cat:'Musicians Wanted',by:'Dale R.',x:'Gigging 2–3x/month. Rehearse Thursdays. Must read a chart.',st:'live'},
+  {t:'Vocalist available for weekend gigs',cat:'Available',by:'Tasha M.',x:'Soul/blues vocalist, 15 yrs experience. Own PA for small rooms.',st:'live'},
+  {t:'Tweed-style 1x12 tube amp, 15W — $650',cat:'Gear',by:'Marcus L.',x:'Hand-wired, great condition. Local pickup only.',st:'live'},
+  {t:'Slide guitar lessons, all levels',cat:'Lessons',by:'Ray B.',x:'Open tunings, bottleneck and lap. $35/hr, first lesson half off for members.',st:'live'},
+  {t:'Brewery seeking blues acts for Sunday afternoons',cat:'Gigs',by:'Riverbend Brewing',x:'Duo or trio, acoustic-friendly. Paid + bar tab.',st:'live'},
+  {t:'Drummer looking for a working band',cat:'Available',by:'Chris P.',x:'Shuffle, swing, Texas. Has transportation and a cajón for quiet gigs.',st:'live'},
+  {t:'Harmonica set (7 keys) + case — $120',cat:'Gear',by:'Pat W.',x:'Lightly used. Includes C, G, A, D, E, F, Bb.',st:'pending'},
+  {t:'Keys player wanted for church-to-juke-joint gospel blues group',cat:'Musicians Wanted',by:'Ruth A.',x:'Hammond experience a plus. Two rehearsals/month.',st:'pending'},
+  {t:'CHEAP SUNGLASSES best prices click here!!!',cat:'Gear',by:'unknown',x:'Spam-looking listing — this is what moderation catches.',st:'pending'},
+];
+
+const SPONSORS = [
+  {n:'Riverbend Brewing Co.',tier:'Headliner',feat:true,url:'https://example.com',blurb:'Riverbend has hosted our Tuesday Open Jam for six years. The spotlight rotates among Headliner sponsors and appears on the home page and in the email newsletter.'},
+  {n:'Old Mill Music Hall',tier:'Headliner',url:'https://example.com',blurb:'Home of Delta Night and the Blues Challenge auditions — the best room in town for live blues.'},
+  {n:'Hilltop Guitar Works',tier:'Opening Act'},{n:'Ozark Community Bank',tier:'Opening Act'},{n:'KXBL 90.1 Radio',tier:'Opening Act'},
+  {n:'Smokehouse BBQ',tier:'Friend'},{n:'Second Spin Records',tier:'Friend'},{n:'Ridge Print Shop',tier:'Friend'},{n:'Lakeside Dental',tier:'Friend'},
+];
+
+const VENUES = [
+  ['Old Mill Music Hall','Sam Ortega · booking@…','350','Door split / guarantee','Sound tech provided'],
+  ['The Riverside Tap','Kelly Dunn · (555) 0142','120','Guarantee + tips','Backline drum kit'],
+  ['Riverbend Brewing Co.','Events desk · events@…','180','Flat fee','Patio stage Apr–Oct'],
+  ['Courthouse Square Stage','City Parks Dept.','Open air','Grant-funded','Summer series only'],
+  ['The Bluebird Lounge','Ana Ruiz · (555) 0177','80','Tips + bar tab','Acoustic/duo only'],
+];
+
+const FIRST=['Jordan','Avery','Dale','Tasha','Marcus','Ruth','Chris','Pat','Lou','Kelly','Sam','Dee','Ray','Morgan','Casey','Robin','Jesse','Terry','Ana','Glen','Bev','Otis','June','Hank'];
+const LAST=['Ellis','Brooks','Ramsey','Moore','Lane','Abbott','Price','Walsh','Tate','Dunn','Ortega','Harmon','Booker','Hale','Reed','Fields','Carter','Mills','Ruiz','Pruitt','Stone','Grant','Ivy','Little'];
+const LEVELS=['Individual','Individual','Individual','Family','Family','Musician','Musician','Patron'];
+const MEMBERS = FIRST.map((f,i)=>{
+  const l=LAST[i]; const lvl=LEVELS[(i*5)%LEVELS.length];
+  const status = i%7===3 ? 'Lapsed' : (i%5===1 ? 'Expiring soon' : 'Active');
+  const exp = status==='Lapsed' ? `2026-0${(i%8)+1}-15` : status==='Expiring soon' ? `2026-11-${String(2+i%25).padStart(2,'0')}` : `2027-0${(i%9)+1}-${String(1+i%27).padStart(2,'0')}`;
+  return {name:`${f} ${l}`,email:`${f.toLowerCase()}.${l.toLowerCase()}@example.com`,level:lvl,status,exp,joined:String(2011+(i*3)%15)};
+});
+
+const TEMPLATES = {
+  'Directory':{blocks:['Page title + intro','Searchable table (Venue · Contact · Capacity · Notes)','“Suggest an addition” form']},
+  'Band Spotlight':{blocks:['Hero photo + band name','Q&A / story text','Embedded video or Bandcamp player','Upcoming shows (pulled from Events automatically)']},
+  'Promo Feature':{blocks:['Big banner + headline','Details & call-to-action button','Sponsor credit strip']},
+  'Standard Page':{blocks:['Title','Text & images','Optional button']},
+};
+
+const NOTES = {
+  home:['The home page fills itself: next event, latest posts and sponsor logos all pull from the admin automatically.','Nobody has to “update the home page” — post an event or blog and it appears here.','Try the <b>View as: Member</b> toggle in the bar above — the header changes to “My Account”.'],
+  events:['Events are entered once in the admin (date, venue, price, photo) and show on the calendar, the home page and the newsletter.','Recurring events like the Tuesday Jam are set up once and repeat automatically.','Gold = members-only. Click any event for details.','Visitors can subscribe to the calendar in their phone.'],
+  news:['The blog replaces the printed newsletter. Each post can also be emailed to members in one click.','Some posts can be <b>members only</b> — try “Board Notes” as a visitor, then switch to Member.','Categories (Recaps, Band Spotlights, Education) keep it organized.'],
+  classifieds:['Members post listings with a simple form — no account setup by an admin needed.','New listings go to a <b>moderation queue</b> first (see Admin → Moderation).','Listings auto-expire after 60 days so the board stays fresh.'],
+  join:['This page doubles as the <b>Membership Benefits</b> page.','Members choose a level and pay securely by card (Stripe). Auto-renew is optional.','Admins can still record cash/check payments for members who prefer it.','Click <b>Complete membership</b> to see what a new member sees next.'],
+  donate:['Donations run through <b>Zeffy</b>, which is free for nonprofits (donors can add an optional tip). Stripe also works if the board prefers.','Donors get an automatic tax receipt email.','The treasurer sees every gift and exports reports from the Zeffy dashboard.'],
+  sponsors:['Sponsors are managed in the admin: logo, link, tier and a “featured” switch.','The featured sponsor rotates on this page, the home page and in the newsletter.','Tier levels and names are placeholders.'],
+  about:['Standard pages are edited like a Word document — no code.','Volunteer sign-ups email the coordinator and collect in a list in the admin.'],
+  directory:['This page was built from the <b>Directory</b> template and marked <b>Members only</b>.','Visitors see a lock and a Join button; members see the content.','Any page, post, file or event can be locked this way with one checkbox.'],
+  portal:['Every member gets a personal account page.','<b>Update card</b> opens a secure billing page hosted by Stripe, where members manage their own card, receipts and auto-renew.','They can update their info, renew, change auto-renew, manage their classifieds and find member perks — without emailing the board.'],
+  'a-members':['The member database replaces ClubExpress. Filter by status or level, search, and <b>Export CSV</b> (this button really downloads a sample file).','“Email these members” sends a campaign to exactly the filtered list.','Board members get access based on role — e.g. the treasurer sees payments, a moderator doesn’t see member data at all.'],
+  'a-classifieds':['Moderators approve or reject listings with one click. The poster is emailed either way.','Try approving and rejecting — the queue updates.'],
+  'a-email':['Automatic emails (welcome, receipts, renewal reminders, listing approved) are built into the site and sent through Resend and Stripe.','Newsletters and announcements are written in <b>MailerLite</b>. Member groups (active, expiring, lapsed, by level) sync from the site on their own.','“Email these members” on the Members screen turns your filter into a MailerLite group.'],
+  arch:['This is the one-screen answer to “how does it work?”','We build the website itself. Logins, payments and email run on specialist services that only do that, and do it securely.','Every account is in the Society’s name, and the code lives in the Society’s GitHub account.'],
+  costs:['Type the board’s real numbers into the calculator during the meeting.','Card processing is paid on any platform, including ClubExpress, so compare platform costs side by side.','Ask what ClubExpress costs today and type it into the last box.'],
+  'st-event':['This is what a volunteer sees when they add or edit an event.','Type in <b>Title</b> or <b>Price</b>: the preview on the right updates as you type.','Click <b>Publish</b>, then open Events: the change is live on the calendar.','Venues, photos and repeating events are set once and reused.'],
+  'st-page':['New pages start from a template: Directory, Band Spotlight, Promo Feature or Standard.','Add, reorder or remove blocks. Blocks like “Upcoming shows” fill themselves.','Choose who can see the page: everyone, members only, or specific levels.','Try <b>Phone</b> at the top of the preview.'],
+  'st-post':['Writing a post works like writing an email or a Word doc. Paste from Google Docs and the formatting comes along.','Switch on <b>Members only</b> to lock it, or <b>Include in digest</b> to send it in the monthly email.','Posts can be scheduled ahead of time.'],
+  'st-sponsor':['Each sponsor has a logo, link, level and a <b>Featured</b> switch.','Turn on Featured for another sponsor and publish: the spotlight on the Sponsors page changes.','Set an end date and the logo hides itself when the sponsorship runs out.'],
+  'a-email-old':['Automatic emails handle renewal reminders, welcome emails and lapsed-member win-backs — no one has to remember.','Campaigns can target any group: all members, expiring, lapsed, a level, or the whole mailing list.','The monthly newsletter template pulls in the latest blog posts and events automatically.'],
+  'a-pages':['Admins create new pages from pre-designed templates: venue directories, band spotlights, promo features.','Choose visibility: public, members only, or specific membership levels.','Templates keep everything on-brand — volunteers fill in blanks, they don’t design.'],
+};
+
+/* ===================== STATE & ROUTING ===================== */
+const state={view:'home',member:false,evCat:'All',postCat:'All',clCat:'All',tier:0,give:50,monthly:false,calY:2026,calM:10,tpl:'Directory'};
+const ADMIN_VIEWS=['a-members','a-classifieds','a-email'], STUDIO_VIEWS=['st-event','st-page','st-post','st-sponsor'];
+const VALID=['home','events','news','classifieds','join','donate','sponsors','about','directory','portal','arch','costs',...ADMIN_VIEWS,...STUDIO_VIEWS];
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function go(v){
+  if(!VALID.includes(v)) v='home';
+  state.view=v; const isAdmin=ADMIN_VIEWS.includes(v), isStudio=STUDIO_VIEWS.includes(v), app=isAdmin||isStudio;
+  $$('.view').forEach(el=>el.classList.remove('on'));
+  (isAdmin?$('#v-admin'):isStudio?$('#v-studio'):$('#v-'+v)).classList.add('on');
+  $$('.apanel').forEach(p=>p.style.display = p.id==='p-'+v?'block':'none');
+  $('#site-head').style.display=app?'none':''; $('#site-foot').style.display=app?'none':'';
+  try{ history.replaceState(null,'','#'+v); }catch(e){}
+  $$('[data-go]').forEach(b=>b.classList.toggle('on',b.dataset.go===v));
+  $('#nav').classList.remove('open');
+  renderNotes(); render(); window.scrollTo(0,0);
+}
+document.addEventListener('click',e=>{const g=e.target.closest('[data-go]'); if(g){e.preventDefault();go(g.dataset.go);}});
+$('#menu-btn').onclick=()=>$('#nav').classList.toggle('open');
+
+function setMember(m){
+  state.member=m; $('#as-member').classList.toggle('on',m); $('#as-visitor').classList.toggle('on',!m);
+  if(m) toast('Signed in as Jordan Ellis (member)'); render();
+}
+$('#as-visitor').onclick=()=>setMember(false); $('#as-member').onclick=()=>setMember(true);
+
+function renderNotes(){ const n=NOTES[state.view]||[]; $('#notes-body').innerHTML='<ul>'+n.map(x=>'<li>'+x+'</li>').join('')+'</ul>'; }
+function toggleNotes(){ $('#notes').classList.toggle('hide'); $('#notes-toggle').classList.toggle('on',!$('#notes').classList.contains('hide')); }
+$('#notes-toggle').onclick=toggleNotes;
+
+let tt; function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),2600); }
+function openModal(h){ $('#modal-body').innerHTML=h; $('#modal').classList.add('on'); }
+function closeModal(){ $('#modal').classList.remove('on'); }
+$('#modal').onclick=e=>{ if(e.target.id==='modal') closeModal(); };
+
+/* ===================== RENDERERS ===================== */
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const pd=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+function evDate(e){const d=pd(e.d);return `<div class="ev-date"><span>${MON[d.getMonth()]}</span><b>${d.getDate()}</b></div>`;}
+function evCard(e,i){return `<div class="card ev-card" style="cursor:${i==null?'default':'pointer'}" ${i==null?'':`onclick="showEvent(${i})"`}>${evDate(e)}<div><div style="margin-bottom:4px">${e.mem?'<span class="tag brass">Members only</span> ':''}<span class="tag ${e.rec?'grey':''}">${e.rec?'Weekly':esc(e.cat)}</span></div><b>${esc(e.t)}</b><div class="small muted">${esc(e.v)} · ${e.time}</div><div class="small">${esc(e.price)}</div></div></div>`;}
+function showEvent(i){
+  const e=EVENTS[i], d=pd(e.d);
+  const memPrice = state.member && e.price.includes('Members') ? `<p class="tag green">Member price applied — you're signed in</p>` : '';
+  const locked = e.mem && !state.member;
+  openModal(`<span class="tag ${e.mem?'brass':''}">${e.mem?'Members only':esc(e.cat)}</span><h2 style="margin-top:10px">${esc(e.t)}</h2>
+  <p><b>${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</b> · ${e.time}<br>${locked?'<i>Location visible to members</i>':esc(e.v)}</p><p>${esc(e.price)}</p>${memPrice}
+  <p class="muted small">Event description, lineup, photos and a map would go here. ${e.rec?'This event repeats every Tuesday — set up once in the admin.':''}</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">${locked?'<button class="btn sm" onclick="closeModal();go(\'join\')">Join to attend</button>':'<button class="btn sm dark" onclick="toast(\'Added to your calendar\')">Add to calendar</button><button class="btn sm ghost" onclick="toast(\'Share link copied\')">Share</button>'}</div>`);
+}
+
+function render(){
+  // header CTA
+  $('#head-cta').innerHTML = state.member
+    ? `<button class="btn sm ghost" style="color:#fff" data-go="portal">👤 My Account</button>`
+    : `<button class="btn sm ghost" style="color:#fff" onclick="signIn()">Sign in</button><button class="btn sm" data-go="join">Join</button>`;
+  const v=state.view;
+  if(v==='home') renderHome();
+  if(v==='events') renderEvents();
+  if(v==='news') renderPosts();
+  if(v==='classifieds') renderClassifieds();
+  if(v==='join') renderJoin();
+  if(v==='donate') renderDonate();
+  if(v==='sponsors') renderSponsors();
+  if(v==='directory') renderDirectory();
+  if(v==='portal') renderPortal();
+  if(v==='a-members') renderMembers();
+  if(v==='a-classifieds') renderQueue();
+  if(v==='a-email') renderAutos();
+  if(STUDIO_VIEWS.includes(v)) renderStudio();
+  if(v==='costs') calc();
+  const pend=LISTINGS.filter(l=>l.st==='pending').length; $('#q-badge').textContent=pend||''; $('#q-badge').style.display=pend?'':'none';
+}
+
+function renderHome(){
+  if(!$('#hero-ph').innerHTML) $('#hero-ph').innerHTML=scene('');
+  const pub=EVENTS.map((e,i)=>({e,i})).filter(x=>!x.e.rec);
+  const n=pub[0]; const d=pd(n.e.d);
+  $('#next-up').innerHTML=`<div class="eyebrow">Next up</div><div style="display:flex;gap:16px;align-items:center;margin:10px 0"><div class="date">${MON[d.getMonth()]}<br>${d.getDate()}</div><div><h3 style="margin:0">${esc(n.e.t)}</h3><div style="color:#cfd8e6" class="small">${esc(n.e.v)} · ${n.e.time}</div></div></div><button class="btn sm" onclick="showEvent(${n.i})">Details</button>`;
+  $('#home-events').innerHTML=pub.slice(1,4).map(x=>evCard(x.e,x.i)).join('');
+  $('#home-posts').innerHTML=POSTS.slice(0,3).map(postCard).join('');
+  $('#home-sponsors').innerHTML=SPONSORS.filter(s=>s.tier!=='Friend').map(s=>`<div class="sp-logo">${esc(s.n)}</div>`).join('');
+}
+
+function renderEvents(){
+  const cats=['All','Concert','Jam','Workshop','Society'];
+  $('#ev-filters').innerHTML=cats.map(c=>`<button class="pill ${state.evCat===c?'on':''}" onclick="state.evCat='${c}';renderEvents()">${c}</button>`).join('');
+  const show=e=>state.evCat==='All'||e.cat===state.evCat;
+  const y=state.calY,m=state.calM; $('#cal-title').textContent=`${MONTH[m]} ${y}`;
+  const first=new Date(y,m,1).getDay(), days=new Date(y,m+1,0).getDate();
+  let h=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="dow">${d}</div>`).join('');
+  const cells=Math.ceil((first+days)/7)*7;
+  for(let c=0;c<cells;c++){
+    const dn=c-first+1;
+    if(dn<1||dn>days){h+='<div class="day out"></div>';continue;}
+    const key=`${y}-${String(m+1).padStart(2,'0')}-${String(dn).padStart(2,'0')}`;
+    const evs=EVENTS.map((e,i)=>({e,i})).filter(x=>x.e.d===key&&show(x.e));
+    h+=`<div class="day"><div class="n">${dn}</div>${evs.map(x=>`<button class="chip ${x.e.mem?'mem':x.e.rec?'rec':''}" title="${esc(x.e.t)}" onclick="showEvent(${x.i})">${x.e.mem?'🔒 ':''}${esc(x.e.t)}</button>`).join('')}</div>`;
+  }
+  $('#cal').innerHTML=h;
+  $('#ev-list').innerHTML=EVENTS.map((e,i)=>({e,i})).filter(x=>show(x.e)&&!x.e.rec).slice(0,5).map(x=>evCard(x.e,x.i)).join('');
+}
+$('#cal-prev').onclick=()=>{state.calM--; if(state.calM<0){state.calM=11;state.calY--;} renderEvents();};
+$('#cal-next').onclick=()=>{state.calM++; if(state.calM>11){state.calM=0;state.calY++;} renderEvents();};
+
+function postCard(p){
+  const i=POSTS.indexOf(p); const locked=p.mem&&!state.member;
+  return `<div class="card post-card" style="cursor:pointer" onclick="showPost(${i})"><div class="img ${p.img}">${scene(p.img)}</div><div class="body"><div style="margin-bottom:6px">${p.mem?'<span class="tag brass">🔒 Members</span> ':''}<span class="tag">${esc(p.cat)}</span> <span class="small muted">${p.date}</span></div><h3>${esc(p.t)}</h3><p class="muted small ${locked?'blur':''}">${esc(p.x)}</p></div></div>`;
+}
+function showPost(i){
+  const p=POSTS[i];
+  if(p.mem&&!state.member){openModal(`<div style="text-align:center"><div class="lock-ico">🔒</div><h2>${esc(p.t)}</h2><p class="muted">This post is for members. Sign in or join to read it.</p><div style="display:flex;gap:8px;justify-content:center"><button class="btn dark sm" onclick="closeModal();setMember(true);showPost(${i})">Sign in</button><button class="btn sm" onclick="closeModal();go('join')">Join</button></div></div>`);return;}
+  openModal(`<span class="tag">${esc(p.cat)}</span> <span class="small muted">${p.date}</span><h2 style="margin-top:10px">${esc(p.t)}</h2><p>${esc(p.x)}</p><p class="muted small">Full post with photos, video embeds and links. Written in the admin like a Word doc. When published, the author can tick “Also email to members.”</p>`);
+}
+function renderPosts(){
+  const cats=['All','Recap','Band Spotlight','Society News','Education'];
+  $('#post-filters').innerHTML=cats.map(c=>`<button class="pill ${state.postCat===c?'on':''}" onclick="state.postCat='${c}';renderPosts()">${c}</button>`).join('');
+  $('#post-list').innerHTML=POSTS.filter(p=>state.postCat==='All'||p.cat===state.postCat).map(postCard).join('');
+}
+
+function renderClassifieds(){
+  const cats=['All','Musicians Wanted','Available','Gigs','Lessons','Gear'];
+  $('#cl-filters').innerHTML=cats.map(c=>`<button class="pill ${state.clCat===c?'on':''}" onclick="state.clCat='${c}';renderClassifieds()">${c}</button>`).join('');
+  const color={'Musicians Wanted':'','Available':'green','Gigs':'brass','Lessons':'grey','Gear':'rust'};
+  $('#cl-list').innerHTML=LISTINGS.filter(l=>l.st==='live'&&(state.clCat==='All'||l.cat===state.clCat)).map(l=>`<div class="card" style="padding:18px"><span class="tag ${color[l.cat]}">${esc(l.cat)}</span><h3 style="margin-top:8px">${esc(l.t)}</h3><p class="small">${esc(l.x)}</p><div style="display:flex;justify-content:space-between;align-items:center"><span class="small muted">Posted by ${esc(l.by)}</span><button class="btn sm dark" onclick="${state.member?"toast('Message sent through the site — your email stays private')":"toast('Sign in to contact the poster')"}">Contact</button></div></div>`).join('');
+}
+$('#post-listing').onclick=()=>{
+  if(!state.member){openModal(`<div style="text-align:center"><div class="lock-ico">🎸</div><h2>Posting is a member benefit</h2><p class="muted">Sign in or join to post a free listing.</p><div style="display:flex;gap:8px;justify-content:center"><button class="btn dark sm" onclick="closeModal();setMember(true);$('#post-listing').click()">Sign in</button><button class="btn sm" onclick="closeModal();go('join')">Join</button></div></div>`);return;}
+  openModal(`<h2>Post a listing</h2><label class="f">Category</label><select class="i" id="nl-cat"><option>Musicians Wanted</option><option>Available</option><option>Gigs</option><option>Lessons</option><option>Gear</option></select><label class="f">Title</label><input class="i" id="nl-t" value="Rhythm guitarist wanted for Sunday blues brunch"><label class="f">Details</label><textarea class="i" id="nl-x" rows="3">Two sets, acoustic-friendly, paid.</textarea><label class="f">Photo (optional)</label><input class="i" type="file"><p class="small muted">Listings are reviewed by a moderator before going live, usually within a day. They expire after 60 days.</p><button class="btn dark" onclick="submitListing()">Submit for review</button>`);
+};
+function submitListing(){ LISTINGS.push({t:$('#nl-t').value,cat:$('#nl-cat').value,by:'Jordan E.',x:$('#nl-x').value,st:'pending'}); closeModal(); toast('Submitted! A moderator will review it (see Admin → Moderation).'); render(); }
+
+const TIERS=[{n:'Individual',p:25,b:['Member show discounts','Members-only events & pages','Monthly email newsletter','Voting rights']},{n:'Family',p:40,b:['Everything in Individual','Up to 4 household members','Each gets their own login']},{n:'Musician',p:30,b:['Everything in Individual','Post classifieds','Listing in the musician directory','Jam host sign-ups']},{n:'Patron',p:150,b:['Everything in Family','Recognition on the website','Two tickets to the annual gala','Part is tax-deductible']}];
+function renderJoin(){
+  $('#tiers').innerHTML=TIERS.map((t,i)=>`<div class="card tier ${state.tier===i?'on':''}" onclick="state.tier=${i};renderJoin()"><div class="eyebrow">${t.n}</div><div class="price">$${t.p}<span class="small muted" style="font-family:var(--sans)">/year</span></div><ul>${t.b.map(x=>`<li>${x}</li>`).join('')}</ul></div>`).join('');
+  $('#join-total').textContent='$'+TIERS[state.tier].p.toFixed(2);
+}
+$('#join-submit').onclick=()=>{ toast('Welcome to the Society! Receipt & welcome email sent.'); state.member=true; setMember(true); setTimeout(()=>go('portal'),400); };
+
+function renderDonate(){
+  $('#amounts').innerHTML=[25,50,100,250,500,'Other'].map(a=>`<button class="${state.give===a?'on':''}" onclick="state.give=${typeof a==='number'?a:"'Other'"};renderDonate()">${typeof a==='number'?'$'+a:a}</button>`).join('');
+  $('#donate-btn').textContent= state.give==='Other' ? 'Donate' : `Donate $${state.give}${state.monthly?' / month':''}`;
+  $('#d-once').classList.toggle('on',!state.monthly); $('#d-month').classList.toggle('on',state.monthly);
+}
+$('#d-once').onclick=()=>{state.monthly=false;renderDonate();}; $('#d-month').onclick=()=>{state.monthly=true;renderDonate();};
+$('#donate-btn').onclick=()=>toast('Thank you! Tax receipt emailed — sample only.');
+
+function renderSponsors(){
+  const f=SPONSORS.find(s=>s.feat); $('#sp-featured').innerHTML=f?spotlight(f):'';
+  const tiers=[['Headliner','Top placement, home page, newsletter feature'],['Opening Act','Logo on sponsors page & event listings'],['Friend','Name listing on sponsors page']];
+  $('#sponsor-tiers').innerHTML=tiers.map(([t,d])=>`<h3 style="margin-top:32px">${t} <span class="small muted" style="font-family:var(--sans)">— ${d}</span></h3><div class="sp-logos" style="justify-content:flex-start">${SPONSORS.filter(s=>s.tier===t).map(s=>`<div class="sp-logo" style="${t==='Headliner'?'font-size:24px;padding:26px 40px':t==='Friend'?'font-size:15px;padding:10px 16px':''}">${esc(s.n)}</div>`).join('')}</div>`).join('');
+}
+
+function renderDirectory(){
+  $('#dir-rows').innerHTML=VENUES.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('');
+  $('#dir-lock').style.display=state.member?'none':'flex';
+  $('#dir-content').classList.toggle('blur',!state.member);
+}
+
+function renderPortal(){
+  if(!state.member){ $('#portal-body').innerHTML=`<div class="card" style="padding:28px;max-width:460px;margin:0 auto;text-align:center"><h2>Member sign in</h2><input class="i" placeholder="Email" style="margin-bottom:8px"><input class="i" type="password" placeholder="Password"><button class="btn dark" style="width:100%;justify-content:center;margin-top:12px" onclick="setMember(true)">Sign in</button><p class="small muted" style="margin-top:10px">Forgot password? · Not a member? <a href="#" data-go="join">Join</a></p></div>`; return; }
+  const mine=LISTINGS.filter(l=>l.by==='Jordan E.'||l.by==='Dale R.');
+  $('#portal-body').innerHTML=`
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+    <div class="card" style="padding:22px"><div class="eyebrow">Membership</div><h3 style="margin-top:6px">${TIERS[state.tier].n} member</h3><span class="tag green">Active</span><p class="small" style="margin-top:10px">Renews <b>March 14, 2027</b> · $${TIERS[state.tier].p}/yr</p><div class="auto" style="padding:8px 0;border:0"><button class="switch on" onclick="this.classList.toggle('on');toast('Auto-renew updated')"></button><span class="small">Auto-renew</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm dark" onclick="stripePortal()">Update card</button><button class="btn sm ghost" onclick="toast('Upgrade options shown')">Change level</button></div></div>
+    <div class="card" style="padding:22px"><div class="eyebrow">Your perks</div><h3 style="margin-top:6px">Member discount code</h3><div style="font-family:monospace;font-size:20px;background:var(--cream);padding:10px;border-radius:8px;text-align:center;letter-spacing:.1em">BLUES-MBR-26</div><p class="small muted">Good at partner venues &amp; Hilltop Guitar Works.</p><a style="cursor:pointer" data-go="directory">Venue &amp; booking directory →</a><br><a style="cursor:pointer" onclick="go('news')">Board notes (members only) →</a></div>
+    <div class="card" style="padding:22px"><div class="eyebrow">Your info</div><h3 style="margin-top:6px">Jordan Ellis</h3><p class="small">jordan@example.com<br>Member since 2019</p><label style="display:flex;gap:8px;font-size:14px"><input type="checkbox" checked> Monthly newsletter</label><label style="display:flex;gap:8px;font-size:14px"><input type="checkbox" checked> Event announcements</label><button class="btn sm ghost" style="margin-top:10px" onclick="toast('Profile saved')">Edit profile</button></div>
+  </div>
+  <h3 style="margin-top:32px">My classifieds</h3>
+  <div class="card tscroll"><table class="t"><thead><tr><th>Listing</th><th>Status</th><th></th></tr></thead><tbody>${mine.map(l=>`<tr><td>${esc(l.t)}</td><td><span class="tag ${l.st==='live'?'green':l.st==='pending'?'brass':'grey'}">${l.st==='live'?'Live · expires in 41 days':l.st==='pending'?'Awaiting review':'Not approved'}</span></td><td style="text-align:right"><button class="btn sm ghost" onclick="toast('Edit listing')">Edit</button></td></tr>`).join('')||'<tr><td colspan=3 class="muted">No listings yet.</td></tr>'}</tbody></table></div>
+  <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-go="classifieds">Post a listing</button><button class="btn sm ghost" onclick="toast('Receipts list')">Payment history &amp; receipts</button><button class="btn sm ghost" onclick="setMember(false);go('home')">Sign out</button></div>`;
+}
+
+function filteredMembers(){
+  const q=$('#m-search').value.toLowerCase(), s=$('#m-status').value, l=$('#m-level').value;
+  return MEMBERS.filter(m=>(!q||m.name.toLowerCase().includes(q)||m.email.includes(q))&&(!s||m.status===s)&&(!l||m.level===l));
+}
+function renderMembers(){
+  const act=MEMBERS.filter(m=>m.status!=='Lapsed').length, exp=MEMBERS.filter(m=>m.status==='Expiring soon').length, lap=MEMBERS.filter(m=>m.status==='Lapsed').length;
+  $('#kpis').innerHTML=`<div class="card kpi"><div class="l">Active members</div><div class="v">${act*17}</div><div class="small muted">sample: ${act} shown</div></div><div class="card kpi"><div class="l">Expiring in 30 days</div><div class="v" style="color:var(--brass)">${exp}</div><div class="small muted">reminders auto-sent</div></div><div class="card kpi"><div class="l">Lapsed</div><div class="v" style="color:var(--rust)">${lap*22}</div><div class="small muted">win-back email on</div></div><div class="card kpi"><div class="l">Dues collected YTD</div><div class="v">$11,840</div><div class="small muted">+ $3,210 donations</div></div>`;
+  const rows=filteredMembers(); $('#m-count').textContent=rows.length+' members';
+  const cls={'Active':'green','Expiring soon':'brass','Lapsed':'rust'};
+  $('#m-rows').innerHTML=rows.map(m=>`<tr><td><b>${esc(m.name)}</b></td><td class="muted">${esc(m.email)}</td><td>${m.level}</td><td><span class="tag ${cls[m.status]}">${m.status}</span></td><td>${m.exp}</td><td>${m.joined}</td></tr>`).join('');
+}
+['#m-search','#m-status','#m-level'].forEach(s=>$(s).addEventListener('input',renderMembers));
+$('#m-export').onclick=()=>{
+  const rows=filteredMembers(); const csv=['Name,Email,Level,Status,Expires,Joined',...rows.map(m=>[m.name,m.email,m.level,m.status,m.exp,m.joined].join(','))].join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='obs-members-sample.csv'; a.click(); toast(`Exported ${rows.length} members`);
+};
+$('#m-email').onclick=()=>{ toast(`Composing email to ${filteredMembers().length} filtered members`); setTimeout(()=>go('a-email'),600); };
+
+function renderQueue(){
+  const pend=LISTINGS.map((l,i)=>({l,i})).filter(x=>x.l.st==='pending');
+  $('#queue').innerHTML=pend.length?pend.map(x=>`<div class="card" style="padding:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center"><div style="flex:1;min-width:220px"><span class="tag">${esc(x.l.cat)}</span> <span class="small muted">by ${esc(x.l.by)} · submitted today</span><h3 style="margin:6px 0 2px">${esc(x.l.t)}</h3><div class="small">${esc(x.l.x)}</div></div><div style="display:flex;gap:6px"><button class="btn sm" style="background:var(--green);color:#fff" onclick="moderate(${x.i},'live')">✓ Approve</button><button class="btn sm ghost" style="color:var(--rust)" onclick="moderate(${x.i},'rejected')">✕ Reject</button></div></div>`).join(''):`<div class="card" style="padding:24px;text-align:center" class="muted">🎉 Queue is empty. Nice work.</div>`;
+}
+function moderate(i,st){ LISTINGS[i].st=st; toast(st==='live'?'Approved — now live on Classifieds; poster notified':'Rejected — poster notified with reason'); render(); }
+
+const AUTOS=[['Welcome email','Sent right after someone joins — includes login link and perks',true],['Renewal reminder — 30 days','“Your membership renews soon”',true],['Renewal reminder — 7 days','Second nudge with one-click renew button',true],['Payment receipt','Every dues payment and donation',true],['Lapsed member win-back','14 days after expiry: “We miss you”',true],['Classified expiring','5 days before a listing expires',true],['Monthly blog digest','1st of each month: new posts + upcoming events',false]];
+function renderAutos(){ $('#autos').innerHTML=AUTOS.map((a,i)=>`<div class="auto"><button class="switch ${a[2]?'on':''}" onclick="AUTOS[${i}][2]=!AUTOS[${i}][2];renderAutos();toast('${esc(a[0])} '+(AUTOS[${i}][2]?'on':'off'))"></button><div style="flex:1"><b>${a[0]}</b><div class="small muted">${a[1]}</div></div><button class="btn sm ghost" onclick="toast('Opens the email editor')">Edit</button></div>`).join(''); }
+
+function renderTpls(){
+  const thumbs={'Directory':'<i style="height:10px;width:60%"></i><i style="height:8px"></i><i style="height:8px"></i><i style="height:8px"></i>','Band Spotlight':'<i style="height:28px"></i><i style="height:8px;width:70%"></i><i style="height:8px;width:40%"></i>','Promo Feature':'<i style="height:34px;background:#c9a65c"></i><i style="height:8px;width:50%"></i>','Standard Page':'<i style="height:10px;width:50%"></i><i style="height:8px"></i><i style="height:8px;width:80%"></i>'};
+  $('#tpls').innerHTML=Object.keys(TEMPLATES).map(k=>`<div class="card tpl ${state.tpl===k?'on':''}" onclick="state.tpl='${k}';renderTpls()"><div class="thumb">${thumbs[k]}</div><b>${k}</b></div>`).join('');
+  $('#tpl-canvas').innerHTML=`<div class="small muted" style="margin-bottom:8px">Template: <b>${state.tpl}</b> — click any block to type</div><input class="i" style="font-family:var(--serif);font-size:22px;margin-bottom:12px" value="${state.tpl==='Band Spotlight'?'Band Spotlight: The Muddy Ridge Trio':state.tpl==='Directory'?'Venue & Booking Directory':state.tpl==='Promo Feature'?'Blues Challenge 2027 — Bands Wanted':'New page'}">`+TEMPLATES[state.tpl].blocks.map(b=>`<div class="block small">▦ ${b}</div>`).join('');
+}
+if($('#tpl-publish')) $('#tpl-publish').onclick=()=>{ const v=document.querySelector('input[name=vis]:checked').value; toast(`Page published · Visible to: ${v}`); };
+
+/* ===================== SAMPLE IMAGERY (stand-ins for Society photos) ===================== */
+let sceneN=0;
+const SCENE_PAL={'':['#0b1626','#2b4c7e','#f0d49a'],b:['#1f0e08','#a8452f','#ffd08a'],c:['#14130e','#6d5e33','#f6e7b8'],d:['#0b1d19','#2f6f55','#d7f2c4']};
+function scene(v=''){
+  const p=SCENE_PAL[v]||SCENE_PAL[''], n=++sceneN;
+  let crowd=''; for(let i=0;i<23;i++){const x=i*18+(i%3)*4-4, y=208+(i%4)*3; crowd+=`<circle cx="${x}" cy="${y}" r="8"/><ellipse cx="${x}" cy="${y+18}" rx="14" ry="12"/>`;}
+  return `<svg viewBox="0 0 400 225" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" style="display:block" role="img" aria-label="Sample photo placeholder: band on stage"><defs><linearGradient id="g${n}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p[1]}"/><stop offset="1" stop-color="${p[0]}"/></linearGradient><linearGradient id="l${n}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p[2]}" stop-opacity=".6"/><stop offset="1" stop-color="${p[2]}" stop-opacity="0"/></linearGradient><radialGradient id="h${n}"><stop offset="0" stop-color="${p[2]}" stop-opacity=".95"/><stop offset="1" stop-color="${p[2]}" stop-opacity="0"/></radialGradient></defs>
+  <rect width="400" height="225" fill="url(#g${n})"/>
+  <polygon points="150,0 172,0 250,180 95,180" fill="url(#l${n})"/><polygon points="300,0 318,0 330,180 228,180" fill="url(#l${n})" opacity=".6"/>
+  <circle cx="161" cy="4" r="20" fill="url(#h${n})"/><circle cx="309" cy="4" r="15" fill="url(#h${n})"/>
+  <rect y="178" width="400" height="47" fill="${p[0]}"/><rect y="176" width="400" height="3" fill="${p[2]}" opacity=".25"/>
+  <g fill="#06080c"><circle cx="168" cy="96" r="10"/><path d="M156 108 Q168 103 180 108 L186 150 L178 151 L176 178 L170 178 L168 154 L165 178 L159 178 L158 151 L150 150 Z"/><ellipse cx="176" cy="138" rx="15" ry="10" transform="rotate(-25 176 138)"/><rect x="182" y="124" width="36" height="3.5" transform="rotate(-28 182 124)"/><rect x="137" y="96" width="2.5" height="82"/><circle cx="141" cy="95" r="3.5"/><circle cx="262" cy="112" r="9"/><path d="M252 122 Q262 118 272 122 L276 158 L268 158 L267 178 L257 178 L256 158 L248 158 Z"/><rect x="238" y="148" width="48" height="30" rx="3"/>${crowd}</g></svg>`;
+}
+
+/* ===================== MEMBER SIGN-IN & STRIPE BILLING PAGE ===================== */
+function signIn(){ openModal(`<h2>Member sign in</h2><p class="muted small">No password to remember. We’ll email you a one-click sign-in link.</p><input class="i" value="jordan@example.com" aria-label="Email"><button class="btn dark" style="width:100%;justify-content:center;margin-top:12px" onclick="closeModal();setMember(true)">Email me a sign-in link</button><p class="help" style="text-align:center">Prefer a password? That works too. · Not a member? <a href="#" data-go="join" onclick="closeModal()">Join</a></p>`); }
+function stripePortal(){ const t=TIERS[state.tier]; openModal(`<div class="small muted">Secure billing page · hosted by Stripe</div><h2 style="margin-top:6px">Your membership billing</h2><div class="card" style="padding:14px;margin:10px 0"><b>${t.n} membership</b> · $${t.p}.00 / year<div class="small muted">Renews March 14, 2027</div></div><div class="card" style="padding:14px;margin:10px 0;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>💳 Visa •••• 4242 <span class="small muted">exp 08/28</span></span><button class="btn sm ghost" onclick="toast('Stripe card form opens')">Update</button></div><b class="small">Receipts</b><table class="t"><tr><td>Mar 14, 2026</td><td>$${t.p}.00</td><td><a href="#" onclick="return false">Download</a></td></tr><tr><td>Mar 14, 2025</td><td>$${t.p}.00</td><td><a href="#" onclick="return false">Download</a></td></tr></table><div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn sm ghost" onclick="toast('Auto-renew off. Membership stays active until Mar 14, 2027.')">Turn off auto-renew</button><button class="btn sm dark" onclick="closeModal()">← Back to the Society site</button></div><p class="help">We don’t build or store any of this. Stripe hosts it securely, styled in the Society’s colors.</p>`); }
+
+/* ===================== COSTS CALCULATOR ===================== */
+const money=x=>'$'+Math.round(x).toLocaleString('en-US');
+function calc(){
+  const val=id=>Math.max(0,+$('#'+id).value||0);
+  const m=val('c-mem'), d=val('c-dues'), a=Math.min(100,val('c-auto'))/100, mail=val('c-mail'), host=val('c-host'), ce=val('c-ce');
+  const plat=(host+25+mail+2)*12, proc=m*(d*0.029+0.30), bill=m*a*d*0.007, tot=plat+proc+bill;
+  $('#c-out').innerHTML=[['Platform services',plat,'hosting, database, email, domain'],['Card processing',proc,'Stripe 2.9% + 30¢, paid on any platform'],['Auto-renew fee',bill,'Stripe Billing 0.7% of auto-renewing dues'],['Total per year',tot,`≈ ${money(tot/12)}/mo · ${m?money(tot/m):'$0'} per member`]]
+    .map(([l,x,s],i)=>`<div class="card kpi" ${i===3?'style="border:2px solid var(--brass)"':''}><div class="l">${l}</div><div class="v">${money(x)}</div><div class="small muted">${s}</div></div>`).join('');
+  const own=plat+bill;
+  $('#c-cmp').innerHTML=!ce?'<span class="muted">Enter what ClubExpress costs today to compare.</span>':ce>=own?`Against ${money(ce)}/yr today, the new platform costs about <b>${money(ce-own)} less per year</b> (card processing left out, since you pay it either way).`:`The new platform costs about <b>${money(own-ce)} more per year</b> than the ${money(ce)} paid today (card processing left out).`;
+}
+
+/* ===================== CONTENT STUDIO ===================== */
+const stu={ev:Math.max(0,EVENTS.findIndex(e=>e.t.startsWith('Delta'))),ed:null,pg:1,post:0,pd:null,sp:0,sd:null,mobile:false};
+const CATS_EV=['Concert','Jam','Workshop','Society'];
+function fmtDate(s){const d=pd(s||'');return isNaN(d)?'(no date)':d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});}
+function stDirty(on){const s=$('#st-status'); if(s){s.className='tag '+(on?'brass':'green'); s.textContent=on?'Unpublished changes':'Published';}}
+function stItem(on,t,sub,js){return `<button class="st-item ${on?'on':''}" onclick="${js}"><b>${esc(t)}</b><span>${sub}</span></button>`;}
+function stHead(type,t){return `<div class="st-dochead"><div><div class="small muted">${type}</div><h3 id="st-title">${esc(t)}</h3></div><span class="tag green" id="st-status">Published</span></div>`;}
+function stFoot(js){return `<div class="st-foot"><span class="small muted">✓ Draft saved automatically</span><button class="btn sm ghost" onclick="toast('Preview link copied. Send it to the board before publishing.')">Share preview</button><button class="btn sm dark" onclick="${js}">Publish</button></div>`;}
+function fld(l,inp,help){return `<div class="fld"><label>${l}</label>${inp}${help?`<div class="help">${help}</div>`:''}</div>`;}
+function sw(on,js){return `<button class="switch ${on?'on':''}" onclick="this.classList.toggle('on');${js}"></button>`;}
+function swRow(on,js,help){return `<div style="display:flex;gap:10px;align-items:center">${sw(on,js)}<span class="help" style="margin:0">${help}</span></div>`;}
+function sel(opts,cur,js){return `<select class="i" onchange="${js}">${opts.map(o=>`<option ${o===cur?'selected':''}>${esc(o)}</option>`).join('')}</select>`;}
+function imgFld(v,alt){return `<div class="img-fld"><div class="ph">${scene(v)}<span class="hot" title="Focal point"></span></div><div><div class="help" style="margin:0 0 8px">Drag the circle onto the important part of the photo. It crops itself for phones, cards and banners.</div><button class="btn sm ghost" onclick="toast('Opens the media library, or upload from a computer or phone')">Replace</button> <button class="btn sm ghost" onclick="toast('Crop tool opens')">Crop</button><input class="i" style="margin-top:8px" value="${esc(alt)}" aria-label="Alt text"><div class="help">Alt text describes the photo for screen readers.</div></div></div>`;}
+function rte(html){return `<div class="rte"><div class="rte-bar"><b>B</b><i>I</i><span>H2</span><span>H3</span><span>🔗 Link</span><span>❝ Quote</span><span>• List</span><span>🖼 Image</span><span>▶ Video</span></div><div class="rte-body" contenteditable="true">${html}</div></div>`;}
+function stPrevMode(m){stu.mobile=m; $('#pv-desk').classList.toggle('on',!m); $('#pv-mob').classList.toggle('on',m); $('#st-prev-wrap').classList.toggle('mobile',m);}
+function renderStudio(){ ({'st-event':stEvent,'st-page':stPage,'st-post':stPost,'st-sponsor':stSponsor})[state.view](); }
+
+/* events */
+function stEvent(){
+  const e=stu.ed||EVENTS[stu.ev], jam=EVENTS.findIndex(x=>x.rec), venues=[...new Set(EVENTS.map(x=>x.v))];
+  $('#st-list').innerHTML=`<div class="st-lhead"><b>Events</b><button class="btn sm dark" onclick="toast('A blank event form opens')">+ New</button></div>`+
+    stItem(stu.ev===jam,'Tuesday Open Jam','Repeats every Tuesday',`stu.ev=${jam};stu.ed=null;renderStudio()`)+
+    EVENTS.map((x,i)=>({x,i})).filter(o=>!o.x.rec).map(o=>stItem(o.i===stu.ev,o.x.t,fmtDate(o.x.d)+(o.x.mem?' · 🔒 Members':''),`stu.ev=${o.i};stu.ed=null;renderStudio()`)).join('');
+  $('#st-edit').innerHTML=stHead('Event',e.t)+`<div class="st-form">`+
+    fld('Title',`<input class="i" value="${esc(e.t)}" oninput="stEv('t',this.value)">`)+
+    `<div class="row2">${fld('Date',`<input class="i" type="date" value="${e.d}" oninput="stEv('d',this.value)">`)}${fld('Start time',`<input class="i" value="${esc(e.time)}" oninput="stEv('time',this.value)">`)}</div>`+
+    fld('Repeats',`<select class="i" onchange="stEv('rec',this.value!=='Does not repeat')"><option ${!e.rec?'selected':''}>Does not repeat</option><option ${e.rec?'selected':''}>Every week</option><option>Every month (same weekday)</option></select>`,'Set it once and every date fills in on the calendar.')+
+    `<div class="row2">${fld('Venue',sel(venues,e.v,"stEv('v',this.value)"),'Saved once with address &amp; map.')}${fld('Category',sel(CATS_EV,e.cat,"stEv('cat',this.value)"))}</div>`+
+    fld('Price',`<input class="i" value="${esc(e.price)}" oninput="stEv('price',this.value)">`,'Signed-in members see their price highlighted.')+
+    fld('Members only',swRow(e.mem,"stEv('mem',this.classList.contains('on'))",'Visitors see the event but not the location, plus a “Join to attend” button.'))+
+    fld('Photo',imgFld('','Band performing on stage under warm lights'))+
+    fld('Description',rte('<p>Join us for a night of Delta blues with the <b>Mavis Crane Band</b>. Doors at 7, music at 8.</p><p>Members get $5 off at the door. Just give your name.</p>'))+
+    `</div>`+stFoot('stPubEv()');
+  if(stu.ed) stDirty(true);
+  stEvPrev();
+}
+function stEv(k,v){ stu.ed=stu.ed||{...EVENTS[stu.ev]}; stu.ed[k]=v; if(k==='t') $('#st-title').textContent=v; stDirty(true); stEvPrev(); }
+function stEvPrev(){
+  const e=stu.ed||EVENTS[stu.ev], safe={...e,d:isNaN(pd(e.d||''))?'2026-11-07':e.d};
+  $('#st-prev').innerHTML=`<div class="help" style="margin:0 0 8px">Calendar &amp; home-page card</div>${evCard(safe,null)}
+  <div class="help" style="margin:16px 0 8px">Event page</div>
+  <div class="prev-page"><div style="height:150px">${scene('')}</div><div style="padding:16px">${e.mem?'<span class="tag brass">Members only</span> ':''}<span class="tag">${esc(e.cat)}</span><h3 style="margin:8px 0 4px">${esc(e.t)||'Untitled event'}</h3><div class="small"><b>${fmtDate(e.d)}</b> · ${esc(e.time)}${e.rec?' · repeats weekly':''}</div><div class="small muted">${e.mem?'Location shown to members':esc(e.v)}</div><div class="small" style="margin-top:6px">${esc(e.price)}</div><button class="btn sm dark" style="margin-top:10px">${e.mem?'Join to attend':'Add to calendar'}</button></div></div>`;
+}
+function stPubEv(){ if(!stu.ed){toast('Nothing new to publish');return;} Object.assign(EVENTS[stu.ev],stu.ed); const d=pd(EVENTS[stu.ev].d); if(!isNaN(d)){state.calY=d.getFullYear();state.calM=d.getMonth();} stu.ed=null; renderStudio(); toast('Published ✓ Live on the calendar, home page and newsletter feed'); }
+
+/* pages */
+const BLOCKS={hero:'Hero photo + headline',text:'Text',image:'Photo',video:'Video / Bandcamp player',events:'Upcoming shows (fills itself)',sponsors:'Sponsor logos (fills itself)',table:'Table',button:'Button',quote:'Pull quote',form:'Form'};
+const TPL_BLOCKS={'Directory':['text','table','form'],'Band Spotlight':['hero','text','quote','video','events'],'Promo Feature':['hero','text','button','sponsors'],'Standard Page':['text','image','button']};
+const PAGES=[
+  {t:'Venue & Booking Directory',tpl:'Directory',vis:'Members only',menu:'Member Resources'},
+  {t:'Band Spotlight: The Muddy Ridge Trio',tpl:'Band Spotlight',vis:'Everyone',menu:'Don’t add to menu'},
+  {t:'Blues Challenge 2027 — Bands Wanted',tpl:'Promo Feature',vis:'Everyone',menu:'Events'},
+  {t:'About & Volunteer',tpl:'Standard Page',vis:'Everyone',menu:'Main menu'},
+].map(p=>({...p,blocks:[...TPL_BLOCKS[p.tpl]]}));
+const slug=s=>'/'+s.toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+function stPage(){
+  const p=PAGES[stu.pg];
+  $('#st-list').innerHTML=`<div class="st-lhead"><b>Pages</b><button class="btn sm dark" onclick="stNewPage()">+ New</button></div>`+PAGES.map((x,i)=>stItem(i===stu.pg,x.t,x.tpl+(x.vis!=='Everyone'?' · 🔒 '+x.vis:''),`stu.pg=${i};renderStudio()`)).join('');
+  $('#st-edit').innerHTML=stHead('Page',p.t)+`<div class="st-form">`+
+    fld('Page title',`<input class="i" value="${esc(p.t)}" oninput="stPg('t',this.value)">`,`Web address: <b id="pg-slug">yoursite.org${slug(p.t)}</b>`)+
+    fld('Template',sel(Object.keys(TPL_BLOCKS),p.tpl,"stPg('tpl',this.value)"),'Switching templates loads that template’s starting blocks.')+
+    fld('Who can see this page?',`<div style="display:grid;gap:6px">${['Everyone','Members only','Musician & Patron levels only'].map((o,i)=>`<label style="display:flex;gap:8px;align-items:center"><input type="radio" name="svis" ${p.vis===o?'checked':''} onchange="stPgVis(${i})"> ${esc(o)}</label>`).join('')}</div>`)+
+    fld('Show in menu',sel(['Main menu','Member Resources','Events','About','Don’t add to menu'],p.menu,"stPg('menu',this.value)"))+
+    fld('Page blocks',`<div id="blk-list"></div><select class="i" onchange="if(this.value){stAdd(this.value);this.value=''}"><option value="">+ Add a block…</option>${Object.entries(BLOCKS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>`,'Blocks keep the Society’s design. Editors fill them in, so the layout can’t break.')+
+    `</div>`+stFoot("stDirty(false);toast('Page published ✓ Visible to: '+PAGES[stu.pg].vis)");
+  stBlocks(); stPgPrev();
+}
+function stPgVis(i){ stPg('vis',['Everyone','Members only','Musician & Patron levels only'][i]); }
+function stBlocks(){ const b=PAGES[stu.pg].blocks; $('#blk-list').innerHTML=b.map((x,i)=>`<div class="blk"><span class="h">⋮⋮</span><span class="tp"><b>${BLOCKS[x]}</b></span><button onclick="stMove(${i},-1)" ${i===0?'disabled':''} aria-label="Move up">↑</button><button onclick="stMove(${i},1)" ${i===b.length-1?'disabled':''} aria-label="Move down">↓</button><button onclick="stDel(${i})" aria-label="Remove">✕</button></div>`).join('')||'<div class="help" style="margin-bottom:8px">No blocks yet.</div>'; }
+function stPgChanged(){ stBlocks(); stDirty(true); stPgPrev(); }
+function stPg(k,v){ const p=PAGES[stu.pg]; p[k]=v; if(k==='tpl') p.blocks=[...TPL_BLOCKS[v]]; if(k==='t'){ $('#st-title').textContent=v; $('#pg-slug').textContent='yoursite.org'+slug(v); } stPgChanged(); }
+function stMove(i,d){ const b=PAGES[stu.pg].blocks; [b[i],b[i+d]]=[b[i+d],b[i]]; stPgChanged(); }
+function stDel(i){ PAGES[stu.pg].blocks.splice(i,1); stPgChanged(); }
+function stAdd(t){ PAGES[stu.pg].blocks.push(t); stPgChanged(); }
+function stNewPage(){ PAGES.push({t:'New page',tpl:'Standard Page',vis:'Everyone',menu:'Don’t add to menu',blocks:[...TPL_BLOCKS['Standard Page']]}); stu.pg=PAGES.length-1; renderStudio(); stDirty(true); }
+function blockPrev(b,p){
+  const up=EVENTS.filter(e=>!e.rec).slice(0,2);
+  const txt=p.tpl==='Band Spotlight'?'Three friends, one beat-up Silvertone and a sound that’s pure hill-country. We sat down with the trio before their November show.':p.tpl==='Directory'?'Venues that book blues in the region, who to contact, and what to expect. Know one we’re missing? Tell us below.':p.tpl==='Promo Feature'?'Bands compete for a spot at the national finals in Memphis. Auditions November 14 — applications close November 1.':'Text written in the editor like a Word document: headings, links, bold and lists.';
+  return ({
+    hero:`<div style="height:140px;position:relative;border-radius:8px;overflow:hidden">${scene('b')}<div style="position:absolute;left:14px;bottom:12px;right:14px;color:#fff;font-family:var(--serif);font-size:22px;line-height:1.1;text-shadow:0 2px 8px rgba(0,0,0,.6)">${esc(p.t)}</div></div>`,
+    text:`<p class="small" style="margin:0">${txt}</p>`,
+    image:`<div style="height:110px;border-radius:8px;overflow:hidden">${scene('c')}</div>`,
+    video:`<div style="height:120px;border-radius:8px;background:#111;display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px">▶</div>`,
+    events:`<div><b class="small">Upcoming shows</b>${up.map(e=>`<div class="small" style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:4px 0"><span>${esc(e.t)}</span><span class="muted">${fmtDate(e.d)}</span></div>`).join('')}</div>`,
+    sponsors:`<div class="sp-logos" style="justify-content:flex-start;gap:6px">${SPONSORS.slice(0,3).map(s=>`<div class="sp-logo" style="font-size:12px;padding:6px 10px">${esc(s.n)}</div>`).join('')}</div>`,
+    table:`<div class="tscroll"><table class="t" style="font-size:12px;background:#fff"><tr><th>Venue</th><th>Contact</th><th>Capacity</th></tr>${VENUES.slice(0,3).map(v=>`<tr><td>${esc(v[0])}</td><td>${esc(v[1])}</td><td>${esc(v[2])}</td></tr>`).join('')}</table></div>`,
+    button:`<div><button class="btn sm">${p.tpl==='Promo Feature'?'Apply to compete':'Learn more'}</button></div>`,
+    quote:`<blockquote style="margin:0;border-left:3px solid var(--brass);padding:4px 12px;font-family:var(--serif);font-size:17px">“We play it the way we learned it: loud, and from the heart.”</blockquote>`,
+    form:`<div class="card" style="padding:10px"><b class="small">Suggest a venue</b><div style="height:26px;background:#f3efe6;border-radius:6px;margin:6px 0"></div><div style="height:26px;background:#f3efe6;border-radius:6px;margin-bottom:6px"></div><button class="btn sm dark">Send</button></div>`,
+  })[b]||'';
+}
+function stPgPrev(){ const p=PAGES[stu.pg]; $('#st-prev').innerHTML=`<div class="prev-page"><div class="bar">Ozark Blues Society <span style="float:right;font-family:var(--sans);font-size:11px;opacity:.7">${esc(slug(p.t))}</span></div>${p.vis!=='Everyone'?`<div style="background:#f6e6c3;color:#7a5512;font-size:12px;padding:6px 14px">🔒 ${esc(p.vis)}: visitors see a sign-in / join prompt instead</div>`:''}<div class="pb">${p.blocks[0]==='hero'?'':`<h3 style="margin:0">${esc(p.t)}</h3>`}${p.blocks.map(b=>blockPrev(b,p)).join('')}</div></div>`; }
+
+/* blog posts */
+function stPost(){
+  const p={...POSTS[stu.post],...(stu.pd||{})};
+  $('#st-list').innerHTML=`<div class="st-lhead"><b>Blog posts</b><button class="btn sm dark" onclick="toast('A blank post opens')">+ New</button></div>`+POSTS.map((x,i)=>stItem(i===stu.post,x.t,x.date+' · '+x.cat+(x.mem?' · 🔒':''),`stu.post=${i};stu.pd=null;renderStudio()`)).join('');
+  $('#st-edit').innerHTML=stHead('Blog post',p.t)+`<div class="st-form">`+
+    fld('Headline',`<input class="i" value="${esc(p.t)}" oninput="stPo('t',this.value)">`)+
+    fld('Cover photo',imgFld(p.img,'Crowd in front of the stage at Fall Fest'))+
+    `<div class="row2">${fld('Category',sel(['Recap','Band Spotlight','Society News','Education'],p.cat,"stPo('cat',this.value)"))}${fld('Author',sel(['Communications Team','Lou Tate','Dee Harmon','The Board'],'Communications Team','stDirty(true)'))}</div>`+
+    fld('Short summary',`<textarea class="i" rows="2" oninput="stPo('x',this.value)">${esc(p.x)}</textarea>`,'Shown on blog cards and in the email digest.')+
+    fld('Post',rte(`<p>${esc(p.x)}</p><p>Write the rest here. Paste from Word or Google Docs and the formatting comes along. Drop photos straight in from your phone.</p>`))+
+    fld('Members only',swRow(p.mem,"stPo('mem',this.classList.contains('on'))",'Visitors see the headline and a “join to read” prompt.'))+
+    fld('Include in the monthly email digest',swRow(true,'stDirty(true)','Goes out automatically with the next newsletter.'))+
+    fld('When to publish',`<div class="row2"><select class="i"><option>Publish now</option><option>Schedule…</option></select><input class="i" type="datetime-local" value="2026-11-01T09:00"></div>`)+
+    `</div>`+stFoot('stPubPo()');
+  if(stu.pd) stDirty(true);
+  stPoPrev();
+}
+function stPo(k,v){ stu.pd=stu.pd||{}; stu.pd[k]=v; if(k==='t') $('#st-title').textContent=v; stDirty(true); stPoPrev(); }
+function stPoPrev(){ const p={...POSTS[stu.post],...(stu.pd||{})}; $('#st-prev').innerHTML=`<div class="help" style="margin:0 0 8px">Blog card</div><div class="post-card card"><div class="img ${p.img}">${scene(p.img)}</div><div class="body"><div style="margin-bottom:6px">${p.mem?'<span class="tag brass">🔒 Members</span> ':''}<span class="tag">${esc(p.cat)}</span> <span class="small muted">${p.date}</span></div><h3>${esc(p.t)}</h3><p class="muted small">${esc(p.x)}</p></div></div><div class="help" style="margin:16px 0 8px">In the monthly email digest</div><div class="card" style="padding:14px;font-size:13px"><b>November at the Ozark Blues Society</b><hr style="border:0;border-top:1px solid var(--line)"><b>${esc(p.t)}</b><p class="muted" style="margin:4px 0">${esc(p.x)}</p><a>Read more →</a></div>`; }
+function stPubPo(){ if(!stu.pd){toast('Nothing new to publish');return;} Object.assign(POSTS[stu.post],stu.pd); stu.pd=null; renderStudio(); toast('Published ✓ Live on the blog and queued for the next email digest'); }
+
+/* sponsors */
+function spotlight(s){ return `<div class="card" style="padding:0;overflow:hidden;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))"><div style="background:linear-gradient(135deg,var(--night),var(--blue2));min-height:180px;display:flex;align-items:center;justify-content:center;color:var(--brass-l);font-family:var(--serif);font-size:30px;padding:20px;text-align:center">${esc(s.n)}</div><div style="padding:24px"><span class="tag brass">Featured Sponsor · ${esc(s.tier)}</span><h2 style="margin-top:10px">Sponsor spotlight</h2><p>${esc(s.blurb||'')}</p><button class="btn sm dark" onclick="toast('Opens the sponsor website')">Visit ${esc(s.n.split(' ')[0])} →</button></div></div>`; }
+function stSponsor(){
+  const s={...SPONSORS[stu.sp],...(stu.sd||{})};
+  $('#st-list').innerHTML=`<div class="st-lhead"><b>Sponsors</b><button class="btn sm dark" onclick="toast('A blank sponsor form opens')">+ New</button></div>`+SPONSORS.map((x,i)=>stItem(i===stu.sp,x.n,x.tier+(x.feat?' · ★ Featured':''),`stu.sp=${i};stu.sd=null;renderStudio()`)).join('');
+  $('#st-edit').innerHTML=stHead('Sponsor',s.n)+`<div class="st-form">`+
+    fld('Business name',`<input class="i" value="${esc(s.n)}" oninput="stSp('n',this.value)">`)+
+    fld('Website',`<input class="i" value="${esc(s.url||'https://example.com')}" oninput="stSp('url',this.value)">`)+
+    fld('Logo',`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="sp-logo" style="min-width:150px;text-align:center">${esc(s.n)}</div><button class="btn sm ghost" onclick="toast('Upload a PNG or SVG logo')">Upload logo</button></div>`)+
+    fld('Sponsorship level',`<div style="display:grid;gap:6px">${[['Headliner','large logo, home page, newsletter'],['Opening Act','logo on sponsors page &amp; events'],['Friend','name on sponsors page']].map(([t,d])=>`<label style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="radio" name="stier" ${s.tier===t?'checked':''} onchange="stSp('tier','${t}')"> <b>${t}</b> <span class="help" style="margin:0">${d}</span></label>`).join('')}</div>`)+
+    fld('Featured sponsor',swRow(s.feat,"stSp('feat',this.classList.contains('on'))",'Shows the spotlight on the home page, sponsors page and newsletter. One at a time.'))+
+    fld('Spotlight text',`<textarea class="i" rows="3" oninput="stSp('blurb',this.value)">${esc(s.blurb||'')}</textarea>`)+
+    fld('Sponsorship ends',`<input class="i" type="date" value="2027-12-31">`,'The logo hides itself after this date. The sponsorship chair gets a reminder 30 days before.')+
+    `</div>`+stFoot('stPubSp()');
+  if(stu.sd) stDirty(true);
+  stSpPrev();
+}
+function stSp(k,v){ stu.sd=stu.sd||{}; stu.sd[k]=v; if(k==='n') $('#st-title').textContent=v; stDirty(true); stSpPrev(); }
+function stSpPrev(){ const s={...SPONSORS[stu.sp],...(stu.sd||{})}; const size=s.tier==='Headliner'?'font-size:24px;padding:24px 34px':s.tier==='Friend'?'font-size:14px;padding:8px 14px':''; $('#st-prev').innerHTML=`<div class="help" style="margin:0 0 8px">On the sponsors page (${esc(s.tier)} row)</div><div class="sp-logos" style="justify-content:flex-start"><div class="sp-logo" style="${size}">${esc(s.n)}</div></div>`+(s.feat?`<div class="help" style="margin:16px 0 8px">Featured spotlight</div>${spotlight(s)}`:`<p class="help" style="margin-top:16px">Turn on “Featured” to preview the spotlight.</p>`); }
+function stPubSp(){ if(!stu.sd){toast('Nothing new to publish');return;} if(stu.sd.feat) SPONSORS.forEach(x=>x.feat=false); Object.assign(SPONSORS[stu.sp],stu.sd); stu.sd=null; renderStudio(); toast('Published ✓ Sponsors page and home page updated'); }
+
+/* ===================== START ===================== */
+const qs=new URLSearchParams(location.search);
+if(qs.has('shot')){ $('#proto').style.display='none'; $('#notes').classList.add('hide'); }
+if(qs.get('member')==='1'){ state.member=true; $('#as-member').classList.add('on'); $('#as-visitor').classList.remove('on'); }
+go(location.hash.slice(1)||'home');
+</script>
+</body>
+</html>
