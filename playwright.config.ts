@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = Number(process.env.E2E_PORT ?? 3000);
@@ -14,6 +15,39 @@ const SANITY_STAND_IN_ENV = {
   NEXT_PUBLIC_SANITY_PROJECT_ID: "e2estandin",
   SANITY_API_HOST_STAND_IN: `http://127.0.0.1:${STAND_IN_PORT}`,
   SANITY_API_READ_TOKEN: "e2e-stand-in-token",
+};
+
+/**
+ * The local stack's service role key, which the app server needs to email posters from the
+ * moderation queue (backlog K-2): SUPABASE_SECRET_KEY, or what `supabase status` prints. Left in
+ * process.env, so the test workers, which load this file again, don't ask again. Undefined when no
+ * stack is running; the tests that need one fail on their own then.
+ */
+function localSecretKey(): string | undefined {
+  if (!process.env.SUPABASE_SECRET_KEY) {
+    try {
+      const status = JSON.parse(
+        execFileSync("supabase", ["status", "--output", "json"], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }),
+      ) as { SECRET_KEY?: string };
+      if (status.SECRET_KEY) process.env.SUPABASE_SECRET_KEY = status.SECRET_KEY;
+    } catch {
+      // No stack, or no Supabase CLI.
+    }
+  }
+  return process.env.SUPABASE_SECRET_KEY;
+}
+
+// The app's own emails (lib/email/send.ts) go to the local stack's Mailpit, never through Resend,
+// whatever .env.local says: an empty RESEND_API_KEY here wins over it.
+const SECRET_KEY = localSecretKey();
+const EMAIL_ENV = {
+  EMAIL_FROM: "onboarding@resend.dev",
+  MAILPIT_URL: process.env.MAILPIT_URL ?? "http://127.0.0.1:54324",
+  RESEND_API_KEY: "",
+  ...(SECRET_KEY ? { SUPABASE_SECRET_KEY: SECRET_KEY } : {}),
 };
 
 export default defineConfig({
@@ -48,9 +82,9 @@ export default defineConfig({
       url: baseURL,
       reuseExistingServer: !isCI,
       timeout: 120_000,
-      // SITE_URL: the site's own address, which links in the monthly newsletter start with. CI
-      // has no .env.local to set it.
-      env: { ...SANITY_STAND_IN_ENV, SITE_URL: baseURL },
+      // SITE_URL: the site's own address, which links in the monthly newsletter and the emails
+      // start with. CI has no .env.local to set it.
+      env: { ...SANITY_STAND_IN_ENV, ...EMAIL_ENV, SITE_URL: baseURL },
     },
   ],
 });

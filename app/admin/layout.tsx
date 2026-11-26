@@ -1,3 +1,4 @@
+import { MODERATION_PATH } from "@/lib/listings/moderation-state";
 import { AdminNavLink } from "./admin-nav-link";
 
 // The admin screens' shell, after the concept's "OBS Admin" (docs/design/prototype.html): a menu
@@ -17,6 +18,9 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
           </li>
           <li>
             <AdminNavLink href="/admin/digest">Monthly digest</AdminNavLink>
+          </li>
+          <li>
+            <AdminNavLink href={MODERATION_PATH}>Classifieds queue</AdminNavLink>
           </li>
           <li>
             <AdminNavLink href="/">View the website</AdminNavLink>

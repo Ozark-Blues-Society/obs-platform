@@ -507,8 +507,35 @@ do what, and `e2e/listings.spec.ts` tests the form.
   them into a database that got the migration with `supabase migration up` (no reset), run
   `awk '/^-- Classifieds listings\./,0' supabase/seed.sql | docker exec -i supabase_db_obs-platform psql -U postgres -v ON_ERROR_STOP=1`.
   Loading them again changes nothing.
-- Still to come: the moderation screen and the emails to posters (K-2), the public listings (K-3),
-  and expiry with "My listings" (K-4).
+- Still to come: the public listings (K-3), and expiry with "My listings" (K-4).
+
+### Moderation
+
+Moderators and administrators approve or reject listings in the classifieds queue at
+`/admin/classifieds` (backlog A-3 and K-2: `app/admin/classifieds/`, with its Server Functions in
+`lib/listings/moderation-actions.ts`). It lists the pending listings oldest first, with their
+details, photos and posters' first names and last initials. Moderators can't read profiles, so the
+names, and the addresses the emails go to, are read with the service role (`SUPABASE_SECRET_KEY`),
+only after the moderator's role has been checked.
+
+- **Approve** makes the listing `live`, which starts its 60 days. **Reject** makes it `rejected`,
+  with the moderator's reason, which the database requires (the `listings_rejected_reason` check).
+  Either way the poster gets the listing-approved or listing-rejected email through
+  `getEmailSender()`: Mailpit locally and in the tests, never real people. If the email fails, the
+  decision stands and the moderator is told the poster wasn't emailed.
+- **A decision applies to the version the moderator saw.** `listings.revision` counts the versions
+  of what the poster wrote: `private.check_listing_change()` adds one with each change, whoever
+  makes it, and ignores anything else written to it. The queue sends back the revision it showed,
+  and the decision changes the listing only while it's still pending at that revision. A change the
+  poster makes while the moderator looks (the listing stays pending) is never approved unseen: the
+  moderator is told, and the queue shows the new version. The same check keeps two moderators from
+  deciding on one listing twice.
+- Photo links are signed for the listing's `photo_version`, so the moderator sees the photo that
+  would go live. A photo replaced in Storage since doesn't sign, and the queue says so.
+- `supabase/tests/listing_moderation_test.sql` tests the revision and the reason rule,
+  `lib/listings/moderation*.test.ts` the Server Functions and the queue's reads, and
+  `e2e/admin-classifieds.spec.ts` the queue against the local stack and Mailpit. The guide for
+  moderators is `docs/volunteer-guide/classifieds-moderation.md`.
 
 ## Emails (React Email)
 
@@ -807,6 +834,10 @@ stand-in API, for the members it creates only.
   built-in ones. For draft mode, a test opens a shared preview link (`openSharedPreviewLink()` in
   `e2e/support/sanity.ts`): the stand-in holds the link's secret, and the server sets its own
   draft-mode cookie, so this works against both `pnpm dev` and the production build.
+- **Emails in end-to-end tests** go to the local stack's Mailpit, never through Resend: Playwright
+  gives the app server `EMAIL_FROM`, `MAILPIT_URL` and an empty `RESEND_API_KEY`, which wins over
+  `.env.local`. It also gives it the local service role key (`SUPABASE_SECRET_KEY`, or what
+  `supabase status` prints), which the classifieds queue needs to email posters.
 
 ## Continuous integration
 
