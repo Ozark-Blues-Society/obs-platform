@@ -1,5 +1,5 @@
-# CI (backlog F-2): lint, typecheck, unit tests, build, database tests (pgTAP) and Playwright
-# end-to-end tests, with local Supabase (backlog F-3) running in the runner.
+# CI (backlog F-2): lint, format check (Prettier), typecheck, unit tests, build, database tests
+# (pgTAP) and Playwright end-to-end tests, with local Supabase (backlog F-3) running in the runner.
 #
 # One job runs every check in turn. Each check runs even when an earlier one failed, so a single
 # run reports every problem, and any failed check fails the job. It is one job rather than one per
@@ -9,12 +9,12 @@
 # Keeping runs short (bead op-73f.15): starting local Supabase is the slowest step (about two
 # minutes, mostly pulling Docker images), so it starts in the background right after pnpm's setup,
 # and the Playwright browser install starts in the background after the install. While they run, the
-# job runs lint, typecheck, the unit tests and the build, which doesn't call Supabase. The database
-# tests and the end-to-end tests run once the stack is up. The build reuses the latest develop
-# run's Next.js cache, and the unit tests use both of the runner's CPUs. (The end-to-end tests
-# stay on one worker: with two, the Studio test sometimes never drew its screen.) A run of a tree
-# that an earlier run already passed skips the checks (see "Look for an earlier run that passed
-# this tree").
+# job runs lint, the format check, typecheck, the unit tests and the build, which doesn't call
+# Supabase. The database tests and the end-to-end tests run once the stack is up. The build reuses
+# the latest develop run's Next.js cache, and the unit tests use both of the runner's CPUs. (The
+# end-to-end tests stay on one worker: with two, the Studio test sometimes never drew its screen.) A
+# run of a tree that an earlier run already passed skips the checks (see "Look for an earlier run
+# that passed this tree").
 #
 # No secrets: CI uses test-mode or dummy values only (CLAUDE.md hard rules). The Supabase URL and
 # key are the well-known local values from .env.example, which only work against a local stack.
@@ -171,6 +171,12 @@ jobs:
       - name: Lint
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm lint
+
+      # ESLint checks no formatting (eslint-config-prettier only turns off its rules that clash with
+      # Prettier), so Prettier checks it here. `pnpm format` fixes the files it lists.
+      - name: Format check
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm format:check
 
       - name: Typecheck
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
