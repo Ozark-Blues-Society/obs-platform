@@ -1,13 +1,39 @@
 import { expect, test } from "@playwright/test";
+import type { EmailTemplate } from "../emails/_lib/template";
+import ListingApprovedEmail from "../emails/listing-approved";
+import ListingExpiringEmail from "../emails/listing-expiring";
+import ListingRejectedEmail from "../emails/listing-rejected";
+import MembershipLapsedEmail from "../emails/membership-lapsed";
 import ReceiptEmail from "../emails/receipt";
 import { renderEmail } from "../emails/render";
+import RenewalLastReminderEmail from "../emails/renewal-last-reminder";
+import RenewalReminderEmail from "../emails/renewal-reminder";
 import WelcomeEmail from "../emails/welcome";
 
 // The emails (backlog E-1) aren't pages of the site, so these tests render each one with its
 // sample props and load the HTML straight into the browser, at desktop and at phone width.
+const sample =
+  <Props extends object>(template: EmailTemplate<Props>) =>
+  () =>
+    renderEmail(template, template.PreviewProps);
+
 const emails = [
-  { name: "welcome", render: () => renderEmail(WelcomeEmail, WelcomeEmail.PreviewProps) },
-  { name: "receipt", render: () => renderEmail(ReceiptEmail, ReceiptEmail.PreviewProps) },
+  { name: "welcome", button: "Go to My Account", render: sample(WelcomeEmail) },
+  { name: "receipt", button: "Go to My Account", render: sample(ReceiptEmail) },
+  {
+    name: "renewal reminder",
+    button: "Renew your membership",
+    render: sample(RenewalReminderEmail),
+  },
+  {
+    name: "last renewal reminder",
+    button: "Renew your membership",
+    render: sample(RenewalLastReminderEmail),
+  },
+  { name: "lapsed", button: "Renew your membership", render: sample(MembershipLapsedEmail) },
+  { name: "listing approved", button: "Go to My listings", render: sample(ListingApprovedEmail) },
+  { name: "listing rejected", button: "Go to My listings", render: sample(ListingRejectedEmail) },
+  { name: "listing expiring", button: "Renew your listing", render: sample(ListingExpiringEmail) },
 ];
 
 for (const email of emails) {
@@ -17,7 +43,7 @@ for (const email of emails) {
     await page.setContent((await email.render()).html);
 
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    const button = page.getByRole("link", { name: "Go to My Account" });
+    const button = page.getByRole("link", { name: email.button });
     await expect(button).toBeVisible();
 
     // Nothing sticks out sideways: no horizontal scrolling at 390px.
