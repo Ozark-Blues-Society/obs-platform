@@ -158,4 +158,5 @@ Everything else uses Tailwind's own scales, which match the concept: spacing ste
 3. For new fonts, change the two `next/font/google` calls in `app/layout.tsx`, keeping their
    `variable` names (or update the `@theme inline` block in `app/globals.css`).
 4. Update copies outside the web app, which can't read CSS variables: the Auth email templates in
-   `supabase/templates/`, and later the React Email templates (E-1).
+   `supabase/templates/`, and the React Email templates' colors in `emails/_lib/theme.ts` (step 2's
+   `pnpm test` names each of those that no longer matches).
