@@ -145,6 +145,8 @@ describe("createMailpitSender", () => {
     "https://mailpit.example.org",
     "http://192.168.1.20:54324",
     "http://localhost.example.org",
+    "http://127.evil.example:54324",
+    "http://127.0.0.1.example.org:54324",
   ])("refuses a Mailpit that isn't on this machine (%s), so member data stays local", (url) => {
     expect(() => createMailpitSender({ url, from: "onboarding@resend.dev" })).toThrow(
       "MAILPIT_URL must be on this machine",

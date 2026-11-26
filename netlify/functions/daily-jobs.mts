@@ -14,7 +14,11 @@ interface NetlifyContext {
   site: { url?: string };
 }
 
-/** Netlify allows a scheduled function 30 seconds; give up on the site's answer before that. */
+/**
+ * Netlify allows a scheduled function 30 seconds; give up on the site's answer before that. The
+ * route answers in time: it starts no email after 15 seconds (RUN_BUDGET_MS in
+ * app/api/cron/daily/route.ts), and sending one takes 10 seconds at most.
+ */
 const TIMEOUT_MS = 28_000;
 
 export default async function dailyJobs(_request: Request, context: NetlifyContext): Promise<void> {

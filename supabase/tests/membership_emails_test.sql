@@ -1,6 +1,8 @@
 -- The daily job's membership statuses and emails (backlog E-2): refresh_membership_statuses(),
 -- due_membership_emails() and the membership_emails claims, in
--- supabase/migrations/20261126143035_membership_emails.sql.
+-- supabase/migrations/20261126143035_membership_emails.sql, and the refresh as
+-- 20261126163935_membership_status_from_row.sql replaced it, with private.membership_status_at().
+-- membership_status_race_test.sql runs the refresh against a renewal in another session.
 --
 -- The functions take the time to work from as a parameter: these tests pass a fake clock in June
 -- 2031, far from the fixture members' dates, so only the test members below are due. 2031-06-15
@@ -10,7 +12,7 @@
 -- The test users are created here, inside the transaction. Their ids start
 -- 00000000-0000-4000-8930-; the last two digits name them below.
 begin;
-select plan(32);
+select plan(35);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
@@ -131,6 +133,24 @@ select function_privs_are(
   'public', 'refresh_membership_statuses', array['timestamp with time zone'], 'service_role',
   array['EXECUTE'],
   'the service role can call refresh_membership_statuses'
+);
+
+select function_privs_are(
+  'private', 'membership_status_at', array['timestamp with time zone', 'timestamp with time zone'],
+  'anon', array[]::text[],
+  'visitors can''t call membership_status_at'
+);
+
+select function_privs_are(
+  'private', 'membership_status_at', array['timestamp with time zone', 'timestamp with time zone'],
+  'authenticated', array[]::text[],
+  'members can''t call membership_status_at'
+);
+
+select function_privs_are(
+  'private', 'membership_status_at', array['timestamp with time zone', 'timestamp with time zone'],
+  'service_role', array['EXECUTE'],
+  'the service role can call membership_status_at, which the refresh calls with its rights'
 );
 
 set local role service_role;

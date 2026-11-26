@@ -78,9 +78,18 @@ export function createResendSender(options: {
   };
 }
 
-/** Whether a URL's host is this machine, the only place a mail catcher should be. */
+/**
+ * Whether a URL's host is this machine, the only place a mail catcher should be: localhost, [::1]
+ * or an address in 127.0.0.0/8. The URL parser has already turned every other way of writing an
+ * IPv4 address (127.1, 0x7f000001) into four decimal numbers, so a name such as 127.example.org
+ * doesn't pass.
+ */
 function isLoopback(url: URL): boolean {
-  return url.hostname === "localhost" || url.hostname === "[::1]" || /^127\./.test(url.hostname);
+  return (
+    url.hostname === "localhost" ||
+    url.hostname === "[::1]" ||
+    /^127(?:\.\d{1,3}){3}$/.test(url.hostname)
+  );
 }
 
 /**
