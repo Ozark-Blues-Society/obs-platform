@@ -14,11 +14,9 @@ export const metadata: Metadata = {
 export default function SignInPage({ searchParams }: PageProps<"/sign-in">) {
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-6 py-12 sm:py-16">
-      <p className="text-sm font-semibold tracking-widest text-neutral-600 uppercase">
-        Ozark Blues Society
-      </p>
-      <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Member sign in</h1>
-      <Suspense fallback={<p className="mt-8 text-neutral-700">Loading the sign-in form…</p>}>
+      <p className="text-eyebrow text-accent-dark uppercase">Ozark Blues Society</p>
+      <h1 className="mt-2">Member sign in</h1>
+      <Suspense fallback={<p className="mt-8 text-muted">Loading the sign-in form…</p>}>
         <SignInForms searchParams={searchParams} />
       </Suspense>
     </main>
@@ -34,27 +32,24 @@ async function SignInForms({ searchParams }: Pick<PageProps<"/sign-in">, "search
       {linkFailed && (
         <p
           role="alert"
-          className="mt-6 rounded-lg border border-red-700 bg-red-50 p-4 text-sm text-red-900"
+          className="mt-6 rounded-lg border border-danger bg-danger-soft p-4 text-sm text-ink"
         >
           {MESSAGES.linkExpired}
         </p>
       )}
 
       <section aria-labelledby="email-link-heading" className="mt-8">
-        <h2 id="email-link-heading" className="text-xl font-bold">
+        <h2 id="email-link-heading" className="text-h3">
           Email me a sign-in link
         </h2>
-        <p className="mt-1 text-neutral-700">
+        <p className="mt-1 text-muted">
           No password to remember. We&rsquo;ll email you a link that signs you in with one click.
         </p>
         <EmailLinkForm action={sendSignInLink} />
       </section>
 
-      <section
-        aria-labelledby="password-heading"
-        className="mt-10 border-t border-neutral-300 pt-8"
-      >
-        <h2 id="password-heading" className="text-xl font-bold">
+      <section aria-labelledby="password-heading" className="mt-10 border-t border-line pt-8">
+        <h2 id="password-heading" className="text-h3">
           Sign in with a password
         </h2>
         <PasswordForm action={signInWithPassword} next={safeNextPath(next)} />
