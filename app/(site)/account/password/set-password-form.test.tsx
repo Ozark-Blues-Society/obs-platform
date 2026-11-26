@@ -107,6 +107,19 @@ describe("SetPasswordForm", () => {
     expect(action).toHaveBeenCalledTimes(2);
   });
 
+  it("reads out the confirmation again when the next try saves a password too", async () => {
+    const action = answering({ status: "saved" });
+    render(<SetPasswordForm action={action} email={EMAIL} />);
+
+    submit("delta blues forever", "delta blues forever");
+    const first = await screen.findByText("Your new password is saved.");
+    submit("delta blues forever", "delta blues forever");
+
+    // A new message in the status region, which screen readers read out again.
+    await waitFor(() => expect(screen.getByText("Your new password is saved.")).not.toBe(first));
+    expect(action).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps the button focused while saving, and ignores another press", async () => {
     let answer: (state: SetPasswordState) => void = () => {};
     const action = vi.fn<

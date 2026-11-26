@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { holdPosts, systemColor } from "./support/forms";
 import { removeRole } from "./support/supabase-roles";
 
 // The roles screen (backlog A-2) against the local Supabase stack, with the synthetic fixture
@@ -134,4 +135,26 @@ test("the last administrator can't be removed", async ({ page }) => {
   await expect(people.locator("[data-first-try]")).toHaveCount(0);
   await expect(refusal).toHaveText(message);
   await expect(remove).toBeFocused();
+});
+
+test("in forced colors, a Remove button is GrayText while sending, as a disabled one is", async ({
+  page,
+}) => {
+  // Windows High Contrast (see the same test in auth.spec.ts). The removal is refused, so this
+  // test changes nothing.
+  await page.emulateMedia({ forcedColors: "active" });
+  await signInTo(page, "/admin/roles", ADMIN.email);
+  const remove = page.getByRole("button", { name: "Remove your Administrator role" });
+  const grayText = await systemColor(page, "GrayText");
+  await expect(remove).not.toHaveCSS("color", grayText);
+
+  const release = await holdPosts(page, "**/admin/roles");
+  await remove.click();
+  await expect(remove).toHaveAttribute("aria-disabled", "true");
+  await expect(remove).toHaveCSS("color", grayText);
+  release();
+
+  const people = page.getByRole("region", { name: "People with roles" });
+  await expect(people.getByRole("alert")).toContainText("the last administrator");
+  await expect(remove).not.toHaveCSS("color", grayText);
 });

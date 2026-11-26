@@ -56,7 +56,8 @@ export function StaffList({
                       name="remove"
                       value={removalValue(person.id, role)}
                       // While a removal is sending, presses do nothing, but the button keeps
-                      // focus (as Button's `pending` does).
+                      // focus (as Button's `pending` does). In forced colors it shows GrayText
+                      // then, as a disabled button would.
                       aria-disabled={pending || undefined}
                       onClick={pending ? ignorePress : undefined}
                       aria-label={
@@ -64,7 +65,7 @@ export function StaffList({
                           ? `Remove your ${ROLE_LABELS[role]} role`
                           : `Remove the ${ROLE_LABELS[role]} role from ${person.name}`
                       }
-                      className="text-sm font-semibold text-primary-light underline hover:text-primary aria-disabled:cursor-wait"
+                      className="text-sm font-semibold text-primary-light underline hover:text-primary aria-disabled:cursor-wait forced-colors:aria-disabled:text-[GrayText]"
                     >
                       Remove
                     </button>

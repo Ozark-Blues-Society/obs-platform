@@ -9,11 +9,13 @@ type ButtonStyle = { variant?: ButtonVariant; size?: ButtonSize };
 
 // Every variant has a 1.5px border, so all are the same size. A transparent border still shows in
 // forced-colors mode (Windows High Contrast), where background colors don't. A pending button
-// (aria-disabled) looks like a disabled one.
+// (aria-disabled) looks like a disabled one. In forced colors that takes the GrayText system color:
+// browsers give it to a disabled button's text and border, but not to an aria-disabled one's.
 const BASE =
   "inline-flex items-center justify-center gap-2 rounded-full border-[1.5px] font-semibold " +
   "no-underline transition disabled:cursor-not-allowed disabled:opacity-60 " +
-  "aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
+  "aria-disabled:cursor-not-allowed aria-disabled:opacity-60 " +
+  "forced-colors:aria-disabled:border-[GrayText] forced-colors:aria-disabled:text-[GrayText]";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   /** Brass: the main call to action. On a brass background, use `dark`. */
