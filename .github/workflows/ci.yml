@@ -75,9 +75,9 @@ jobs:
       # A fresh stack applies supabase/migrations/ and supabase/seed.sql. Starting it takes a while,
       # mostly pulling Docker images, so it runs in the background and "Wait for local Supabase"
       # picks up the result. Only Postgres and the services the app talks to start: the API gateway
-      # (kong), Auth (gotrue), the REST API (postgrest) and Mailpit, which catches Auth emails.
-      # When a test or a migration needs an excluded service (Storage, Realtime...), drop it from
-      # the --exclude lists.
+      # (kong), Auth (gotrue), the REST API (postgrest), Storage (members-only files, backlog M-7)
+      # and Mailpit, which catches Auth emails. When a test or a migration needs an excluded service
+      # (Realtime...), drop it from the --exclude lists.
       - name: Start local Supabase in the background
         id: supabase-start
         if: ${{ !cancelled() && steps.supabase-cli.outcome == 'success' }}
@@ -85,7 +85,7 @@ jobs:
           (
             status=0
             supabase start \
-              --exclude studio,postgres-meta,storage-api,imgproxy,realtime \
+              --exclude studio,postgres-meta,imgproxy,realtime \
               --exclude edge-runtime,logflare,vector,supavisor \
               || status=$?
             echo "$status" > "$RUNNER_TEMP/supabase-start.status.tmp"

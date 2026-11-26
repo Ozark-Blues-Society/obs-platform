@@ -106,6 +106,7 @@ export const RESERVED_PAGE_SLUGS = [
   "donate",
   "draft-mode",
   "events",
+  "files",
   "join",
   "sign-in",
   "sponsors",
