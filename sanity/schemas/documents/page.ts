@@ -45,6 +45,19 @@ export const page = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
+      // Not "order": that name clashes with GROQ's order() function.
+      name: "menuOrder",
+      title: "Position in menu",
+      type: "number",
+      description:
+        "Optional. Pages in the same menu are listed from the lowest number up, for example 1, 2, 3. Pages without a number come after, in title order.",
+      hidden: ({ parent }) => {
+        const placement = (parent as { menuPlacement?: string } | undefined)?.menuPlacement;
+        return !placement || placement === "none";
+      },
+      validation: (rule) => rule.integer().min(1).max(99),
+    }),
+    defineField({
       name: "blocks",
       title: "Page blocks",
       type: "array",
