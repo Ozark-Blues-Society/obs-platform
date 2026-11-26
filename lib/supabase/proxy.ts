@@ -2,8 +2,11 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { readSupabaseConfig } from "./config";
 
-/** Path prefixes that only signed-in members can open. Visitors are sent to sign in first. */
-const MEMBER_ONLY_PREFIXES = ["/account"];
+/**
+ * Path prefixes that only signed-in members can open. Visitors are sent to sign in first. The
+ * admin screens also need a staff role, which each admin page checks itself.
+ */
+const MEMBER_ONLY_PREFIXES = ["/account", "/admin"];
 
 let warnedUnconfigured = false;
 

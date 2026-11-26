@@ -2,8 +2,8 @@ import { expect, type APIRequestContext } from "@playwright/test";
 
 // The local Supabase stack. CI sets these from `supabase status`; locally the defaults are the
 // stack's well-known values, the same as in .env.example.
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
-const PUBLISHABLE_KEY =
+export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
+export const PUBLISHABLE_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
   "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
 

@@ -141,8 +141,8 @@ How it fits together:
   changing the template settings or `auth.site_url`, restart the stack (`supabase stop`, then
   `supabase start`); the data is kept.
 - **Sessions** live in cookies. `proxy.ts` (Next.js 16's name for middleware) refreshes an expired
-  session on every request before the page renders, and sends visitors who open `/account` to sign
-  in first.
+  session on every request before the page renders, and sends visitors who open `/account` or an
+  admin screen (`/admin`) to sign in first.
 - **Server code** gets the member from `getCurrentUser()` or `requireUser()` in
   `lib/auth/user.ts`, and a Supabase client acting as the member from `createClient()` in
   `lib/supabase/server.ts`. Both read the request, so call them inside a `<Suspense>` boundary
@@ -221,13 +221,13 @@ auto-renew. Staff roles are rows in `user_roles`: `admin`, `membership_manager`,
 `supabase/tests/profiles_test.sql` tests who can read and change what. There are no households:
 the board created no family memberships (board decisions §2).
 
-| Who                                  | `profiles`                                     | `user_roles`     |
-| ------------------------------------ | ---------------------------------------------- | ---------------- |
-| A visitor                            | nothing                                        | nothing          |
-| A member, moderators and editors too | reads their own; changes their name and phone  | reads their own  |
-| An administrator                     | reads every profile; changes their name, phone | reads every role |
-| A membership manager                 | reads every profile; changes their name, phone | reads their own  |
-| Server code using the service role   | everything                                     | everything       |
+| Who                                  | `profiles`                                     | `user_roles`                        |
+| ------------------------------------ | ---------------------------------------------- | ----------------------------------- |
+| A visitor                            | nothing                                        | nothing                             |
+| A member, moderators and editors too | reads their own; changes their name and phone  | reads their own                     |
+| An administrator                     | reads every profile; changes their name, phone | reads, gives and removes every role |
+| A membership manager                 | reads every profile; changes their name, phone | reads their own                     |
+| Server code using the service role   | everything                                     | everything                          |
 
 - **Signing up creates the profile.** A trigger on `auth.users` copies the address, plus
   `first_name` and `last_name` from the sign-up's user metadata (`options.data` in
@@ -239,8 +239,25 @@ the board created no family memberships (board decisions §2).
   them, whatever the policies say. Members can read their own staff notes.
 - **Role checks** in policies call `private.has_role(...)`, in the `private` schema (see
   [Migrations and database tests](#migrations-and-database-tests)).
-- **Granting roles** gets a screen with A-2. Until then the local seed gives each role to a
-  fixture member (see [Fixtures and seed data](#fixtures-and-seed-data)).
+- **Giving and removing roles:** administrators do it on the Roles screen, `/admin/roles`
+  (`app/admin/roles/`, with its Server Functions in `lib/admin/roles-actions.ts`; the
+  administrators' how-to is [`docs/volunteer-guide/roles.md`](docs/volunteer-guide/roles.md)). It acts as the
+  administrator: the policies in `supabase/migrations/20261126071148_roles_management.sql` let only
+  administrators insert and delete `user_roles` rows, and nobody can update one.
+  `supabase/tests/user_roles_test.sql` tests them. The local seed gives each role to a fixture
+  member (see [Fixtures and seed data](#fixtures-and-seed-data)).
+- **There's always an administrator.** A trigger refuses to remove the last one, whoever tries: an
+  administrator, server code with the service role, or deleting their account (deleting that user
+  in Supabase Auth fails). Its error code, `OB001`, is what the Roles screen explains. Removals take
+  turns (an advisory lock), so two administrators can't remove each other at the same moment.
+- **A new project's first administrator** gets the role in SQL, because only an administrator can
+  give roles. Once they've signed in, run this in the Supabase dashboard's SQL Editor:
+  `insert into public.user_roles (profile_id, role) select id, 'admin' from public.profiles where email = '<their address>';`
+  Setting up the production project is a human gate ([`docs/HUMAN_GATES.md`](docs/HUMAN_GATES.md)).
+- **End-to-end tests** never give anyone the Administrator role: the test of the last
+  administrator needs the fixture administrator to be the only one. They take back any role they
+  give (`removeRole()` in `e2e/support/supabase-roles.ts`), because
+  `supabase/tests/seed_test.sql` expects the fixture roles.
 
 ## Content Studio (Sanity)
 

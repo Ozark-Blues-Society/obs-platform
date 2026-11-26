@@ -71,8 +71,8 @@ values
   ('00000000-0000-4000-8900-000000000005', 'admin'),
   ('00000000-0000-4000-8900-000000000006', 'membership_manager');
 
--- Policies and privileges. Each policy is covered by the behaviour tests below; a new one needs
--- tests of its own.
+-- Policies and privileges. Each policy is covered by the behaviour tests below, or for granting and
+-- revoking roles in user_roles_test.sql; a new one needs tests of its own.
 
 select policies_are(
   'public', 'profiles',
@@ -85,8 +85,8 @@ select policies_are(
 
 select policies_are(
   'public', 'user_roles',
-  array['Read own roles; admins read all'],
-  'user_roles has only the policy tested here'
+  array['Read own roles; admins read all', 'Admins grant roles', 'Admins revoke roles'],
+  'user_roles has only the policies tested here and in user_roles_test.sql'
 );
 
 select table_privs_are(
@@ -105,8 +105,9 @@ select table_privs_are(
 );
 
 select table_privs_are(
-  'public', 'user_roles', 'authenticated', array['SELECT'],
-  'members can only select user_roles'
+  'public', 'user_roles', 'authenticated', array['SELECT', 'INSERT', 'DELETE'],
+  'members can select, insert and delete user_roles rows, never update them (the policies let only '
+    || 'administrators insert and delete)'
 );
 
 select results_eq(

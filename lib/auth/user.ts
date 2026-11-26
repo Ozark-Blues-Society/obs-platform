@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ROLES, type Role } from "./roles";
 
 export type CurrentUser = {
   id: string;
@@ -30,4 +31,18 @@ export async function requireUser(returnTo: string): Promise<CurrentUser> {
     redirect(`/sign-in?next=${encodeURIComponent(returnTo)}`);
   }
   return user;
+}
+
+/**
+ * The staff roles of the signed-in member `userId` (user_roles): none for most members. Throws if
+ * they can't be read. A UI check only: row level security enforces roles in the database.
+ */
+export async function getRoles(userId: string): Promise<Role[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("user_roles").select("role").eq("profile_id", userId);
+  if (error) {
+    throw new Error(`Reading the member's roles failed: ${error.code} ${error.message}`);
+  }
+  const held = new Set((data ?? []).map((row: { role: unknown }) => row.role));
+  return ROLES.filter((role) => held.has(role));
 }
