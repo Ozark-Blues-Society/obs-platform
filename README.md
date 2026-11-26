@@ -399,8 +399,17 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
   boundary, editors) and `e2e/member-files.spec.ts` (Supabase's REST and Storage APIs as a visitor,
   a lapsed member, a member at the wrong level and an allowed one, then the download link). CI starts
   Storage for them.
-- Until editors have an upload screen (M-7 part 3), add a file locally through Supabase's APIs as
-  the fixture editor, the way `e2e/support/member-files.ts` does.
+- **Adding files.** Editors and administrators upload them at `/admin/files`
+  (`app/admin/files/`, Server Functions in `lib/admin/member-files-actions.ts`). The browser sends
+  the file straight to Storage through a one-time upload link the server makes for them, so large
+  files never pass through the website's server (hosts cap request sizes). Then the server checks
+  Storage has it and adds its row, which is what lets members download it. Removing deletes the row
+  first, so access ends at once, then the file. Volunteers' steps:
+  [`docs/volunteer-guide/members-only-files.md`](docs/volunteer-guide/members-only-files.md).
+- **Attaching files.** Pages, posts and events have a `memberFiles` field: link text and the file's
+  code (its id). Put `memberFiles[]{ title, fileId }` in the item's members-only `content` and render
+  it with `<MemberFiles>` (`components/members/member-files.tsx`), which links each one to
+  `/files/<id>` with plain `<a>` tags: `next/link` would prefetch them and mint download links.
 
 ## Emails (React Email)
 

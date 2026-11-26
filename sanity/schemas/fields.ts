@@ -75,3 +75,17 @@ export function visibilityField(thing: "page" | "post" | "event") {
     validation: (rule) => rule.required(),
   });
 }
+
+/**
+ * Members-only files attached to a page, post or event (sanity/schemas/objects/member-file.ts). The
+ * site lists them as links to /files/<code>, which checks the member before the download starts.
+ */
+export function memberFilesField(thing: "page" | "post" | "event") {
+  return defineField({
+    name: "memberFiles",
+    title: "Members-only files",
+    type: "array",
+    of: [{ type: "memberFile" }],
+    description: `Optional. Files only members can download from this ${thing}, such as minutes or a booking guide. Upload each one on the website first (Admin, then Members-only files), then add it here with its code. Never upload a private file to the Studio: anyone with its address could open it.`,
+  });
+}

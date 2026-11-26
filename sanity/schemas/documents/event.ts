@@ -1,5 +1,11 @@
 import { defineField, defineType, type PreviewValue } from "sanity";
-import { imageField, slugField, societyDatetimeOptions, visibilityField } from "../fields";
+import {
+  imageField,
+  memberFilesField,
+  slugField,
+  societyDatetimeOptions,
+  visibilityField,
+} from "../fields";
 import {
   EVENT_CATEGORIES,
   RECURRENCE_FREQUENCIES,
@@ -114,6 +120,7 @@ export const event = defineType({
       type: "richText",
       description: "What people should know: who's playing, when doors open, what to bring.",
     }),
+    memberFilesField("event"),
   ],
   orderings: [
     { title: "Date, latest first", name: "startDesc", by: [{ field: "start", direction: "desc" }] },
