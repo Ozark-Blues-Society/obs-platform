@@ -9,7 +9,8 @@ only after two or three DNS records exist. This guide lists those records and sh
 in GoDaddy. Adding them is a human step (DNS is a gate in [`HUMAN_GATES.md`](../HUMAN_GATES.md)).
 Agents only keep this guide up to date.
 
-Not part of this call: MailerLite records and DMARC (Launch 2, backlog E-5). If Resend's page
+Not part of this call: MailerLite records and DMARC (Launch 2, backlog E-5, in
+[`mailerlite-and-dmarc-dns-records.md`](mailerlite-and-dmarc-dns-records.md)). If Resend's page
 suggests a DMARC record (`_dmarc`), skip it.
 
 In the examples, `example.org` stands for the Society's domain.
