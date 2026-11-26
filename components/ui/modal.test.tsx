@@ -1,10 +1,12 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { Modal, tabbableElements } from "./modal";
 
 // jsdom has <dialog> and its `open` attribute but not showModal() or close(). These stand-ins only
-// open and close it; what's under test (focus, Tab, Escape, onClose) is the component's own.
+// open and close it; what's under test (focus, Tab, Escape, onClose) is the component's own. Like
+// browsers, close() fires its `close` event later, as a task of its own: an event fired at once
+// would hide bugs that depend on that order.
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
     this.setAttribute("open", "");
@@ -12,12 +14,17 @@ beforeAll(() => {
   HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
     if (!this.open) return;
     this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
+    setTimeout(() => this.dispatchEvent(new Event("close")), 0);
   };
 });
 
-function Harness({ onClose = () => {}, autofocus = false }) {
-  const [open, setOpen] = useState(false);
+/** Waits until the `close` events that close() queued have reached their dialogs. */
+async function closeEventsDelivered() {
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
+}
+
+function Harness({ onClose = () => {}, autofocus = false, initiallyOpen = false }) {
+  const [open, setOpen] = useState(initiallyOpen);
   return (
     <>
       <button type="button" onClick={() => setOpen(true)}>
@@ -86,13 +93,14 @@ describe("Modal", () => {
     expect(fireEvent.keyDown(title, { key: "Tab", shiftKey: true })).toBe(true);
   });
 
-  it("closes on Escape and puts focus back on the trigger", () => {
+  it("closes on Escape and puts focus back on the trigger", async () => {
     const onClose = vi.fn();
     const { trigger, dialog } = openModal({ onClose });
     const title = screen.getByRole("textbox", { name: "Title" });
     title.focus();
 
     expect(fireEvent.keyDown(title, { key: "Escape" })).toBe(false);
+    await closeEventsDelivered();
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(dialog).not.toHaveAttribute("open");
@@ -100,35 +108,55 @@ describe("Modal", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("closes from the × button", () => {
+  it("closes from the × button", async () => {
     const onClose = vi.fn();
     const { trigger, dialog } = openModal({ onClose });
 
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await closeEventsDelivered();
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(dialog).not.toHaveAttribute("open");
     expect(trigger).toHaveFocus();
   });
 
-  it("sends the browser's own close request (cancel) through onClose", () => {
+  it("sends the browser's own close request (cancel) through onClose", async () => {
     const onClose = vi.fn();
     const { dialog } = openModal({ onClose });
 
     const notPrevented = fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    await closeEventsDelivered();
 
     expect(notPrevented).toBe(false);
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(dialog).not.toHaveAttribute("open");
   });
 
-  it("calls onClose once when the browser closes the dialog itself", () => {
+  it("calls onClose once when the browser closes the dialog itself", async () => {
     const onClose = vi.fn();
     const { dialog } = openModal({ onClose });
 
-    act(() => dialog.close());
+    dialog.close();
+    await closeEventsDelivered();
 
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(dialog).not.toHaveAttribute("open");
+  });
+
+  it("stays open when it opens with the page, though StrictMode runs its effect twice", async () => {
+    // In development, StrictMode (which the App Router turns on) runs the effect, its cleanup and
+    // the effect again: showModal(), close(), showModal(). The cleanup's close event arrives after
+    // the dialog has opened again, and mustn't close it.
+    const onClose = vi.fn();
+    render(
+      <StrictMode>
+        <Harness onClose={onClose} initiallyOpen />
+      </StrictMode>,
+    );
+    await closeEventsDelivered();
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "New listing" })).toHaveAttribute("open");
   });
 });
 

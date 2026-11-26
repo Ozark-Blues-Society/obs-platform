@@ -105,9 +105,12 @@ export function Modal({ open, onClose, title, children, closeLabel = "Close" }: 
     onClose();
   }
 
-  // The browser can still close the dialog itself; keep the parent's state in step.
-  function handleClose() {
-    if (open) onClose();
+  // The browser can still close the dialog itself; keep the parent's state in step. The close event
+  // arrives later, as a task of its own, so skip one that finds the dialog open again: in
+  // development, StrictMode runs the effect above twice at mount (showModal(), close(),
+  // showModal()), and that close event would shut a dialog that opens with the page.
+  function handleClose(event: SyntheticEvent<HTMLDialogElement>) {
+    if (open && !event.currentTarget.open) onClose();
   }
 
   return (

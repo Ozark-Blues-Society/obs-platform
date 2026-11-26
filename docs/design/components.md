@@ -45,5 +45,6 @@ and desktop widths. The gallery exists in development only: a production build a
 
 Interactive behavior has unit tests next to each component (`*.test.tsx`): the modal's focus trap,
 Escape and focus return, the toast's live region and timing, and the pill filters' pressed state.
-jsdom has no `showModal()`, so `modal.test.tsx` stands in for it; `e2e/dev-components.spec.ts`
-checks the same behavior in a real browser on the dev server (CI runs only its production 404 test).
+jsdom has no `showModal()`, so `modal.test.tsx` stands in for it (its `close()` fires the `close`
+event later, as browsers do); `e2e/dev-components.spec.ts` checks the same behavior in a real
+browser on the dev server (CI runs only its production 404 test).
