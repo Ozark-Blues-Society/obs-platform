@@ -354,18 +354,31 @@ const post = await getGatedItem("post", slug, "{ excerpt, body }");
 - The loader first works out who is viewing (`getViewer()` in `lib/members/viewer.ts`: the session,
   then the member's own profile row). It then asks Sanity with the viewer's active level as
   `$memberLevel`. The query (`sanity/content/gated-query.ts`) fills in `content` only when that
-  level can see the item, so a members-only body never leaves Sanity for anyone else. The loader
-  then checks again with `checkAccess`.
+  level can see the item, so the item's members-only fields never leave Sanity for anyone else.
+  The loader then checks again with `checkAccess`.
 - Each type's public fields are fixed in `PUBLIC_FIELDS`, after the approved concept. A locked post
   shows its headline, category, date and cover photo, a locked event its title, date, time, prices
   and photo (not the venue), and a locked page its title. Everything else goes in `content`.
 - `listGatedItems(type, content, { filter, params, order, limit })` does the same for lists, feeds
-  and sitemaps. Filter on public fields only.
+  and sitemaps.
+- The gate covers the item a loader returns, not other documents its GROQ reads. So `content`,
+  `filter` and `order` are fixed strings in the code. Values go in `params`, never built from
+  request input. And:
+  - No `*` outside quotes: the loaders refuse it, because a query of the whole dataset reads other
+    documents without their gates. Load other pages, posts and events, and the lists that fill a
+    block (upcoming events, sponsor logos, the venue directory), with their own loader call.
+  - A dereference (`->`) skips the target's gate. Venues, people and sponsors can be dereferenced
+    freely. From a page, post or event (`link.internal`), take only `LINK_TARGET`:
+    `{ _type, "slug": slug.current, title }`. In `content`, each `->` needs a projection that lists
+    the fields it reads (the loaders refuse `internal->` or `internal->{ ... }`).
+  - `filter` and `order` use public fields only: a filter on a members-only field answers questions
+    about it, and an order on one leaks its ranking.
 - Loaders run at request time and read the session, so call them inside `<Suspense>`. Results are
   cached per query, viewer level and preview mode, never per person, so a visitor never gets an
   entry a member's visit filled.
-- ESLint refuses `sanityFetch`, the Sanity `client` and `createClient` anywhere else
-  (`eslint.config.mjs`; `sanity/content/lint-guard.test.ts` proves the rule works). The menus
+- ESLint refuses `sanityFetch`, the Sanity `client` and `createClient` anywhere else, and any
+  dynamic `import()` of their modules (`eslint.config.mjs`; `sanity/content/lint-guard.test.ts`
+  proves the rule works). The menus
   (`sanity/site-chrome.ts`: public page titles and links) and the draft-mode route are the only
   exceptions. Put new reads in `sanity/content/`.
 
