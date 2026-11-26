@@ -1,6 +1,6 @@
 # 0001 — Where members-only content is stored
 
-Status: Proposed (needs Parker's approval — human gate)
+Status: Accepted (Parker, 2026-11-26, Q-20261126-025236-15031, option A)
 
 ## Problem
 
@@ -23,4 +23,22 @@ $0 instead and say so in the question to Parker.
 
 ## Decision
 
-(Filled in when Parker answers.)
+**A — Sanity private dataset.** Members-only pages, posts, events and venue booking contacts live in a
+private Sanity dataset and are fetched server-side with a read token, never from the browser. Editing stays
+in the Studio with live preview and drafts.
+
+Facts checked 2026-11-26 (sanity.io/pricing and docs; details in bead op-ed8):
+
+- The free plan has public datasets only, so it can't be used for gated content.
+- Growth is $15 per user per month (Viewers are free) and includes private datasets.
+- The non-profit plan is free and "mirrors Growth". You apply with the Society's Sanity project ID, and a
+  reply takes up to 14 business days.
+- Files and images uploaded to Sanity are public by URL even in a private dataset. **Members-only files go
+  in a private Supabase Storage bucket**, with access checked by membership level.
+
+Cost: Parker approved paying Growth ($15 per editor per month) only to cover a gap before non-profit
+approval, or if the non-profit plan is denied. Don't let a trial lapse with private data in it, because a
+lapsed plan turns private datasets public.
+
+Human-gated steps (not for agents): creating the Society's Sanity project (due Dec 3), applying for the
+non-profit plan, and any paid plan change.
