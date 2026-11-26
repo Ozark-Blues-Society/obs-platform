@@ -401,6 +401,31 @@ content to find; it exits 2 when it can't tell. Run it when a dataset is created
 changes: a lapsed trial or a downgrade turns private datasets public. The launch runbook (Q-5) runs
 it against production.
 
+### Members-only files
+
+Files only members may download (PDFs, documents, audio) live in the private Supabase Storage bucket
+`member-files`, never in Sanity, which serves every upload publicly by URL, even from a private
+dataset (decision 0001). The migration is `supabase/migrations/20261126083600_member_files.sql`:
+
+- Each file has a row in `public.member_files`: its title, its object in the bucket
+  (`<id>/<file name in safe characters>`), the name it downloads as, and who may download it:
+  `members` (any active member) or `levels` with the levels listed. Never everyone: public files
+  belong in Sanity.
+- Row level security and the Storage policies apply the same rule as pages
+  (`private.has_member_access`). A member reads the row of, and can download, list or sign a link
+  to, only the files their active membership allows. Visitors get nothing. Editors and
+  administrators add and remove files and see them all. Nobody changes a file in place.
+- The site's link to a file is `/files/<id>` (`app/files/[id]/route.ts`). It sends visitors to sign
+  in and back, checks the member's access again with `checkAccess`, then redirects to a Storage link
+  signed as the member, which works for 60 seconds and downloads the file. Members who may not have
+  it get a short page saying why (renew, join, or not available to them). Nothing is cached.
+- Tests: `supabase/tests/member_files_test.sql` (every audience and level, the `expires_at`
+  boundary, editors) and `e2e/member-files.spec.ts` (Supabase's REST and Storage APIs as a visitor,
+  a lapsed member, a member at the wrong level and an allowed one, then the download link). CI starts
+  Storage for them.
+- Until editors have an upload screen (M-7 part 3), add a file locally through Supabase's APIs as
+  the fixture editor, the way `e2e/support/member-files.ts` does.
+
 ## Emails (React Email)
 
 The app's own emails (backlog E-1) are [React Email](https://react.email) templates in `emails/`.
@@ -488,8 +513,8 @@ run. CI uses no secrets.
 Local Supabase (CLI 3.4.0) starts in the background while lint, typecheck, the unit tests and the
 Playwright browser install run. A fresh stack applies the migrations and `supabase/seed.sql`, so
 the database and end-to-end tests see the fixture data. CI starts only Postgres, the API gateway,
-Auth, the REST API and Mailpit. Studio, Storage, Realtime, Edge Functions and the logging services
-stay off because no test uses them yet. A change that needs one of them in CI drops it from the
+Auth, the REST API, Storage (for members-only files) and Mailpit. Studio, Realtime, Edge Functions
+and the logging services stay off because no test uses them yet. A change that needs one of them in CI drops it from the
 `--exclude` lists in `ci.yml`. The build and the end-to-end tests get the stack's URL and
 publishable key from `supabase status`, as `NEXT_PUBLIC_SUPABASE_URL` and
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. They're the well-known local demo values, not secrets.
