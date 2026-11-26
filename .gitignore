@@ -20,3 +20,13 @@ supabase/.temp/
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+
+# Next.js / TypeScript
+next-env.d.ts
+*.tsbuildinfo
+/build/
+*.pem
+
+# Playwright
+blob-report/
+playwright/.cache/
