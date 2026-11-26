@@ -102,7 +102,8 @@ until `supabase stop` removes it. On Linux, `ss -ltn | grep ':543'` should then 
   grants Supabase's default privileges give anon and authenticated by name. A role switch runs the
   call as that role, and `service_role` skips row level security: drop the setting, or move the
   function to `private`. Don't switch role in a function body either (`set local role` or
-  `set_config('role', ...)`): the test can't see every form of that, so reviewers check by hand.
+  `set_config('role', ...)`): the test reads only the SET clause, and no check could catch every
+  such switch (dynamic SQL gets past a source search), so reviewers read function bodies by hand.
 
 ### Fixtures and seed data
 
@@ -185,7 +186,10 @@ proves the member owns the address.
   equal to the form's minimum. Restart the stack after changing it.
 - **Hosted projects:** set Minimum password length to 8 (Authentication → Sign In / Providers →
   Email). Leave Secure password change off. With it on, a member signed in for more than a day is
-  told to sign out and in again before they can change their password.
+  told to sign out and in again before they can change their password. Leave Require current
+  password when updating off as well: the form doesn't ask for the current password (members who
+  sign in with email links may not have one to give). With it on, a member who signed in with their
+  password is told to sign out and in again with an email link before they can change it.
 - **End-to-end tests** that change a fixture member's password put it back afterwards with
   `restorePassword()` (`e2e/support/supabase-auth.ts`), because other tests and
   `supabase/tests/seed_test.sql` expect the fixture password.

@@ -27,12 +27,15 @@ export const PASSWORD_MESSAGES = {
   hint: `At least ${MIN_PASSWORD_LENGTH} characters. A few words strung together are easy to remember and hard to guess.`,
   missing: "Enter a new password.",
   tooShort: `That password is too short. Use at least ${MIN_PASSWORD_LENGTH} characters.`,
-  tooLong: "That password is too long. Use 72 characters or fewer.",
+  tooLong:
+    "That password is too long. Use 72 characters or fewer (fewer if it has emoji or accented letters).",
   confirmMissing: "Type the new password again.",
   mismatch: "The two passwords don't match. Type the same new password in both boxes.",
   weak: "That password is too easy to guess. Choose a longer one.",
   samePassword: "That's already your password. To change it, choose a different one.",
   signInAgain: "For your security, sign out and sign in again, then set your password.",
+  signInWithLink:
+    "For your security, sign out and sign in again with an email link, then set your password.",
   tooManyAttempts: "Too many tries. Wait a few minutes, then try again.",
   unavailable: "Your password couldn't be saved right now. Please try again in a few minutes.",
 } as const;
@@ -75,6 +78,12 @@ export function passwordUpdateProblem(error: AuthErrorLike): Problem {
     case "reauthentication_needed":
       // Only if "Secure password change" is turned on: then sessions older than a day can't change it.
       return { field: "password", message: PASSWORD_MESSAGES.signInAgain };
+    case "current_password_required":
+    case "current_password_invalid":
+      // Only if "Require current password when updating" is turned on: then a member who signed in
+      // with their password must send it too, and the form doesn't ask for it. Sessions from an
+      // email link are exempt. (The form sends no current password, so "invalid" can't happen yet.)
+      return { field: "password", message: PASSWORD_MESSAGES.signInWithLink };
     case "over_request_rate_limit":
       return { field: "password", message: PASSWORD_MESSAGES.tooManyAttempts };
     default:
