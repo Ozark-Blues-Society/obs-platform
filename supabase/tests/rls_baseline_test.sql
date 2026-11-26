@@ -1,11 +1,11 @@
 -- Guards for everything in the public schema, which the Data API exposes. A table without row
 -- level security, a view that skips it, or a relation that can't have it (a materialized view or
 -- a foreign table) lets anyone with the public API key read every row. A SECURITY DEFINER
--- function there can do the same: anyone with that key can call it, and it skips row level
--- security. These cover future tables and functions automatically; each table's own policies
--- still need their own tests.
+-- function there can do the same, and so can a function whose SET clause switches role: anyone
+-- with that key can call it, and it skips row level security. These cover future tables and
+-- functions automatically; each table's own policies still need their own tests.
 begin;
-select plan(4);
+select plan(5);
 
 select is_empty(
   $$
@@ -70,6 +70,34 @@ select is_empty(
   'public has no SECURITY DEFINER functions apart from trigger functions, since anyone with the '
     || 'public API key could call them and they skip row level security: move each to a schema '
     || 'the API does not expose, such as private, or make it SECURITY INVOKER'
+);
+
+-- A SECURITY INVOKER function skips row level security too if its SET clause switches role, as in
+-- set role = 'service_role'. Postgres applies the setting for the call and checks only that the
+-- session user may switch to that role. The API's session user is authenticator, which may switch
+-- to service_role, and service_role has BYPASSRLS. Postgres refuses the setting only in SECURITY
+-- DEFINER functions, which the test above catches, and session_authorization needs a superuser
+-- session, which authenticator isn't. Any role setting counts: no function in public needs one.
+-- A function body can switch role too (set local role, set_config('role', ...)), and no catalog
+-- check sees every form of that, so review function bodies by hand. Trigger functions are left
+-- out, as above.
+select is_empty(
+  $$
+    select p.oid::regprocedure::text
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.prorettype not in ('trigger'::regtype, 'event_trigger'::regtype)
+      and exists (
+        select 1
+        from unnest(p.proconfig) as setting
+        where split_part(setting, '=', 1) = 'role'
+      )
+  $$,
+  'public has no functions whose SET clause switches role, apart from trigger functions, since '
+    || 'anyone with the public API key could call them and run as service_role, which skips row '
+    || 'level security: drop the role setting, or move the function to a schema the API does not '
+    || 'expose, such as private'
 );
 
 select * from finish();
