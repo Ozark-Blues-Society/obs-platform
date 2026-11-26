@@ -40,9 +40,9 @@ The page shows the link under **Files for members**, marked "Members only".
   the file is told it isn't available to them.
 
 Who can download a file is set on the files screen, not in the Studio, so it doesn't have to match
-the page. A page for everyone can offer a file for members only, and visitors see its link and a
-prompt to sign in. A members-only page hides its files from visitors along with the rest of the
-page.
+the page. A page for everyone can offer a file for members only: visitors see its link, marked
+Members only, and are asked to sign in when they select it. A members-only page hides its files
+from visitors along with the rest of the page.
 
 Every download goes through the website, which checks the member first. The address the file
 finally comes from works for one minute, so passing it on doesn't help anyone. A member can still

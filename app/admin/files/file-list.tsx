@@ -48,7 +48,7 @@ export function FileList({ files, action }: { files: MemberFileRow[]; action: Re
                 <span>
                   Code: <code className="break-all">{file.id}</code>
                 </span>
-                <CopyCodeButton code={file.id} label={`Copy the code of ${file.title}`} />
+                <CopyCodeButton code={file.id} label={`Copy code for ${file.title}`} />
                 <Button
                   type="submit"
                   name="id"
