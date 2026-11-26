@@ -1,10 +1,20 @@
 // @vitest-environment node
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import {
+  LISTING_CATEGORIES as SITE_LISTING_CATEGORIES,
+  LISTING_DAYS as SITE_LISTING_DAYS,
+} from "@/lib/listings/listing-state";
 import { EVENT_CATEGORIES, EVENTS, VENUES } from "./events.mts";
 import { LISTING_CATEGORIES, LISTING_DAYS, LISTING_STATUSES, LISTINGS } from "./listings.mts";
 import { EXPIRING_WITHIN_DAYS, LEVELS, MEMBERS, ROLES, STATUSES } from "./members.mts";
-import { buildSeedSql, SEED_SQL_PATH, sqlString } from "./seed-sql.mts";
+import {
+  buildSeedSql,
+  listingCategoryValue,
+  LISTINGS_SECTION_START,
+  SEED_SQL_PATH,
+  sqlString,
+} from "./seed-sql.mts";
 
 const unique = (values: readonly unknown[]) => new Set(values).size === values.length;
 
@@ -92,6 +102,14 @@ describe("listings", () => {
     }
   });
 
+  it("uses the site's categories and listing length", () => {
+    expect(LISTING_CATEGORIES).toEqual(SITE_LISTING_CATEGORIES.map((category) => category.title));
+    expect(LISTING_CATEGORIES.map(listingCategoryValue)).toEqual(
+      SITE_LISTING_CATEGORIES.map((category) => category.value),
+    );
+    expect(LISTING_DAYS).toBe(SITE_LISTING_DAYS);
+  });
+
   it("is posted by fixture members, with current listings from current members", () => {
     for (const l of LISTINGS) {
       const poster = memberById.get(l.profileId);
@@ -146,6 +164,17 @@ describe("seed.sql", () => {
     for (const m of MEMBERS) expect(sql).toContain(sqlString(m.email));
     expect(sqlString("O'Neal")).toBe("'O''Neal'");
     expect(sql).toContain("'O''Neal'");
+  });
+
+  it("loads every listing last, in a section that can be loaded again on its own", () => {
+    const sql = buildSeedSql();
+    const listings = sql.slice(sql.indexOf(LISTINGS_SECTION_START));
+    expect(listings).toMatch(/on conflict \(id\) do nothing;\n$/);
+    for (const l of LISTINGS) {
+      expect(listings, l.title).toContain(
+        `(${sqlString(l.id)}::uuid, ${sqlString(l.profileId)}::uuid`,
+      );
+    }
   });
 
   it("fills in every member's profile and gives out the staff roles", () => {

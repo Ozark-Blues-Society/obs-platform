@@ -1,8 +1,9 @@
 -- The seed (supabase/seed.sql, generated from scripts/fixtures/) loads the fixture members as
--- working sign-ins, with their profiles and staff roles. `supabase db reset` applies the seed.
--- Fixture ids start 00000000-0000-4000-8100-.
+-- working sign-ins, with their profiles and staff roles, and their classifieds listings.
+-- `supabase db reset` applies the seed. Fixture member ids start 00000000-0000-4000-8100-, listing
+-- ids 00000000-0000-4000-8200-.
 begin;
-select plan(8);
+select plan(10);
 
 select is(
   (select count(*)::int from auth.users where id::text like '00000000-0000-4000-8100-%'),
@@ -86,6 +87,31 @@ select results_eq(
       ('morgan.hale@example.com', 'editor')
   $$,
   'each staff role belongs to the fixture member the README names'
+);
+
+select results_eq(
+  $$
+    select count(*)::int, count(distinct category)::int, count(distinct status)::int
+    from public.listings
+    where id::text like '00000000-0000-4000-8200-%'
+  $$,
+  $$ values (13, 5, 4) $$,
+  'the seed adds the 13 fixture listings, covering every category and status'
+);
+
+select ok(
+  (
+    select bool_and(
+      case
+        when status in ('live', 'expired') then
+          expires_at = approved_at + interval '60 days' and (status = 'live') = (expires_at > now())
+        else approved_at is null and expires_at is null
+      end
+    )
+    from public.listings
+    where id::text like '00000000-0000-4000-8200-%'
+  ),
+  'approved fixture listings run 60 days from approval, and only the live ones are still running'
 );
 
 select * from finish();

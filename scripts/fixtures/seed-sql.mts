@@ -1,10 +1,11 @@
 /**
  * Builds supabase/seed.sql from the fixtures. `supabase db reset` loads it after the migrations.
  *
- * The seed loads only tables that exist. When a migration adds one (listings in K-1), add a
- * section here and run `pnpm fixtures:generate`.
+ * The seed loads only tables that exist. When a migration adds one, add a section here and run
+ * `pnpm fixtures:generate`.
  */
 import { fileURLToPath } from "node:url";
+import { LISTING_DAYS, LISTINGS, type FixtureListing, type ListingCategory } from "./listings.mts";
 import { MEMBERS, type FixtureMember } from "./members.mts";
 
 export const SEED_SQL_PATH = fileURLToPath(new URL("../../supabase/seed.sql", import.meta.url));
@@ -114,8 +115,62 @@ values
 ${values};`;
 }
 
-export function buildSeedSql(members: readonly FixtureMember[] = MEMBERS): string {
+/** The listings table's value for a fixture category: "Musicians Wanted" is musicians_wanted. */
+export function listingCategoryValue(category: ListingCategory): string {
+  return category.toLowerCase().replaceAll(" ", "_");
+}
+
+/** Marks the start of the listings section, which can be loaded on its own (see the README). */
+export const LISTINGS_SECTION_START = "-- Classifieds listings.";
+
+function listingsSql(listings: readonly FixtureListing[]): string {
+  const values = listings
+    .map((l) => {
+      const columns = [
+        `${sqlString(l.id)}::uuid`,
+        `${sqlString(l.profileId)}::uuid`,
+        sqlString(listingCategoryValue(l.category)),
+        sqlString(l.title),
+        sqlString(l.body),
+        l.price ?? "null",
+        sqlString(l.contactPref),
+        sqlString(l.status),
+        sqlStringOrNull(l.rejectReason),
+        l.createdDaysAgo,
+        l.approvedDaysAgo ?? "null",
+      ];
+      return `    (${columns.join(", ")})`;
+    })
+    .join(",\n");
+
+  return `${LISTINGS_SECTION_START} Dates are days before now; an approved listing runs ${LISTING_DAYS} days.
+-- Loading it again changes nothing.
+insert into public.listings (
+  id, profile_id, category, title, body, price, contact_pref, status, reject_reason, created_at,
+  approved_at, expires_at
+)
+select
+  f.id, f.profile_id, f.category::public.listing_category, f.title, f.body, f.price,
+  f.contact_pref::public.listing_contact, f.status::public.listing_status, f.reject_reason,
+  now() - make_interval(days => f.created_days_ago),
+  now() - make_interval(days => f.approved_days_ago),
+  now() - make_interval(days => f.approved_days_ago) + make_interval(days => ${LISTING_DAYS})
+from (
+  values
+${values}
+) as f (
+  id, profile_id, category, title, body, price, contact_pref, status, reject_reason,
+  created_days_ago, approved_days_ago
+)
+on conflict (id) do nothing;`;
+}
+
+export function buildSeedSql(
+  members: readonly FixtureMember[] = MEMBERS,
+  listings: readonly FixtureListing[] = LISTINGS,
+): string {
   const sections = [HEADER, authUsersSql(members), profilesSql(members)];
   if (members.some((m) => m.roles.length > 0)) sections.push(userRolesSql(members));
+  if (listings.length > 0) sections.push(listingsSql(listings));
   return `${sections.join("\n\n")}\n`;
 }

@@ -116,8 +116,8 @@ Synthetic data lives in `scripts/fixtures/`. Real member data never goes in the 
   dataset once the schemas exist (C-1).
 
 `supabase/seed.sql` is generated from the fixtures by `pnpm fixtures:generate`, and `pnpm test`
-fails if it's out of date. The seed loads only tables that exist. Today that's the members'
-sign-ins, their profiles and the staff roles; listings (K-1) join it with their migration.
+fails if it's out of date. The seed loads only tables that exist: the members' sign-ins, their
+profiles, the staff roles and the classifieds listings.
 
 Every fixture member can sign in locally with their address (for example
 `avery.collins@example.com`) and the password `obs-local-dev`. These four have staff roles (see
@@ -458,6 +458,48 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
   code (its id). Put `memberFiles[]{ title, fileId }` in the item's members-only `content` and render
   it with `<MemberFiles>` (`components/members/member-files.tsx`), which links each one to
   `/files/<id>` with plain `<a>` tags: `next/link` would prefetch them and mint download links.
+
+## Classifieds listings
+
+Active members, at any level, post listings in the five categories at `/account/listings/new`
+(backlog K-1, board decisions §7: `app/(site)/account/listings/new/`, with its Server Functions in
+`lib/listings/listing-actions.ts`). The table, the photo bucket and their rules come from
+`supabase/migrations/20261126210923_listings.sql`. `supabase/tests/listings_test.sql` tests who can
+do what, and `e2e/listings.spec.ts` tests the form.
+
+| Who                                            | `listings`                                                                                 | Photos (bucket `listing-photos`)                          |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| A visitor                                      | reads live listings until their `expires_at`                                               | sees live listings' photos                                |
+| An active member                               | reads live listings and all their own; submits; changes what they wrote; deletes their own | uploads into their own folder; sees and removes their own |
+| A member whose membership ended, or never paid | reads live listings and all their own; deletes their own; can't submit or change them      | sees their own                                            |
+| Moderators and administrators                  | read every listing; change its status and `reject_reason`, never what the poster wrote     | see every listing's photo                                 |
+| Server code using the service role             | everything                                                                                 | everything                                                |
+
+- **A new listing waits for a moderator.** It starts `pending` whatever the request says: members
+  can't insert the status or the dates. Approving it (`status` `live`) sets `approved_at`, and
+  `expires_at` 60 days later. A poster's change sends a listing back to `pending`, so nothing
+  reaches the public unreviewed. Nobody sees a live listing after its `expires_at`, even before the
+  daily job (K-4) marks it `expired`.
+- **Who may change which columns** is checked by a trigger, `private.check_listing_change()`:
+  posters and moderators are the same database role, so row level security alone can't tell their
+  changes apart. Server code with the service role isn't limited by it.
+- **Photos** go in the private bucket `listing-photos`: JPEG, PNG or WebP, up to 10 MB. As with
+  members-only files, the browser uploads the photo straight to Storage through a one-time link the
+  server makes, then the server checks Storage has it and adds the listing. A photo's name is
+  `<profile id>/<random id>.<jpg|png|webp>`, and a listing can show only a photo in its poster's
+  folder, so no listing can make another member's upload public. A photo is visible to whoever can
+  read a listing that shows it: anyone, visitors included, can sign a link to a live listing's
+  photo, but only the poster and the moderators to a pending one's. A photo stays while a listing
+  shows it.
+- **Contact preference:** `email`, where people write through the website and the poster's address
+  stays private (K-3 builds that), or `phone`, the number on the poster's profile. The form offers
+  phone only when the profile has a number.
+- **The fixture listings** (`scripts/fixtures/listings.mts`) are the seed's last section. To load
+  them into a database that got the migration with `supabase migration up` (no reset), run
+  `awk '/^-- Classifieds listings\./,0' supabase/seed.sql | docker exec -i supabase_db_obs-platform psql -U postgres -v ON_ERROR_STOP=1`.
+  Loading them again changes nothing.
+- Still to come: the moderation screen and the emails to posters (K-2), the public listings (K-3),
+  and expiry with "My listings" (K-4).
 
 ## Emails (React Email)
 

@@ -13,6 +13,8 @@ export const ACCOUNT_PATH = "/account";
 export const CLASSIFIEDS_PATH = "/classifieds";
 /** A member's own listings and their statuses (K-4), part of My Account (architecture.md). */
 export const MY_LISTINGS_PATH = `${ACCOUNT_PATH}/listings`;
+/** Post a listing (K-1): the form for active members. The classifieds (K-3) link here too. */
+export const NEW_LISTING_PATH = `${MY_LISTINGS_PATH}/new`;
 
 export type NavLink = { label: string; href: string };
 
