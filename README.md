@@ -656,15 +656,15 @@ K-4 (listing expiry) and E-3 (the nightly MailerLite sync) add their jobs to `ru
 
 GitHub Actions runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on every pull request
 into `develop` or `main`, and on every push to `develop`. One job installs dependencies, starts
-local Supabase, and runs `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:db` (pgTAP),
-`pnpm build` and `pnpm test:e2e` (against the production build). Each check runs even when an
-earlier one fails, and any failure fails the run. A new push to a pull request cancels its older
-run. A run of content that an earlier run already passed skips the checks (see below). CI uses no
-secrets.
+local Supabase, and runs `pnpm lint`, `pnpm format:check` (Prettier), `pnpm typecheck`, `pnpm test`,
+`pnpm test:db` (pgTAP), `pnpm build` and `pnpm test:e2e` (against the production build). Each check
+runs even when an earlier one fails, and any failure fails the run. A new push to a pull request
+cancels its older run. A run of content that an earlier run already passed skips the checks (see
+below). CI uses no secrets.
 
 Local Supabase (CLI 3.4.0) starts in the background right after pnpm's setup, and the Playwright
-browser install starts in the background after the install. While they run, the job runs lint,
-typecheck, the unit tests and the build. A fresh stack applies the migrations and
+browser install starts in the background after the install. While they run, the job runs lint, the
+format check, typecheck, the unit tests and the build. A fresh stack applies the migrations and
 `supabase/seed.sql`, so the database and end-to-end tests see the fixture data. CI starts only
 Postgres, the API gateway, Auth, the REST API, Storage (for members-only files) and Mailpit.
 Studio, Realtime, Edge Functions and the logging services stay off because no test uses them yet.
@@ -679,7 +679,7 @@ To reproduce a CI run locally:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm lint && pnpm typecheck && pnpm test
+pnpm lint && pnpm format:check && pnpm typecheck && pnpm test
 supabase start && pnpm test:db
 pnpm build && CI=1 pnpm test:e2e
 ```
