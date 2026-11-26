@@ -142,9 +142,18 @@ jobs:
         if: ${{ !cancelled() && steps.supabase.outcome == 'success' }}
         run: pnpm test:db
 
+      # Content in the end-to-end tests comes from a local stand-in for Sanity
+      # (e2e/support/sanity-stand-in.mts), not from Sanity: CI has no Sanity project. Next.js reads
+      # NEXT_PUBLIC_SANITY_PROJECT_ID when it builds, so the build gets the same made-up values that
+      # playwright.config.ts gives the server. The stand-in isn't running yet, so the build's own
+      # content reads fail at once and fall back, without calling Sanity.
       - name: Build
         id: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          NEXT_PUBLIC_SANITY_PROJECT_ID: e2estandin
+          SANITY_API_HOST_STAND_IN: http://127.0.0.1:3400
+          SANITY_API_READ_TOKEN: e2e-stand-in-token
         run: pnpm build
 
       # With CI set, playwright.config.ts serves the production build (`pnpm start`) on port 3000.

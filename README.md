@@ -436,6 +436,13 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
   Storage has it and adds its row, which is what lets members download it. Removing deletes the row
   first, so access ends at once, then the file. Volunteers' steps:
   [`docs/volunteer-guide/members-only-files.md`](docs/volunteer-guide/members-only-files.md).
+- **Showing the lock.** `<MembersOnlyLock>` (`components/members/members-only-lock.tsx`) is what a
+  viewer who may not see an item gets, worded for `access.reason`: sign in or join, join, renew, or
+  which levels it's for. It wraps D-3's `LockOverlay`. The post page
+  (`app/(site)/blog/[slug]/page.tsx`) shows how the pieces fit, and `e2e/members-only-items.spec.ts`
+  proves it for a visitor, a member, a member at another level and a lapsed member: the lock, and
+  no members-only text in the HTML or the RSC payload, even right after a member's visit or in a
+  preview.
 - **Attaching files.** Pages, posts and events have a `memberFiles` field: link text and the file's
   code (its id). Put `memberFiles[]{ title, fileId }` in the item's members-only `content` and render
   it with `<MemberFiles>` (`components/members/member-files.tsx`), which links each one to
@@ -535,6 +542,16 @@ put real member data in them.
   width (390px). Locally, Playwright starts `pnpm dev`, or reuses a dev server already running on
   port 3000. With `CI=1` it serves the production build instead, so run `pnpm build` first. Set
   `E2E_PORT` to use another port.
+- **Content in end-to-end tests** comes from a stand-in for Sanity, never from Sanity itself:
+  `e2e/support/sanity-stand-in.mts`, a small server that answers the app's GROQ queries with groq-js
+  over the documents in `e2e/fixtures/sanity-content.mts`. It acts like a private dataset (no
+  token, no content). Playwright starts it on `E2E_PORT` + 400 and gives the app
+  `SANITY_API_HOST_STAND_IN` (loopback addresses only, see `sanity/live.ts`), a made-up project ID
+  and a made-up token. Next.js reads the project ID when it builds, so for `CI=1` build with the
+  same values: `NEXT_PUBLIC_SANITY_PROJECT_ID=e2estandin SANITY_API_HOST_STAND_IN=http://127.0.0.1:3400 SANITY_API_READ_TOKEN=e2e-stand-in-token pnpm build`
+  (CI does). A dev server you started yourself doesn't have them: stop it and let Playwright start
+  one. Add documents there for your own tests, kept out of menus so the layout tests still see the
+  built-in ones.
 
 ## Continuous integration
 
