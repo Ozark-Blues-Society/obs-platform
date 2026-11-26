@@ -15,10 +15,14 @@
 // - No `*` outside quotes (checked below): a query of the whole dataset reads other documents
 //   without their gates. Load other pages, posts and events, and the lists that fill a block, with
 //   their own loader call.
+// - No `documents::` functions (checked below): documents::get() follows a reference the way `->`
+//   does.
 // - A dereference (`->`) skips the target's gate. Venues, people and sponsors can be dereferenced
 //   freely. From a page, post or event (link.internal), take only LINK_TARGET: _type,
 //   "slug": slug.current and title. In content, each `->` needs a projection that lists the fields
-//   it reads (checked below).
+//   it reads (checked below): no `...`, and no bare `@` or `^`, which stand for the whole other
+//   document there. `@.slug.current` and `@{ title }` list fields, and an `@` in an array filter,
+//   as in `tags[@ != "x"]`, is the element.
 // - filter and order use public fields only: a filter on a members-only field answers questions
 //   about it, and an order on one leaks its ranking.
 //
@@ -69,6 +73,26 @@ function stringEnd(text: string, start: number): number {
 }
 
 /**
+ * Whitespace between GROQ tokens. The GROQ spec's list includes U+0085, which `\s` doesn't. Taking
+ * more than GROQ does is safe here: the checks below then refuse more, never less.
+ */
+const SPACE = /[\s\x85]/;
+
+/** The first character at or after `from` that isn't whitespace (text.length if none). */
+function nextNonSpace(text: string, from: number): number {
+  let i = from;
+  while (i < text.length && SPACE.test(text[i])) i++;
+  return i;
+}
+
+/** The last character before `before` that isn't whitespace (-1 if none). */
+function previousNonSpace(text: string, before: number): number {
+  let i = before - 1;
+  while (i >= 0 && SPACE.test(text[i])) i--;
+  return i;
+}
+
+/**
  * Whether `text` is one balanced GROQ expression: every bracket closes in order, outside string
  * literals, and with no comments, which could hide one. With `wrapped`, the whole text is a single
  * `{ ... }` whose outer brace closes only at the end. The loaders paste callers' GROQ into the
@@ -101,13 +125,23 @@ export function isBalancedGroq(text: string, wrapped = false): boolean {
  * null if it wouldn't. Outside string literals:
  * - "*": GROQ's every document (or a multiplication, which callers don't need). A query of other
  *   documents skips their gates.
- * - "->", in `content` only: a dereference not followed by a projection, or with a `...` spread
- *   inside its projection. What it reads of the other document must be listed, so a reviewer can
- *   check it's public.
+ * - "documents::": GROQ's document functions. documents::get() resolves a (global) reference the
+ *   way `->` does, skipping the target's gate.
+ * - "->", in `content` only: a dereference not followed by a projection, or a projection that
+ *   takes the whole other document instead of listing its fields: a `...` spread, or an `@` or `^`
+ *   anywhere inside it that isn't picking fields (`@.slug.current`, `@{ title }`). In a
+ *   dereference's projection `@` is the other document, and `^` is too from any scope nested in it
+ *   (`body[]{ "doc": ^ }`). An `@` in an array filter, as in `tags[@ != "x"]`, is the element being
+ *   tested, which only decides which elements are kept. What a dereference reads of the other
+ *   document must be listed, so a reviewer can check it's public.
  */
-export function readsOtherDocuments(text: string, content: boolean): "*" | "->" | null {
-  // Each open bracket, and whether it's a dereference's projection.
-  const open: { bracket: string; dereference: boolean }[] = [];
+export function readsOtherDocuments(
+  text: string,
+  content: boolean,
+): "*" | "documents::" | "->" | null {
+  // Each open bracket, whether it's a dereference's projection, and whether a `[` is an array
+  // filter (it follows a value) rather than an array (`[@]`).
+  const open: { bracket: string; dereference: boolean; filter: boolean }[] = [];
   let projectionAt = -1;
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
@@ -116,15 +150,28 @@ export function readsOtherDocuments(text: string, content: boolean): "*" | "->" 
       if (i < 0) return null;
     } else if (char === "*") {
       return "*";
+    } else if (/[A-Za-z_]/.test(char)) {
+      // A name: a field, a keyword, or a function or its namespace. Spaces may come before `::`.
+      let end = i + 1;
+      while (/\w/.test(text[end] ?? "")) end++;
+      const name = text.slice(i, end);
+      if (/^documents$/i.test(name) && text.startsWith("::", nextNonSpace(text, end))) {
+        return "documents::";
+      }
+      i = end - 1;
     } else if (!content) {
       continue;
     } else if (char === "{" || char === "[" || char === "(") {
-      open.push({ bracket: char, dereference: i === projectionAt });
+      const before = text[previousNonSpace(text, i)] ?? "";
+      open.push({
+        bracket: char,
+        dereference: i === projectionAt,
+        filter: char === "[" && /[\w)\]}"'@^]/.test(before),
+      });
     } else if (char === "}" || char === "]" || char === ")") {
       open.pop();
     } else if (char === "-" && text[i + 1] === ">") {
-      let next = i + 2;
-      while (/\s/.test(text[next] ?? "")) next++;
+      const next = nextNonSpace(text, i + 2);
       if (text[next] !== "{") return "->";
       projectionAt = next;
       i = next - 1;
@@ -132,6 +179,14 @@ export function readsOtherDocuments(text: string, content: boolean): "*" | "->" 
       // A spread, not a slice like [0...3]: it reads every field.
       if (open.at(-1)?.bracket === "{" && open.some((each) => each.dereference)) return "->";
       i += 2;
+    } else if ((char === "@" || char === "^") && open.some((each) => each.dereference)) {
+      // Picking fields: `.` and a name, or a projection. (In `^.^` the second `^` is checked
+      // itself.) Not `@[...]`: by the GROQ spec a filter returns a value that isn't an array as it
+      // is, so `@[true]` is the whole document.
+      const next = nextNonSpace(text, i + 1);
+      const picksFields = text[next] === "{" || text[next] === ".";
+      const element = char === "@" && open.at(-1)?.filter === true;
+      if (!picksFields && !element) return "->";
     }
   }
   return null;
@@ -161,9 +216,14 @@ function checkCallerGroq(part: keyof typeof PARTS, text: string): void {
       `${name} can't use * outside quotes: a query of other documents skips their members-only rules. Load other pages, posts and events with their own getGatedItem or listGatedItems call. Not: ${text}`,
     );
   }
+  if (read === "documents::") {
+    throw new Error(
+      `${name} can't use documents:: functions: documents::get() reads another document past its members-only rules, as -> does. Load other pages, posts and events with their own getGatedItem or listGatedItems call. Not: ${text}`,
+    );
+  }
   if (read === "->") {
     throw new Error(
-      `${name} must follow each -> with a projection that lists the fields it reads, without ..., such as venue->{ name, address } or internal->${LINK_TARGET}. Not: ${text}`,
+      `${name} must follow each -> with a projection that lists the fields it reads, without ... or a bare @ or ^ (write @.slug.current, not @), such as venue->{ name, address } or internal->${LINK_TARGET}. Not: ${text}`,
     );
   }
 }
@@ -177,8 +237,8 @@ function checkType(type: string): void {
 /**
  * The projection for one gated item. `content` is a GROQ projection, such as
  * `{ excerpt, body }`, of the fields only viewers who can see the item get. It may not query other
- * documents (`*`), and each dereference (`->`) needs a projection listing what it reads: see the
- * rules at the top of this file.
+ * documents (`*`, `documents::`), and each dereference (`->`) needs a projection listing what it
+ * reads: see the rules at the top of this file.
  */
 export function gatedProjection(type: GatedType, content: string): string {
   checkType(type);
@@ -196,13 +256,13 @@ export function itemQuery(type: GatedType, content: string): string {
 export type ListOptions = {
   /**
    * A GROQ condition the items must also meet, such as `category == $category`. Use only public
-   * fields: a condition on a members-only field would tell visitors something about it. No `*`
-   * outside quotes.
+   * fields: a condition on a members-only field would tell visitors something about it. No `*` or
+   * `documents::` outside quotes.
    */
   filter?: string;
   /**
    * A GROQ ordering, such as `publishedAt desc`. Public fields only: an order on a members-only
-   * field leaks its ranking. No `*` outside quotes.
+   * field leaks its ranking. No `*` or `documents::` outside quotes.
    */
   order?: string;
   /** At most this many items. */
