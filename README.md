@@ -440,10 +440,25 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
 ## Emails (React Email)
 
 The app's own emails (backlog E-1) are [React Email](https://react.email) templates in `emails/`.
-Launch 1 has two: `welcome.tsx`, for someone who has just joined, and `receipt.tsx`, the Society's
-confirmation of a dues payment, online or by check or cash. Stripe also emails its own receipt for
-online payments (decision 0002). The renewal, lapsed and listing emails follow in Launch 2. Sign-in
-emails belong to Supabase Auth (see [Sign-in](#sign-in-supabase-auth)).
+Sign-in emails belong to Supabase Auth (see [Sign-in](#sign-in-supabase-auth)).
+
+| Template                    | Sent when                                  | Sent by                                         |
+| --------------------------- | ------------------------------------------ | ----------------------------------------------- |
+| `welcome.tsx`               | Someone joins                              | Stripe webhook (M-5)                            |
+| `receipt.tsx`               | A dues payment, online or by check or cash | Stripe webhook (M-5), recording a payment (A-1) |
+| `renewal-reminder.tsx`      | 30 days before a membership ends           | Daily email job (E-2)                           |
+| `renewal-last-reminder.tsx` | 7 days before it ends                      | Daily email job (E-2)                           |
+| `membership-lapsed.tsx`     | Once, 14 days after it ended               | Daily email job (E-2)                           |
+| `listing-approved.tsx`      | A moderator approves a listing             | Moderation (K-2)                                |
+| `listing-rejected.tsx`      | A moderator rejects one, with a reason     | Moderation (K-2)                                |
+| `listing-expiring.tsx`      | 5 days before a listing expires            | Listing expiry (K-4)                            |
+
+Stripe also emails its own receipt for online payments (decision 0002), and its own notices to
+members on yearly auto-renew, who get no renewal reminders. Each email is about the recipient's own
+membership, payment or listing and promotes nothing, so none has an unsubscribe link. The lapsed
+note says that the membership has ended and how to renew, with no offers (Q-20261126-104811-8667
+asks Parker to confirm; a promotional email would also need the Society's postal address and an
+opt-out).
 
 ```bash
 pnpm email:preview   # preview server at http://localhost:3030
@@ -465,8 +480,10 @@ put real member data in them.
   email must be absolute, so every template takes the site's address as `siteUrl`. The sender's
   address isn't in the templates: it's one setting that everything sending email shares (decision
   0005: `noreply@mail.<Society domain>`, `onboarding@resend.dev` in test mode). Nothing in
-  `emails/` sends email; the backlog items that send these two (the Stripe webhook, recording check
-  and cash payments) call `renderEmail`.
+  `emails/` sends email; the backlog items in the table above call `renderEmail`.
+- **Links.** The renewal emails link to the Join page, where members renew (M-4). The listing
+  emails link to My listings and the classifieds, at `MY_LISTINGS_PATH` (`/account/listings`, K-4)
+  and `CLASSIFIEDS_PATH` (`/classifieds`, K-3) in `lib/site/navigation.ts`, which K-3 and K-4 build.
 - **Brand.** Email clients can't read the site's CSS variables, so `emails/_lib/theme.ts` copies
   the token values. A unit test fails when a copy no longer matches `app/globals.css`, or when a
   color pair the emails use falls below WCAG AA. Most email clients don't load web fonts (and
@@ -475,10 +492,13 @@ put real member data in them.
   arrives; it will be an image at an absolute address on the site.
 - **Data.** Dates show in Central Time (`SOCIETY_TIME_ZONE`), amounts are in cents (Stripe's unit),
   and level names come from `MEMBERSHIP_LEVELS` (`sanity/schemas/options.ts`). The welcome email's
-  benefits are the site settings' benefits table rows for the member's level.
+  benefits are the site settings' benefits table rows for the member's level. Listing titles and
+  moderators' notes appear as their authors wrote them, as text (never markup); each line of a note
+  becomes a paragraph.
 - **Footer.** It says why the email was sent. Replies to a no-reply address go nowhere, so it
   links to the contact page (`/contact`, backlog P-7) instead.
-- **Tests.** `emails/welcome.test.ts` and `emails/receipt.test.ts` render each template.
+- **Tests.** `emails/welcome.test.ts`, `emails/receipt.test.ts`, `emails/renewal.test.ts` (both
+  reminders and the lapsed note) and `emails/listing.test.ts` render each template.
   `emails/templates.test.ts` checks every template it finds (one title, the language, absolute
   links, token colors only, a plain-text version with no gaps), so it covers a new template
   without changes. `e2e/emails.spec.ts` loads each email in the browser at desktop and 390px

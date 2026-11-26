@@ -32,7 +32,18 @@ const decode = (html: string) =>
 const all = (html: string, pattern: RegExp) => [...html.matchAll(pattern)].map((match) => match[1]);
 
 it("finds the templates", () => {
-  expect(files).toEqual(expect.arrayContaining(["receipt.tsx", "welcome.tsx"]));
+  expect(files).toEqual(
+    expect.arrayContaining([
+      "listing-approved.tsx",
+      "listing-expiring.tsx",
+      "listing-rejected.tsx",
+      "membership-lapsed.tsx",
+      "receipt.tsx",
+      "renewal-last-reminder.tsx",
+      "renewal-reminder.tsx",
+      "welcome.tsx",
+    ]),
+  );
 });
 
 describe.each(templates)("$file", ({ template, rendered: { subject, html, text } }) => {

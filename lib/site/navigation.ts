@@ -9,6 +9,10 @@ export const DONATE_PATH = "/donate";
 export const JOIN_PATH = "/join";
 export const SIGN_IN_PATH = "/sign-in";
 export const ACCOUNT_PATH = "/account";
+/** The public classified listings (K-3, Launch 2). The listing emails link here already. */
+export const CLASSIFIEDS_PATH = "/classifieds";
+/** A member's own listings and their statuses (K-4), part of My Account (architecture.md). */
+export const MY_LISTINGS_PATH = `${ACCOUNT_PATH}/listings`;
 
 export type NavLink = { label: string; href: string };
 

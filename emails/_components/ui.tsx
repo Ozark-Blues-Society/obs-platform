@@ -2,7 +2,7 @@
 // (../_lib/theme.ts). Every text/background pair used here is in the contrast table of
 // docs/design/tokens.md, and theme.test.ts checks them again.
 import type { ReactNode } from "react";
-import { Button, Heading, Section, Text } from "react-email";
+import { Button, Heading, Link, Section, Text } from "react-email";
 import { colors, fonts } from "../_lib/theme";
 
 /** The small label above the title, like the site's eyebrows. */
@@ -75,6 +75,15 @@ export function Note({ children }: { children: ReactNode }) {
     <Text style={{ margin: "0 0 16px", fontSize: "14px", lineHeight: "1.5", color: colors.muted }}>
       {children}
     </Text>
+  );
+}
+
+/** A link in running text, underlined so that it doesn't rely on color alone. */
+export function TextLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link href={href} style={{ color: colors.primaryLight, textDecoration: "underline" }}>
+      {children}
+    </Link>
   );
 }
 
@@ -175,6 +184,42 @@ export function Details({ rows }: { rows: readonly { label: string; value: strin
         })}
       </tbody>
     </table>
+  );
+}
+
+/**
+ * Someone's own words, such as a moderator's note, on a panel like the details table's. Each line
+ * of the text becomes a paragraph, because HTML would run the lines together.
+ */
+export function Quote({ text }: { text: string }) {
+  const paragraphs = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return (
+    <Section
+      style={{
+        margin: "0 0 24px",
+        padding: "16px 20px",
+        backgroundColor: colors.canvas,
+        borderRadius: "8px",
+      }}
+    >
+      {paragraphs.map((paragraph, index) => (
+        <Text
+          // The lines of a fixed text, and two of them may read the same.
+          key={index}
+          style={{
+            margin: index === paragraphs.length - 1 ? 0 : "0 0 12px",
+            fontSize: "16px",
+            lineHeight: "1.55",
+            color: colors.ink,
+          }}
+        >
+          {paragraph}
+        </Text>
+      ))}
+    </Section>
   );
 }
 
