@@ -11,11 +11,27 @@ const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta
 const css = read("app/globals.css");
 const doc = read("docs/design/tokens.md");
 
+// Every --color- declaration in a stylesheet, with its value as written.
+function colorDeclarations(source: string): { name: string; value: string }[] {
+  return [...source.matchAll(/^\s*--color-([^\s:]+)\s*:\s*([^;]*?)\s*;/gm)].map(
+    ([, name, value]) => ({ name, value }),
+  );
+}
+
+// The checks below (and lib/design/contrast.ts) read #rrggbb values only.
+const HEX_VALUE = /^#[0-9a-f]{6}$/i;
+
+// Declarations those checks would skip, such as a token written as oklch() or #rgb.
+function unreadableColors(source: string): string[] {
+  return colorDeclarations(source)
+    .filter(({ name, value }) => !HEX_VALUE.test(value) && !(name === "*" && value === "initial"))
+    .map(({ name, value }) => `--color-${name}: ${value}`);
+}
+
 const cssColors = Object.fromEntries(
-  [...css.matchAll(/^\s*--color-([a-z-]+):\s*(#[0-9a-f]{6})\s*;/gim)].map(([, name, value]) => [
-    name,
-    value.toLowerCase(),
-  ]),
+  colorDeclarations(css)
+    .filter(({ value }) => HEX_VALUE.test(value))
+    .map(({ name, value }) => [name, value.toLowerCase()]),
 );
 
 // The table rows ("| `...") in one "## <heading>" section of the doc.
@@ -33,6 +49,23 @@ describe("design tokens", () => {
   it("finds the color tokens in app/globals.css", () => {
     expect(Object.keys(cssColors).length).toBeGreaterThan(10);
     expect(css).toContain("--color-*: initial;");
+  });
+
+  it("can read the value of every color token", () => {
+    expect(
+      unreadableColors(css),
+      "Write these as #rrggbb, or the contrast checks skip them (see lib/design/contrast.ts)",
+    ).toEqual([]);
+  });
+
+  it("notices a color token written in a format it can't read", () => {
+    const sample = `--color-*: initial;
+      --color-a: #A0B1C2; /* fine */
+      --color-b: oklch(0.6 0.1 250);
+      --color-c:
+        #abc;
+      background-color: var(--color-a);`;
+    expect(unreadableColors(sample)).toEqual(["--color-b: oklch(0.6 0.1 250)", "--color-c: #abc"]);
   });
 
   it("documents every color token with its current value", () => {

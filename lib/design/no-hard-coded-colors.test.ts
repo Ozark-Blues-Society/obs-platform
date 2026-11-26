@@ -3,6 +3,7 @@
 // docs/design/tokens.md), so the real brand colors can replace the placeholders in one place.
 // This test fails on a hard-coded color anywhere else in the app's source.
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -18,14 +19,26 @@ const ALLOWED: Record<string, string> = {
     "the emails' copy of the tokens (email clients can't read CSS variables); theme.test.ts checks it",
 };
 
-const TAILWIND_PALETTE =
-  "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
+// Tailwind's palettes (red, neutral, mauve, ...), read from the installed Tailwind's theme, so a
+// palette that a Tailwind upgrade adds is caught too. With the default palette off, their classes
+// render nothing.
+const TAILWIND_PALETTE = [
+  ...readFileSync(createRequire(import.meta.url).resolve("tailwindcss/theme.css"), "utf8").matchAll(
+    /--color-([a-z-]+)-500:/g,
+  ),
+]
+  .map(([, name]) => name)
+  .join("|");
 const COLOR_UTILITY =
   "bg|text|border|ring|outline|fill|stroke|from|via|to|divide|placeholder|decoration|accent|caret|shadow";
 
 const RULES: { name: string; pattern: RegExp }[] = [
   // Not after a word character, "." or "&": skips private fields (this.#add) and entities (&#123;).
-  { name: "hex color", pattern: /(?<![\w.&])#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3})\b/gi },
+  // An issue number in a comment ("see #105") matches too: write "PR 105" or link it instead.
+  {
+    name: "hex color",
+    pattern: /(?<![\w.&])#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{4}|[0-9a-f]{3})\b/gi,
+  },
   {
     name: "CSS color function",
     pattern: /\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color-mix)\(/gi,
@@ -76,6 +89,27 @@ describe("findHardCodedColors", () => {
       "line 1: rgb( (CSS color function)",
       "line 2: shadow-black (Tailwind palette color)",
     ]);
+  });
+
+  it("flags hex values of every length CSS takes", () => {
+    expect(findHardCodedColors(`#abc #0008 #a1b2c3 #a1b2c3d4`)).toEqual([
+      "line 1: #abc (hex color)",
+      "line 1: #0008 (hex color)",
+      "line 1: #a1b2c3 (hex color)",
+      "line 1: #a1b2c3d4 (hex color)",
+    ]);
+  });
+
+  it("flags every Tailwind palette", () => {
+    // Tailwind 4.3's 26 palettes. The guard reads them from Tailwind, so it also gets new ones.
+    const palettes = (
+      "slate gray zinc neutral stone mauve olive mist taupe red orange amber yellow lime green " +
+      "emerald teal cyan sky blue indigo violet purple fuchsia pink rose"
+    ).split(" ");
+    expect(palettes).toHaveLength(26);
+    expect(palettes.flatMap((name) => findHardCodedColors(`text-${name}-500`))).toEqual(
+      palettes.map((name) => `line 1: text-${name}-500 (Tailwind palette color)`),
+    );
   });
 
   it("allows tokens, private fields, entities and ordinary numbers", () => {
