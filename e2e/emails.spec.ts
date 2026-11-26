@@ -4,14 +4,16 @@ import ListingApprovedEmail from "../emails/listing-approved";
 import ListingExpiringEmail from "../emails/listing-expiring";
 import ListingRejectedEmail from "../emails/listing-rejected";
 import MembershipLapsedEmail from "../emails/membership-lapsed";
+import MonthlyNewsletter from "../emails/monthly-newsletter";
 import ReceiptEmail from "../emails/receipt";
 import { renderEmail } from "../emails/render";
 import RenewalLastReminderEmail from "../emails/renewal-last-reminder";
 import RenewalReminderEmail from "../emails/renewal-reminder";
 import WelcomeEmail from "../emails/welcome";
 
-// The emails (backlog E-1) aren't pages of the site, so these tests render each one with its
-// sample props and load the HTML straight into the browser, at desktop and at phone width.
+// The emails (backlog E-1) and the monthly newsletter (E-4) aren't pages of the site, so these
+// tests render each one with its sample props and load the HTML straight into the browser, at
+// desktop and at phone width.
 const sample =
   <Props extends object>(template: EmailTemplate<Props>) =>
   () =>
@@ -34,6 +36,11 @@ const emails = [
   { name: "listing approved", button: "Go to My listings", render: sample(ListingApprovedEmail) },
   { name: "listing rejected", button: "Go to My listings", render: sample(ListingRejectedEmail) },
   { name: "listing expiring", button: "Renew your listing", render: sample(ListingExpiringEmail) },
+  {
+    name: "monthly newsletter",
+    button: "Read more on the blog",
+    render: sample(MonthlyNewsletter),
+  },
 ];
 
 for (const email of emails) {

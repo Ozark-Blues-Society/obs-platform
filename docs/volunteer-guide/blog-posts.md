@@ -15,7 +15,8 @@ Open **Blog posts** and select **+** (Create).
 - **Who can see this post?**: see [Who can see it](content-studio.md#who-can-see-it). Visitors
   who can't read a members-only post see its headline and a prompt to join, not its summary or
   the post.
-- **Include in the monthly email digest**: turn it on to add the headline and summary to the next
-  digest email.
+- **Include in the monthly email digest**: turn it on to add the post to the digest for the month
+  it's published in (see [Monthly email digest](monthly-digest.md)). The digest gives its headline
+  and summary, or for a members-only post only its headline and a link to sign in and read it.
 - **When to publish**: the date the post shows, in Central Time. To schedule a post, choose a
   later date and time and press **Publish**: the post stays hidden until then.

@@ -16,6 +16,9 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
             <AdminNavLink href="/admin/files">Members-only files</AdminNavLink>
           </li>
           <li>
+            <AdminNavLink href="/admin/digest">Monthly digest</AdminNavLink>
+          </li>
+          <li>
             <AdminNavLink href="/">View the website</AdminNavLink>
           </li>
         </ul>

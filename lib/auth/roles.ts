@@ -20,7 +20,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
     "Looks after member records: the member list, exports, and check or cash payments.",
   moderator: "Reviews classified listings before they go live.",
   editor:
-    "Edits the website's content and manages members-only files. Their Content Studio sign-in is set up separately, in Sanity.",
+    "Edits the website's content, manages members-only files and makes the monthly email digest. Their Content Studio sign-in is set up separately, in Sanity.",
 };
 
 export function isRole(value: unknown): value is Role {

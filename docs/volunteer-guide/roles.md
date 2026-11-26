@@ -11,11 +11,12 @@ asks. Anyone else who opens it is told that only administrators can give and rem
 - **Membership Manager**: looks after member records: the member list, exports, and check or cash
   payments.
 - **Moderator**: reviews classified listings before they go live.
-- **Editor**: edits the website's content in the Content Studio, and manages
-  [members-only files](members-only-files.md).
+- **Editor**: edits the website's content in the Content Studio, manages
+  [members-only files](members-only-files.md) and makes the
+  [monthly email digest](monthly-digest.md).
 
 Someone can have more than one role. The screens for the member list and for classified listings
-are still being built. For now the admin screens are Roles and Members-only files.
+are still being built. For now the admin screens are Roles, Members-only files and Monthly digest.
 
 **Editors also need a Content Studio sign-in.** The Studio has its own sign-in, set up in Sanity
 (see [Content Studio](content-studio.md#signing-in)). Giving someone the Editor role on the website

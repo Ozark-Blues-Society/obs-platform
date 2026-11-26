@@ -12,6 +12,7 @@ recorded training sessions walk through it.
 | [Pages](pages.md): templates, page blocks and menus                                                   | Editors | Draft  |
 | [Events and venues](events-and-venues.md): events, repeats, venues and the venue directory            | Editors | Draft  |
 | [Blog posts](blog-posts.md): writing, scheduling and the email digest                                 | Editors | Draft  |
+| [Monthly email digest](monthly-digest.md): the month's blog posts as a newsletter for MailerLite      | Editors | Draft  |
 | [Sponsors](sponsors.md): sponsors, the featured sponsor and sponsor tiers                             | Editors | Draft  |
 | [People](people.md): authors and the board list                                                       | Editors | Draft  |
 | [Site settings](site-settings.md): footer, social links, membership benefits and menu links           | Editors | Draft  |

@@ -2,7 +2,8 @@
  * Synthetic Sanity documents that the e2e stand-in for Sanity serves (../support/sanity-stand-in.mts):
  * blog posts for each audience, one scheduled post and one draft, and the secret for shared preview
  * links. Each members-only field holds a marker, so a test can check that no response reaches a
- * viewer who may not see it.
+ * viewer who may not see it. All but the post for Band and up are marked for the monthly email
+ * digest.
  *
  * Nothing here is in a menu and there are no Site settings, so the header and footer stay the
  * built-in ones that other tests expect.
@@ -38,7 +39,11 @@ function post(
   slug: string,
   title: string,
   visibility: Visibility,
-  { publishedInDays = -3, secret = "" }: { publishedInDays?: number; secret?: string } = {},
+  {
+    publishedInDays = -3,
+    secret = "",
+    inDigest = true,
+  }: { publishedInDays?: number; secret?: string; inDigest?: boolean } = {},
 ) {
   return {
     _id: `post-${slug}`,
@@ -52,6 +57,7 @@ function post(
     excerpt: `The summary of ${title}. ${secret}`.trim(),
     body: body(`The post ${title} in full. ${secret}`.trim()),
     visibility,
+    includeInDigest: inDigest,
     publishedAt: daysFromNow(publishedInDays),
   };
 }
@@ -80,7 +86,7 @@ export const DOCUMENTS = [
     POSTS.bandUp.slug,
     POSTS.bandUp.title,
     { _type: "visibility", audience: "levels", levels: ["band", "business", "sponsor"] },
-    { secret: MEMBERS_ONLY_MARKER },
+    { secret: MEMBERS_ONLY_MARKER, inDigest: false },
   ),
   post(
     POSTS.scheduled.slug,

@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { getEmailSender } from "@/lib/email/send";
 import { runDailyJobs, type DailyJobsSummary } from "@/lib/jobs/daily";
 import { createMembershipStore } from "@/lib/jobs/membership-store";
+import { siteUrl } from "@/lib/site/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Runs the daily jobs (lib/jobs/daily.ts). Netlify's scheduled function,
@@ -68,14 +69,4 @@ function hasSecret(request: Request, secret: string): boolean {
     digest(request.headers.get("authorization") ?? ""),
     digest(`Bearer ${secret}`),
   );
-}
-
-/** The site's address for the links in the emails, from SITE_URL. */
-function siteUrl(): string {
-  const value = process.env.SITE_URL;
-  const url = value ? URL.parse(value) : null;
-  if (!url || (url.protocol !== "https:" && url.protocol !== "http:")) {
-    throw new Error("SITE_URL must be the site's address, such as https://<Society domain>.");
-  }
-  return url.origin;
 }
