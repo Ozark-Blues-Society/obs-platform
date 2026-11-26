@@ -4,7 +4,8 @@ next-env.d.ts
 AGENTS.md
 
 # Human-authored specs and the handbook keep their own formatting
-docs/
+# (leading slash: only the root docs/ folder, not any nested docs/)
+/docs/
 CLAUDE.md
 
 # Local agent and issue-tracker state

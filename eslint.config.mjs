@@ -20,6 +20,11 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "blob-report/**",
+    // Local agent and issue-tracker state. Agent worktrees in .claude/worktrees/
+    // hold whole checkouts, and the patterns above only match at the repo root.
+    ".beads/**",
+    ".claude/**",
+    ".gc/**",
   ]),
 ]);
 
