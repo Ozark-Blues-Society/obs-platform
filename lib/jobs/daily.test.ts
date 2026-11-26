@@ -6,6 +6,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { SOCIETY_TIME_ZONE } from "@/sanity/schemas/options";
 import type { OutgoingEmail, SendEmail } from "@/lib/email/send";
+import type { MailerLiteClient } from "@/lib/mailerlite/client";
+import type { MailerLiteStore, MailerLiteSyncSummary } from "@/lib/mailerlite/sync";
 import {
   idempotencyKey,
   runDailyJobs,
@@ -13,6 +15,10 @@ import {
   type DueMembershipEmail,
   type MembershipStore,
 } from "./daily";
+
+// A stand-in for the MailerLite group sync: lib/mailerlite/sync.test.ts tests it.
+const mailerLite = vi.hoisted(() => ({ syncMailerLite: vi.fn() }));
+vi.mock("@/lib/mailerlite/sync", () => mailerLite);
 
 const NOW = new Date("2026-11-26T13:00:00Z");
 const SITE_URL = "https://ozarkblues.example";
@@ -128,8 +134,47 @@ describe("runDailyJobs", () => {
         claimedElsewhere: 0,
         deferred: 0,
       },
+      mailerLite: "off",
       errors: [],
     });
+    expect(mailerLite.syncMailerLite).not.toHaveBeenCalled();
+  });
+
+  it("then syncs the MailerLite groups, in the time left, and reports what it did", async () => {
+    const store = memoryStore([REMINDER]);
+    const { send } = recordingSender();
+    const sync = {
+      client: { kind: "MailerLite client" } as unknown as MailerLiteClient,
+      store: { kind: "MailerLite store" } as unknown as MailerLiteStore,
+    };
+    const clock = () => NOW.getTime();
+    const synced: MailerLiteSyncSummary = {
+      ...{ synced: 2, removed: 1, claimedElsewhere: 0, deferred: 3, failed: 1 },
+      errors: ["MailerLite sync: syncing profile p1 failed: MailerLite refused (HTTP 422)"],
+    };
+    mailerLite.syncMailerLite.mockResolvedValueOnce(synced);
+
+    const summary = await runDailyJobs(
+      options(store, send, { mailerLite: sync, clock, deadline: NOW.getTime() + 15_000 }),
+    );
+
+    expect(mailerLite.syncMailerLite).toHaveBeenCalledExactlyOnceWith({
+      ...sync,
+      clock,
+      deadline: NOW.getTime() + 15_000,
+    });
+    // After the statuses are up to date and the emails sent.
+    const [syncOrder] = mailerLite.syncMailerLite.mock.invocationCallOrder;
+    expect(store.refreshStatuses.mock.invocationCallOrder[0]).toBeLessThan(syncOrder);
+    expect(send.mock.invocationCallOrder[0]).toBeLessThan(syncOrder);
+    expect(summary.mailerLite).toEqual({
+      synced: 2,
+      removed: 1,
+      claimedElsewhere: 0,
+      deferred: 3,
+      failed: 1,
+    });
+    expect(summary.errors).toEqual(synced.errors);
   });
 
   it("fills each template from the member's profile, with links to the site", async () => {

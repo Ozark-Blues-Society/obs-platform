@@ -49,7 +49,11 @@ The page also suggests a subject, such as "November 2026 at the Ozark Blues Soci
    and type your own words in its place. Change only the words, not the code around them.
 4. Select **Done editing**. On the next page, give the campaign a name, the subject and the sender,
    and leave **Preheader** empty: the newsletter brings its own, the line inboxes show after the
-   subject. Then choose who gets it under **Select recipients**.
+   subject. Then choose who gets it under **Select recipients**: the Society's mailing list, plus
+   the [member groups](mailerlite-groups.md) **Website: Active members** and **Website: Expiring
+   members**, so every current member gets it. Leave out **Website: Lapsed members**: the
+   newsletter's footer tells readers they get it because they're members or signed up for the
+   Society's emails.
 5. Send a test to yourself first (**Send a test**), check it, then choose **Send now** or **Send
    later**.
 

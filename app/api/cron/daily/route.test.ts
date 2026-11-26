@@ -17,8 +17,19 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn(() => admin.cl
 const email = vi.hoisted(() => ({ send: vi.fn(), getEmailSender: vi.fn() }));
 vi.mock("@/lib/email/send", () => ({ getEmailSender: email.getEmailSender }));
 
+const mailerLite = vi.hoisted(() => ({
+  client: { kind: "MailerLite client" },
+  store: { kind: "MailerLite store" },
+  getMailerLiteClient: vi.fn(),
+}));
+vi.mock("@/lib/mailerlite/client", () => ({ getMailerLiteClient: mailerLite.getMailerLiteClient }));
+vi.mock("@/lib/mailerlite/store", () => ({
+  createMailerLiteStore: vi.fn(() => mailerLite.store),
+}));
+
 const { POST } = await import("./route");
 const { createMembershipStore } = await import("@/lib/jobs/membership-store");
+const { createMailerLiteStore } = await import("@/lib/mailerlite/store");
 
 const SECRET = "a-long-random-cron-secret";
 
@@ -31,6 +42,7 @@ const SUMMARY: DailyJobsSummary = {
     claimedElsewhere: 0,
     deferred: 0,
   },
+  mailerLite: "off",
   errors: [],
 };
 
@@ -47,6 +59,7 @@ describe("POST /api/cron/daily", () => {
     vi.stubEnv("CRON_SECRET", SECRET);
     vi.stubEnv("SITE_URL", "https://ozarkblues.example/");
     email.getEmailSender.mockReturnValue(email.send);
+    mailerLite.getMailerLiteClient.mockReturnValue(null);
     jobs.runDailyJobs.mockResolvedValue(SUMMARY);
     vi.spyOn(console, "info").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -78,6 +91,20 @@ describe("POST /api/cron/daily", () => {
     // The scheduled function waits 28 seconds; the last email may take 10 more to send.
     expect(options.deadline - now).toBe(15_000);
     expect(console.info).toHaveBeenCalledWith(`The daily jobs ran: ${JSON.stringify(SUMMARY)}`);
+    // No MAILERLITE_API_KEY: the MailerLite group sync is off.
+    expect(options.mailerLite).toBeUndefined();
+    expect(createMailerLiteStore).not.toHaveBeenCalled();
+  });
+
+  it("syncs the MailerLite groups too once MAILERLITE_API_KEY is set", async () => {
+    mailerLite.getMailerLiteClient.mockReturnValue(mailerLite.client);
+
+    const response = await POST(cronRequest(`Bearer ${SECRET}`));
+
+    expect(response.status).toBe(200);
+    expect(createMailerLiteStore).toHaveBeenCalledExactlyOnceWith(admin.client);
+    const [options] = jobs.runDailyJobs.mock.calls[0];
+    expect(options.mailerLite).toEqual({ client: mailerLite.client, store: mailerLite.store });
   });
 
   it.each([

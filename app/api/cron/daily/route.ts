@@ -2,6 +2,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { getEmailSender } from "@/lib/email/send";
 import { runDailyJobs, type DailyJobsSummary } from "@/lib/jobs/daily";
 import { createMembershipStore } from "@/lib/jobs/membership-store";
+import { getMailerLiteClient } from "@/lib/mailerlite/client";
+import { createMailerLiteStore } from "@/lib/mailerlite/store";
 import { siteUrl } from "@/lib/site/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -13,12 +15,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // 500 when something failed, so the scheduled function's log shows the failure.
 
 /**
- * How long a run may keep starting emails; the next run sends the rest. Netlify stops a scheduled
- * function after 30 seconds, and netlify/functions/daily-jobs.mts waits 28 of them for this answer.
- * The last email started may take up to 10 seconds more to send (REQUEST_TIMEOUT_MS in
- * lib/email/send.ts), and this route may have to start up first: 15 + 10 leaves a few seconds for
- * that, so the scheduled function gets the answer instead of logging a timeout for a run that went
- * fine.
+ * How long a run may keep starting emails, then MailerLite requests; the next run does the rest.
+ * Netlify stops a scheduled function after 30 seconds, and netlify/functions/daily-jobs.mts waits
+ * 28 of them for this answer. The last email or request started may take up to 10 seconds more
+ * (REQUEST_TIMEOUT_MS in lib/email/send.ts and lib/mailerlite/client.ts), and this route may have
+ * to start up first: 15 + 10 leaves a few seconds for that, so the scheduled function gets the
+ * answer instead of logging a timeout for a run that went fine.
  */
 const RUN_BUDGET_MS = 15_000;
 
@@ -40,12 +42,18 @@ export async function POST(request: Request): Promise<Response> {
   const startedAt = Date.now();
   let summary: DailyJobsSummary;
   try {
+    const supabase = createAdminClient();
+    // The MailerLite group sync is off until MAILERLITE_API_KEY is set.
+    const mailerLiteClient = getMailerLiteClient();
     summary = await runDailyJobs({
       now: new Date(startedAt),
       deadline: startedAt + RUN_BUDGET_MS,
-      store: createMembershipStore(createAdminClient()),
+      store: createMembershipStore(supabase),
       send: getEmailSender(),
       siteUrl: siteUrl(),
+      mailerLite: mailerLiteClient
+        ? { client: mailerLiteClient, store: createMailerLiteStore(supabase) }
+        : undefined,
     });
   } catch (error) {
     // A missing setting: the service role key, the email settings or the site's address.

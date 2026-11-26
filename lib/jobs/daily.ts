@@ -3,7 +3,9 @@
 //   1. brings every membership's status in line with its expiry date (lapsed at expiry, with no
 //      grace period; expiring in the last 30 days);
 //   2. sends the membership emails due: the renewal reminders 30 and 7 days before a membership
-//      ends, for members not on yearly auto-renew, and the lapsed note 14 days after it ended.
+//      ends, for members not on yearly auto-renew, and the lapsed note 14 days after it ended;
+//   3. syncs the member groups in MailerLite (backlog E-3, lib/mailerlite/sync.ts), once the
+//      statuses are up to date, when MAILERLITE_API_KEY is set.
 // Which emails are due, on which day, is decided by the database:
 // supabase/migrations/20261126143035_membership_emails.sql. Running the job again the same day
 // sends nothing twice: each email is claimed in membership_emails before it's sent.
@@ -17,6 +19,12 @@ import { renderEmail } from "@/emails/render";
 import RenewalLastReminderEmail from "@/emails/renewal-last-reminder";
 import RenewalReminderEmail from "@/emails/renewal-reminder";
 import type { SendEmail } from "@/lib/email/send";
+import type { MailerLiteClient } from "@/lib/mailerlite/client";
+import {
+  syncMailerLite,
+  type MailerLiteStore,
+  type MailerLiteSyncCounts,
+} from "@/lib/mailerlite/sync";
 import type { MembershipLevel } from "@/sanity/schemas/options";
 
 export const MEMBERSHIP_STATUSES = ["active", "expiring", "lapsed"] as const;
@@ -73,6 +81,8 @@ export interface DailyJobsOptions {
   deadline?: number;
   /** The current time in milliseconds, for the deadline and sent_at. Defaults to Date.now. */
   clock?: () => number;
+  /** For the MailerLite group sync. Left out while it's off (no MAILERLITE_API_KEY). */
+  mailerLite?: { client: MailerLiteClient; store: MailerLiteStore };
 }
 
 export interface DailyJobsSummary {
@@ -88,6 +98,8 @@ export interface DailyJobsSummary {
     /** Not started before the deadline; the next run sends them. */
     deferred: number;
   };
+  /** What the MailerLite group sync did, or "off" without MAILERLITE_API_KEY. */
+  mailerLite: MailerLiteSyncCounts | "off";
   /** What went wrong, for the logs. Profile ids, never addresses. */
   errors: string[];
 }
@@ -116,6 +128,7 @@ export async function runDailyJobs(options: DailyJobsOptions): Promise<DailyJobs
       claimedElsewhere: 0,
       deferred: 0,
     },
+    mailerLite: "off",
     errors: [],
   };
 
@@ -130,6 +143,17 @@ export async function runDailyJobs(options: DailyJobsOptions): Promise<DailyJobs
     await sendMembershipEmails(options, summary);
   } catch (error) {
     summary.errors.push(`Finding the membership emails due failed: ${describeError(error)}`);
+  }
+
+  if (options.mailerLite) {
+    // Within what's left of the run's time; it never throws.
+    const { errors, ...counts } = await syncMailerLite({
+      ...options.mailerLite,
+      deadline: options.deadline,
+      clock: options.clock,
+    });
+    summary.mailerLite = counts;
+    summary.errors.push(...errors);
   }
 
   return summary;
