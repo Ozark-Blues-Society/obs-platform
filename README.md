@@ -537,7 +537,7 @@ earlier one fails, and any failure fails the run. A new push to a pull request c
 run. A run of content that an earlier run already passed skips the checks (see below). CI uses no
 secrets.
 
-Local Supabase (CLI 3.4.0) starts in the background right after checkout, and the Playwright
+Local Supabase (CLI 3.4.0) starts in the background right after pnpm's setup, and the Playwright
 browser install starts in the background after the install. While they run, the job runs lint,
 typecheck, the unit tests and the build. A fresh stack applies the migrations and
 `supabase/seed.sql`, so the database and end-to-end tests see the fixture data. CI starts only

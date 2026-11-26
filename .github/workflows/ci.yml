@@ -7,8 +7,8 @@
 # with every job billed rounded up to the minute. One job installs dependencies once.
 #
 # Keeping runs short (bead op-73f.15): starting local Supabase is the slowest step (about two
-# minutes, mostly pulling Docker images), so it starts in the background right after checkout, and
-# the Playwright browser install starts in the background after the install. While they run, the
+# minutes, mostly pulling Docker images), so it starts in the background right after pnpm's setup,
+# and the Playwright browser install starts in the background after the install. While they run, the
 # job runs lint, typecheck, the unit tests and the build, which doesn't call Supabase. The database
 # tests and the end-to-end tests run once the stack is up. The build reuses the latest develop
 # run's Next.js cache, and the unit and end-to-end tests use both of the runner's CPUs. A run of a
@@ -55,12 +55,12 @@ jobs:
         with:
           persist-credentials: false
 
-      # A run that passes every check records the tree it tested (the exact content of the commit)
-      # as an artifact named passed-tree-<tree>, kept 7 days (the last step). A later run of the same
-      # tree finds it and skips the checks: it still succeeds, costs one billed minute instead of
-      # four or five, and its notice links the run that passed. The usual case is a push to develop:
-      # when develop hasn't moved since a pull request's last run, the squash-merge commit has
-      # exactly the tree that run tested. If the lookup fails, every check runs.
+      # A run that passes every check records the tree it tested (the exact content of the
+      # commit) as an artifact named passed-tree-<tree>, kept 7 days (the last step). A later run of
+      # the same tree finds it and skips the checks: it still succeeds, costs one billed minute
+      # instead of four or five, and its notice links the run that passed. The usual case is a push
+      # to develop: when develop hasn't moved since a pull request's last run, the squash-merge
+      # commit has exactly the tree that run tested. If the lookup fails, every check runs.
       - name: Look for an earlier run that passed this tree
         id: scope
         env:
@@ -68,10 +68,10 @@ jobs:
         run: |
           tree="$(git rev-parse 'HEAD^{tree}')"
           echo "tree=$tree" >> "$GITHUB_OUTPUT"
-          printf 'tree %s\ncommit %s\nrun %s\n' "$tree" "$GITHUB_SHA" \
-            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+          runs="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs"
+          printf 'tree %s\ncommit %s\nrun %s\n' "$tree" "$GITHUB_SHA" "$runs/$GITHUB_RUN_ID" \
             > "$RUNNER_TEMP/passed-tree.txt"
-          # On an HTTP error gh prints the error body instead of a run ID; the case below rejects it.
+          # On an HTTP error gh prints the error body, not a run ID; the case below rejects it.
           passed_in="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=passed-tree-$tree" \
             --jq '[.artifacts[] | select(.expired | not)][0].workflow_run.id // empty' \
             2> /dev/null || true)"
@@ -80,10 +80,18 @@ jobs:
               echo "run=true" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "::notice::Run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$passed_in already passed every check on this tree ($tree), so this run skips them."
+              echo "::notice::Run $runs/$passed_in already passed every check on this tree" \
+                "($tree), so this run skips them."
               echo "run=false" >> "$GITHUB_OUTPUT"
               ;;
           esac
+
+      - name: Set up pnpm (version from packageManager in package.json)
+        id: pnpm
+        if: ${{ !cancelled() && steps.scope.outputs.run == 'true' }}
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          cache: true
 
       # 3.4.0 is the version the project was set up with; supabase/config.jsonc needs CLI 3.x.
       - name: Set up the Supabase CLI
@@ -94,31 +102,27 @@ jobs:
           version: 3.4.0
 
       # A fresh stack applies supabase/migrations/ and supabase/seed.sql. It doesn't need the Node
-      # dependencies, so it starts first, in the background, and "Wait for local Supabase" picks up
-      # the result. Only Postgres and the services the app talks to start: the API gateway (kong),
-      # Auth (gotrue), the REST API (postgrest), Storage (members-only files, backlog M-7) and
-      # Mailpit, which catches Auth emails. When a test or a migration needs an excluded service
-      # (Realtime...), drop it from the --exclude lists.
+      # dependencies, so it starts in the background before they're installed, and "Wait for local
+      # Supabase" picks up the result. (Starting it before pnpm's setup made that step's cache
+      # download three times slower.) Only Postgres and the services the app talks to start: the
+      # API gateway (kong), Auth (gotrue), the REST API (postgrest), Storage (members-only files,
+      # backlog M-7) and Mailpit, which catches Auth emails. When a test or a migration needs an
+      # excluded service (Realtime...), drop it from the --exclude lists.
       - name: Start local Supabase in the background
         id: supabase-start
         if: ${{ !cancelled() && steps.supabase-cli.outcome == 'success' }}
         run: |
           (
+            started="$(date +%s)"
             status=0
             supabase start \
               --exclude studio,postgres-meta,imgproxy,realtime \
               --exclude edge-runtime,logflare,vector,supavisor \
               || status=$?
+            echo "supabase start took $(( $(date +%s) - started ))s"
             echo "$status" > "$RUNNER_TEMP/supabase-start.status.tmp"
             mv "$RUNNER_TEMP/supabase-start.status.tmp" "$RUNNER_TEMP/supabase-start.status"
           ) > "$RUNNER_TEMP/supabase-start.log" 2>&1 < /dev/null &
-
-      - name: Set up pnpm (version from packageManager in package.json)
-        id: pnpm
-        if: ${{ !cancelled() && steps.scope.outputs.run == 'true' }}
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-        with:
-          cache: true
 
       - name: Set up Node.js (version from .nvmrc)
         id: node
@@ -129,19 +133,23 @@ jobs:
 
       - name: Install dependencies
         id: install
-        if: ${{ !cancelled() && steps.pnpm.outcome == 'success' && steps.node.outcome == 'success' }}
+        if: >-
+          ${{ !cancelled() && steps.pnpm.outcome == 'success'
+          && steps.node.outcome == 'success' }}
         run: pnpm install --frozen-lockfile
 
-      # Tests run headless, so the Chromium headless shell is all they need. Its system packages come
-      # from the Ubuntu mirror, which is sometimes slow (once six minutes for the fonts), so the
-      # install runs in the background and "Wait for Playwright's Chromium" picks up the result.
+      # Tests run headless, so the Chromium headless shell is all they need. Its system packages
+      # come from the Ubuntu mirror, which is sometimes slow (once six minutes for the fonts), so
+      # the install runs in the background and "Wait for Playwright's Chromium" picks up the result.
       - name: Install Playwright's Chromium in the background
         id: browsers-start
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           (
+            started="$(date +%s)"
             status=0
             pnpm exec playwright install --with-deps --only-shell chromium || status=$?
+            echo "playwright install took $(( $(date +%s) - started ))s"
             echo "$status" > "$RUNNER_TEMP/browsers.status.tmp"
             mv "$RUNNER_TEMP/browsers.status.tmp" "$RUNNER_TEMP/browsers.status"
           ) > "$RUNNER_TEMP/browsers.log" 2>&1 < /dev/null &
@@ -171,7 +179,8 @@ jobs:
         run: |
           vars="$(grep -E '^NEXT_PUBLIC_SUPABASE_(URL|PUBLISHABLE_KEY)=' .env.example || true)"
           if [ "$(printf '%s\n' "$vars" | wc -l)" != 2 ]; then
-            echo "::error::.env.example must set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY once each"
+            echo "::error::.env.example must set NEXT_PUBLIC_SUPABASE_URL and" \
+              "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY once each"
             exit 1
           fi
           printf '%s\n' "$vars" >> "$GITHUB_ENV"
@@ -249,7 +258,8 @@ jobs:
             --arg key "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" \
             '.API_URL == $url and .PUBLISHABLE_KEY == $key' \
             "$RUNNER_TEMP/supabase-status.json" > /dev/null; then
-            echo "::error::supabase status reports a different API URL or publishable key than .env.example, which the build used: update .env.example"
+            echo "::error::supabase status reports a different API URL or publishable key than" \
+              ".env.example, which the build used: update .env.example"
             exit 1
           fi
           pnpm test:e2e
