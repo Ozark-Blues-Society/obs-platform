@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { signOut } from "@/lib/auth/actions";
 import { requireUser } from "@/lib/auth/user";
@@ -29,6 +30,9 @@ async function AccountSummary() {
         You&rsquo;re signed in as <strong>{user.email}</strong>.
       </p>
       <p className="mt-2 text-muted">Your membership details will appear here soon.</p>
+      <p className="mt-6">
+        <Link href="/account/password">Set or change your password</Link>
+      </p>
       <form action={signOut} className="mt-8">
         <button
           type="submit"

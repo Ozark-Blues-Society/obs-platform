@@ -149,6 +149,29 @@ How it fits together:
   (Cache Components). Check the member in every page, Server Function and Route Handler that needs
   one; the proxy's redirect is a convenience, not the security check.
 
+### Passwords
+
+Members set or change their password at `/account/password`, linked from My Account. Members who
+join online or are imported start without one and sign in with email links until they set one. A
+member who forgot their password signs in with an email link and sets a new one there; the sign-in
+page says so under the password form. There's no separate reset email: the sign-in link already
+proves the member owns the address.
+
+- **The form** (`app/account/password/`) calls `setPassword()` in `lib/auth/actions.ts`. It checks
+  the session again, then calls Supabase Auth's `updateUser({ password })` as the member. Supabase
+  then ends the member's other sessions. A device that's already signed in keeps working until its
+  access token runs out (at most an hour, `auth.jwt_expiry`), then has to sign in again.
+- **The rules:** 8 to 72 characters, typed twice (`checkNewPassword()` in
+  `lib/auth/password-state.ts`). Supabase Auth refuses passwords over 72 bytes, and ones shorter
+  than `auth.minimum_password_length` in `supabase/config.jsonc`. A unit test keeps that setting
+  equal to the form's minimum. Restart the stack after changing it.
+- **Hosted projects:** set Minimum password length to 8 (Authentication → Sign In / Providers →
+  Email). Leave Secure password change off. With it on, a member signed in for more than a day is
+  told to sign out and in again before they can change their password.
+- **End-to-end tests** that change a fixture member's password put it back afterwards with
+  `restorePassword()` (`e2e/support/supabase-auth.ts`), because other tests and
+  `supabase/tests/seed_test.sql` expect the fixture password.
+
 ### Sign-in emails through Resend
 
 Hosted Supabase projects send Auth emails through Resend's SMTP server, because Supabase's
@@ -360,6 +383,7 @@ Supabase accounts for about one of them, mostly pulling its Docker images.
 ```
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
+components/     Shared UI: form classes for now (D-3 adds the components)
 lib/            Server and shared code: Supabase clients, sign-in helpers
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
