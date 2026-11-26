@@ -1,0 +1,96 @@
+# CI (backlog F-2): lint, typecheck, unit tests, build and Playwright end-to-end tests.
+#
+# One job runs every check in turn. Each check runs even when an earlier one failed, so a single
+# run reports every problem, and any failed check fails the job. It is one job rather than one per
+# check because the repository is private on GitHub's free plan: 2,000 Actions minutes a month,
+# with every job billed rounded up to the minute. One job installs dependencies once.
+#
+# No secrets: CI uses test-mode or dummy values only (CLAUDE.md hard rules).
+# Starting local Supabase for the end-to-end tests arrives with backlog F-3, which adds supabase/.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+# CI only reads the code.
+permissions:
+  contents: read
+
+# A new push to a pull request cancels that pull request's older run. Each push to develop gets
+# its own run, so every merge is checked.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  verify:
+    name: verify
+    # Pinned rather than ubuntu-latest so a runner image change can't break Playwright's system
+    # dependencies without warning.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      # Actions are pinned to full commit SHAs; the release tag is in the comment.
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm (version from packageManager in package.json)
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          cache: true
+
+      - name: Set up Node.js (version from .nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        id: install
+        run: pnpm install --frozen-lockfile
+
+      # The checks below skip only when the install failed or the run was cancelled.
+      - name: Lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm lint
+
+      - name: Typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm typecheck
+
+      - name: Unit tests
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm test
+
+      - name: Build
+        id: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm build
+
+      # Tests run headless, so the Chromium headless shell is all they need.
+      - name: Install Playwright's Chromium
+        id: browsers
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+
+      # With CI set, playwright.config.ts serves the production build (`pnpm start`) on port 3000.
+      - name: End-to-end tests
+        id: e2e
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() && steps.e2e.outcome == 'failure' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
