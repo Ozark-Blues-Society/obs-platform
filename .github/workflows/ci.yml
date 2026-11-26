@@ -108,10 +108,16 @@ jobs:
       # API gateway (kong), Auth (gotrue), the REST API (postgrest), Storage (members-only files,
       # backlog M-7) and Mailpit, which catches Auth emails. When a test or a migration needs an
       # excluded service (Realtime...), drop it from the --exclude lists.
+      #
+      # The stack's ports, 54320-54329 (supabase/config.jsonc), are inside Linux's ephemeral range
+      # (32768-60999). An outgoing connection from the install steps that happens to get one of
+      # them as its local port makes the start fail with "address already in use", as it did once
+      # in PR #34's runs. The sysctl stops the kernel from handing those ports out.
       - name: Start local Supabase in the background
         id: supabase-start
         if: ${{ !cancelled() && steps.supabase-cli.outcome == 'success' }}
         run: |
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports=54320-54329
           (
             started="$(date +%s)"
             status=0
