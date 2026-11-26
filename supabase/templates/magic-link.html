@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Your Ozark Blues Society sign-in link</title>
+  </head>
+  <!--
+    Supabase Auth's "Magic link" email (backlog M-1). The local stack loads it through
+    supabase/config.jsonc; hosted projects need it pasted into the dashboard (see the README).
+    The link goes to the site's /auth/confirm route with a one-time token hash, so it works on
+    any device. Keep "one hour" in step with the OTP expiry setting.
+  -->
+  <body
+    style="
+      margin: 0;
+      padding: 24px 12px;
+      background-color: #f7f2e8;
+      color: #1c1a17;
+      font-family: Arial, Helvetica, sans-serif;
+    "
+  >
+    <div
+      style="
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 32px 28px;
+        background-color: #fffdf8;
+        border: 1px solid #e4dccb;
+        border-radius: 10px;
+      "
+    >
+      <p
+        style="
+          margin: 0 0 8px;
+          font-size: 12px;
+          font-weight: bold;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: #7a5512;
+        "
+      >
+        Ozark Blues Society
+      </p>
+      <h1
+        style="
+          margin: 0 0 16px;
+          font-family: Georgia, &quot;Times New Roman&quot;, serif;
+          font-size: 26px;
+          font-weight: normal;
+          line-height: 1.2;
+        "
+      >
+        Your sign-in link
+      </h1>
+      <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.5">
+        Use the button below to sign in to your Ozark Blues Society account.
+      </p>
+      <p style="margin: 0 0 24px">
+        <a
+          href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email"
+          style="
+            display: inline-block;
+            padding: 12px 28px;
+            background-color: #1d3557;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            border-radius: 999px;
+          "
+          >Sign in</a
+        >
+      </p>
+      <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #5c564b">
+        The link works once and expires in one hour. If you didn't ask to sign in, you can ignore
+        this email.
+      </p>
+    </div>
+  </body>
+</html>
