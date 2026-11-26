@@ -4,9 +4,11 @@ The Mayor turns this file into beads (work items) with the dependencies shown. E
 acceptance criteria. 🧑 marks a human gate; file it with `tools/ask-human.sh` and don't build past it.
 
 **Priority (decision 0002):** label every bead `launch-1` or `launch-2` and work `launch-1` first.
-Launch 1 = F-*, D-*, C-*, P-*, M-1 to M-8, A-1, A-2, E-1 (welcome + receipt only), G-1, Q-1 to Q-3, Q-5.
-Launch 2 = K-* (classifieds, incl. A-3), N-* (gig submission), E-1 (remaining), E-2 to E-5, G-2 if
-deferred, Q-4. Launch 2 work may run in parallel when it doesn't slow Launch 1.
+Launch 1 = F-*, D-*, C-*, P-*, M-1 to M-8, A-1, A-2, E-1 (welcome + receipt only), E-5 (Resend
+records only, decision 0004), G-1, Q-1 to Q-3, Q-5.
+Launch 2 = K-* (classifieds, incl. A-3), N-* (gig submission), E-1 (remaining), E-2 to E-4, E-5
+(MailerLite records and DMARC), G-2 if deferred, Q-4. Launch 2 work may run in parallel when it
+doesn't slow Launch 1.
 
 ## F — Foundation (start here)
 
@@ -103,6 +105,9 @@ deferred, Q-4. Launch 2 work may run in parallel when it doesn't slow Launch 1.
 - **E-3 MailerLite sync** (test account): groups active/expiring/lapsed/per level; on change + nightly.
 - **E-4 Newsletter template** in MailerLite style matching the brand; monthly digest content export.
 - **E-5 Email authentication guide** (SPF/DKIM/DMARC records to add) — applying them is 🧑 (DNS).
+  Split by decision 0004: the Resend records are Launch 1, in
+  [`docs/launch/resend-dns-records.md`](launch/resend-dns-records.md); the MailerLite records and
+  DMARC stay Launch 2.
 
 ## G — Migration
 
