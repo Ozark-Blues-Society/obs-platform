@@ -448,7 +448,7 @@ Supabase accounts for about one of them, mostly pulling its Docker images.
 ```
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
-components/     Shared UI: the layout shell (header, footer, page header) and form classes
+components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/) and form classes
 lib/            Server and shared code: Supabase clients, sign-in helpers
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
@@ -462,6 +462,15 @@ tools/          Helper scripts for the agent team
 
 Later backlog items add the rest of the target layout in
 [`docs/spec/architecture.md`](docs/spec/architecture.md): the rest of `scripts/`.
+
+## Components
+
+The shared components (backlog D-3) are in `components/ui/`: buttons, cards, tags, pill filters, a
+data table, form fields, a modal, toasts, the members-only lock overlay, and event, post and sponsor
+cards. With `pnpm dev` running, <http://localhost:3000/dev/components> shows them all with
+placeholder content (development only: a production build answers 404 there).
+[`docs/design/components.md`](docs/design/components.md) says what each one is for and the rules
+they follow, such as never passing members-only content to a component that blurs it.
 
 ## Design tokens
 
