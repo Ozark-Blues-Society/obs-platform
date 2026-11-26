@@ -35,7 +35,10 @@ and desktop widths. The gallery exists in development only: a production build a
 - **Submit buttons stay enabled while their form sends.** Give `Button` the form's `pending`, not
   `disabled`: it's announced as unavailable (`aria-disabled`) and ignores presses, so the form isn't
   sent twice, but it keeps focus. Browsers take focus away from a disabled button, and screen reader
-  users then lose their place.
+  users then lose their place. It still looks disabled, in forced-colors mode too, where browsers
+  draw a disabled button in the system color GrayText but leave an `aria-disabled` one as it is:
+  `Button` sets GrayText itself, and another pending button needs
+  `forced-colors:aria-disabled:text-[GrayText]` (the roles screen's Remove buttons).
 - Client components (`"use client"`) are only the ones with state or event handlers: `Modal`,
   `ToastProvider`/`useToast` and `PillFilters`. The rest render on the server too.
 

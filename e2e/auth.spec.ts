@@ -6,6 +6,7 @@ import {
   type Page,
   type TestInfo,
 } from "@playwright/test";
+import { holdPosts, systemColor } from "./support/forms";
 import { clearInbox, signInLinkFor } from "./support/mailpit";
 import { restorePassword } from "./support/supabase-auth";
 
@@ -202,14 +203,7 @@ test.describe("password sign-in", () => {
     await alert.evaluate((node) => node.setAttribute("data-first-try", ""));
 
     // Hold the next try's request, to see the form while it's sending.
-    let release = () => {};
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    await page.route("**/sign-in", async (route) => {
-      if (route.request().method() === "POST") await held;
-      await route.continue();
-    });
+    const release = await holdPosts(page, "**/sign-in");
     await form.getByLabel("Password").fill("not-the-password");
     await button.click();
     await expect(button).toHaveText("Signing in…");
@@ -223,6 +217,29 @@ test.describe("password sign-in", () => {
     await expect(form.locator("[data-first-try]")).toHaveCount(0);
     await expect(button).toHaveText("Sign in");
     await expect(button).toBeFocused();
+  });
+
+  test("in forced colors, the button is GrayText while sending, as a disabled one is", async ({
+    page,
+  }, testInfo) => {
+    // Windows High Contrast. Browsers draw a disabled button in the system color GrayText there,
+    // but a sending Button is only aria-disabled, so it sets GrayText itself.
+    await page.emulateMedia({ forcedColors: "active" });
+    await page.goto("/sign-in");
+    const form = passwordForm(page);
+    const button = form.getByRole("button");
+    const grayText = await systemColor(page, "GrayText");
+    await expect(button).not.toHaveCSS("color", grayText);
+
+    const release = await holdPosts(page, "**/sign-in");
+    await signInWithPassword(page, member("password", testInfo), "not-the-password");
+    await expect(button).toHaveAttribute("aria-disabled", "true");
+    await expect(button).toHaveCSS("color", grayText);
+    await expect(button).toHaveCSS("border-top-color", grayText);
+    release();
+
+    await expect(form.getByRole("alert")).toContainText("don't match");
+    await expect(button).not.toHaveCSS("color", grayText);
   });
 
   test("the sign-in page fits a phone screen without scrolling sideways", async ({ page }) => {
