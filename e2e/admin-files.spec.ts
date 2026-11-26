@@ -9,9 +9,14 @@ import { SUPABASE_URL } from "./support/supabase-auth";
 const BAND_MEMBER = "ray.booker@example.com";
 const INDIVIDUAL_MEMBER = "rosa.delgado@example.com";
 
-/** A title of this run's own, so the two browser projects never touch each other's file. */
+/**
+ * A title of this test's own, so tests running at the same time (the two browser projects, and
+ * this file's tests in parallel workers) never touch each other's file. A testId starts with a
+ * hash of the file and ends with a hash of the project and the test's title path, so the end is
+ * what differs between tests.
+ */
 function fileTitle(testInfo: TestInfo): string {
-  return `E2E booking guide (${testInfo.project.name}, ${testInfo.testId.slice(0, 8)})`;
+  return `E2E booking guide (${testInfo.project.name}, ${testInfo.testId.slice(-8)})`;
 }
 
 async function signIn(page: Page, email: string, next: string) {
