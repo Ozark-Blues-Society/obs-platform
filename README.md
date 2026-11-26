@@ -119,9 +119,35 @@ adds them:
   port 3000. With `CI=1` it serves the production build instead, so run `pnpm build` first. Set
   `E2E_PORT` to use another port.
 
+## Continuous integration
+
+GitHub Actions runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on every pull request
+into `develop` or `main`, and on every push to `develop`. One job installs dependencies, then runs
+`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` and `pnpm test:e2e` (against the
+production build). Each check runs even when an earlier one fails, and any failure fails the run.
+A new push to a pull request cancels its older run. CI uses no secrets.
+
+To reproduce a CI run locally:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm lint && pnpm typecheck && pnpm test && pnpm build
+CI=1 pnpm test:e2e
+```
+
+When the end-to-end tests fail, the run keeps the Playwright HTML report for 7 days as the
+`playwright-report` artifact. Fetch it with
+`gh run download <run-id> -n playwright-report -D playwright-report`, then open it with
+`pnpm exec playwright show-report`.
+
+CI is a single job because the repository is private on GitHub's free plan: 2,000 Actions minutes
+a month, with each job billed rounded up to the minute. Starting local Supabase for the end-to-end
+tests arrives with backlog F-3.
+
 ## Project layout
 
 ```
+.github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
 e2e/            Playwright end-to-end tests
 scripts/        Synthetic fixtures (scripts/fixtures/) and the seed generator
