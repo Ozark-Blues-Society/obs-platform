@@ -383,6 +383,32 @@ describe("Studio validation", () => {
     expect(await errors(limited(["band", "business", "sponsor"]))).toEqual([]);
   });
 
+  it("checks members-only files: link text, and a code from the website", async () => {
+    const withFiles = (type: "page" | "post" | "event", files: object[]) => ({
+      ...VALID[type],
+      memberFiles: files.map((file, i) => ({ _key: `f${i}`, _type: "memberFile", ...file })),
+    });
+    const code = "3f2b9c1e-8d4a-4e6f-9b2c-7a1d5e8f0c3b";
+    for (const type of ["page", "post", "event"] as const) {
+      expect(
+        await errors(withFiles(type, [{ title: "Board minutes (PDF)", fileId: code }])),
+      ).toEqual([]);
+    }
+    expect(
+      await errors(
+        withFiles("post", [
+          { title: "Pasted badly", fileId: "https://example.org/minutes.pdf" },
+          { fileId: ` ${code} ` },
+          { title: "No code" },
+        ]),
+      ),
+    ).toEqual([
+      "memberFiles.f0.fileId: Paste the file's code from the website's Members-only files screen. It looks like 3f2b9c1e-8d4a-4e6f-9b2c-7a1d5e8f0c3b.",
+      "memberFiles.f1.title: Required",
+      "memberFiles.f2.fileId: Required",
+    ]);
+  });
+
   it("needs alt text on every uploaded image, including photos inside text", async () => {
     expect(await errors({ ...VALID.event, image: image() })).toEqual([
       "image.alt: Describe the image for people who can't see it.",

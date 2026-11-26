@@ -1,6 +1,7 @@
 // Custom validation rules for the Content Studio. Each returns true when the value is fine, or a
 // message for the editor that says what to change. Unit tests: validation.test.ts.
 import { getPublishedId, type SlugValue, type ValidationContext } from "sanity";
+import { isFileId } from "@/lib/members/files";
 import { apiVersion } from "@/sanity/env";
 import { SOCIETY_TIME_ZONE } from "./options";
 
@@ -57,6 +58,13 @@ export function visibilityLevelsRule(
   const audience = (context.parent as { audience?: string } | undefined)?.audience;
   if (audience !== "levels" || (levels && levels.length > 0)) return true;
   return "Tick at least one membership level, or choose who can see this above.";
+}
+
+/** A members-only file's code, as the website's Members-only files screen shows it. */
+export function memberFileCodeRule(code: string | undefined): RuleResult {
+  // A missing code is reported by rule.required().
+  if (!code || isFileId(code.trim())) return true;
+  return "Paste the file's code from the website's Members-only files screen. It looks like 3f2b9c1e-8d4a-4e6f-9b2c-7a1d5e8f0c3b.";
 }
 
 /** Every uploaded image needs alt text. */
