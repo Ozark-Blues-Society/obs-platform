@@ -145,18 +145,32 @@ adds them:
 ## Continuous integration
 
 GitHub Actions runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on every pull request
-into `develop` or `main`, and on every push to `develop`. One job installs dependencies, then runs
-`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` and `pnpm test:e2e` (against the
-production build). Each check runs even when an earlier one fails, and any failure fails the run.
-A new push to a pull request cancels its older run. CI uses no secrets.
+into `develop` or `main`, and on every push to `develop`. One job installs dependencies, starts
+local Supabase, and runs `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:db` (pgTAP),
+`pnpm build` and `pnpm test:e2e` (against the production build). Each check runs even when an
+earlier one fails, and any failure fails the run. A new push to a pull request cancels its older
+run. CI uses no secrets.
+
+Local Supabase (CLI 3.4.0) starts in the background while lint, typecheck, the unit tests and the
+Playwright browser install run. A fresh stack applies the migrations and `supabase/seed.sql`, so
+the database and end-to-end tests see the fixture data. CI starts only Postgres, the API gateway,
+Auth, the REST API and Mailpit. Studio, Storage, Realtime, Edge Functions and the logging services
+stay off because no test uses them yet. A change that needs one of them in CI drops it from the
+`--exclude` lists in `ci.yml`. The build and the end-to-end tests get the stack's URL and
+publishable key from `supabase status`, as `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. They're the well-known local demo values, not secrets.
 
 To reproduce a CI run locally:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm lint && pnpm typecheck && pnpm test && pnpm build
-CI=1 pnpm test:e2e
+pnpm lint && pnpm typecheck && pnpm test
+supabase start && pnpm test:db
+pnpm build && CI=1 pnpm test:e2e
 ```
+
+CI's database is always fresh. To match it on a stack that's already running, run
+`supabase db reset` first (see [Local Supabase](#local-supabase)).
 
 When the end-to-end tests fail, the run keeps the Playwright HTML report for 7 days as the
 `playwright-report` artifact. Fetch it with
@@ -164,8 +178,8 @@ When the end-to-end tests fail, the run keeps the Playwright HTML report for 7 d
 `pnpm exec playwright show-report`.
 
 CI is a single job because the repository is private on GitHub's free plan: 2,000 Actions minutes
-a month, with each job billed rounded up to the minute. Starting local Supabase for the end-to-end
-tests arrives with backlog F-3.
+a month, with each job billed rounded up to the minute. A run takes about two minutes. Local
+Supabase accounts for about one of them, mostly pulling its Docker images.
 
 ## Project layout
 
