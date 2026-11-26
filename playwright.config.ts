@@ -9,7 +9,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  workers: isCI ? 1 : undefined,
+  // CI's runner has two CPUs; two workers take about a third off the run.
+  workers: isCI ? 2 : undefined,
   reporter: isCI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL,
