@@ -147,4 +147,18 @@ describe("seed.sql", () => {
     expect(sqlString("O'Neal")).toBe("'O''Neal'");
     expect(sql).toContain("'O''Neal'");
   });
+
+  it("fills in every member's profile and gives out the staff roles", () => {
+    const sql = buildSeedSql();
+    const profiles = sql.slice(
+      sql.indexOf("update public.profiles"),
+      sql.indexOf("-- Staff roles."),
+    );
+    for (const m of MEMBERS) {
+      expect(profiles, m.email).toContain(`(${sqlString(m.id)}::uuid, `);
+      for (const role of m.roles) {
+        expect(sql, m.email).toContain(`(${sqlString(m.id)}::uuid, ${sqlString(role)})`);
+      }
+    }
+  });
 });

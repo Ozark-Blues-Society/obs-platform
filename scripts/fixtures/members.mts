@@ -19,12 +19,12 @@ export type Role = (typeof ROLES)[number];
 /**
  * Fixture convention: a membership is "expiring" when it ends within this many days, matching the
  * first renewal reminder. Zero or fewer days left means "lapsed" (there's no grace period, §4).
- * M-2 and E-2 own the real rule.
+ * profiles.status (M-2) stores the status; the scheduled jobs (E-2) own the real rule.
  */
 export const EXPIRING_WITHIN_DAYS = 30;
 
 export interface FixtureMember {
-  /** Becomes auth.users.id, and profiles.id once M-2 adds profiles. */
+  /** Becomes auth.users.id and profiles.id. */
   id: string;
   first: string;
   last: string;
