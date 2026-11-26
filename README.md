@@ -157,7 +157,7 @@ member who forgot their password signs in with an email link and sets a new one 
 page says so under the password form. There's no separate reset email: the sign-in link already
 proves the member owns the address.
 
-- **The form** (`app/account/password/`) calls `setPassword()` in `lib/auth/actions.ts`. It checks
+- **The form** (`app/(site)/account/password/`) calls `setPassword()` in `lib/auth/actions.ts`. It checks
   the session again, then calls Supabase Auth's `updateUser({ password })` as the member. Supabase
   then ends the member's other sessions. A device that's already signed in keeps working until its
   access token runs out (at most an hour, `auth.jwt_expiry`), then has to sign in again.
@@ -383,7 +383,7 @@ Supabase accounts for about one of them, mostly pulling its Docker images.
 ```
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
-components/     Shared UI: form classes for now (D-3 adds the components)
+components/     Shared UI: the layout shell (header, footer, page header) and form classes
 lib/            Server and shared code: Supabase clients, sign-in helpers
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
@@ -404,6 +404,26 @@ Colors, fonts, type sizes, spacing and radii come from the approved concept
 classes (`bg-canvas`, `text-muted`, `rounded-card`), never hex values or Tailwind's own palette; a
 unit test fails on hard-coded colors. [`docs/design/tokens.md`](docs/design/tokens.md) lists the
 tokens, the WCAG contrast of each color pair, and how to swap in the Society's real brand.
+
+## Site layout
+
+Every page in the `app/(site)/` route group (the public pages, sign-in and My Account) gets its
+header, `<main>` and footer from `app/(site)/layout.tsx` (backlog D-2). The Studio has none.
+
+- **Pages** render their content without a `<main>` of their own: the layout's carries the id the
+  "Skip to main content" link targets. Most start with `<PageHeader title="…" intro="…" />`
+  (`components/layout/page-header.tsx`), the blue band that holds the page's one `<h1>`.
+- **Menus** (`lib/site/navigation.ts`): Events, Blog, Sponsors and Donate are always in the header,
+  plus the pages and links editors put in a menu (a page's Show in menu; Other menu links in Site
+  settings), which `sanity/site-chrome.ts` loads in a `"use cache"` function. With no Sanity
+  project, or if Sanity fails, the built-in links still show. Below the `lg` breakpoint (1024px) a
+  Menu button opens the menu; Escape closes it and puts focus back on the button.
+- **Account links**: Sign in and Join, or My Account, from `getCurrentUser()` inside `<Suspense>`,
+  so the rest of the header is prerendered. Without Supabase settings, everyone is a visitor.
+- **The footer** shows Site settings' footer fields and the editors' footer links.
+- **Links ahead of their pages:** the header and footer link to `/events`, `/blog`, `/sponsors`,
+  `/donate` and `/join` (Membership Benefits & Join), which 404 until P-2, P-3, P-4, P-6 and M-4
+  build them. Classifieds joins the menu with K-* (Launch 2).
 
 ## Next.js 16 notes
 

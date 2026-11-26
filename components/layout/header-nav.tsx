@@ -47,10 +47,12 @@ export function HeaderNavView({
 
   return (
     <>
-      <nav aria-label="Main" className="hidden lg:ml-auto lg:block">
+      {/* The menu takes the bar's free space and wraps onto a second line inside it when an
+          editor adds many entries, so the account links stay beside it. */}
+      <nav aria-label="Main" className="hidden min-w-0 flex-1 lg:block">
         <DesktopMenu items={items} pathname={pathname} />
       </nav>
-      <div className="hidden items-center gap-2 sm:ml-auto sm:flex lg:ml-0">{account}</div>
+      <div className="hidden shrink-0 items-center gap-2 sm:ml-auto sm:flex lg:ml-0">{account}</div>
       <button
         ref={menuButton}
         type="button"
@@ -87,7 +89,7 @@ function DesktopMenu({ items, pathname }: { items: NavItem[]; pathname: string |
   const [open, setOpen] = useState<{ label: string; on: string | null } | null>(null);
 
   return (
-    <ul className="flex flex-wrap items-center gap-0.5">
+    <ul className="flex flex-wrap items-center justify-end gap-0.5">
       {items.map((item, index) =>
         item.kind === "link" ? (
           <li key={index}>
@@ -178,7 +180,7 @@ function MenuGroup({
       <ul
         id={listId}
         hidden={!open}
-        className="absolute top-full left-0 z-30 mt-1 w-max max-w-72 min-w-48 rounded-card bg-primary-dark p-2 shadow-card ring-1 ring-white/15"
+        className="absolute top-full left-1/2 z-30 mt-1 w-max max-w-72 min-w-48 -translate-x-1/2 rounded-card bg-primary-dark p-2 shadow-card ring-1 ring-white/15"
       >
         {links.map((link, index) => (
           <li key={index}>

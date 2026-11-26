@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { PageHeader } from "@/components/layout/page-header";
 import { sendSignInLink, signInWithPassword } from "@/lib/auth/actions";
 import { safeNextPath } from "@/lib/auth/next-path";
 import { MESSAGES } from "@/lib/auth/sign-in-state";
@@ -13,13 +14,16 @@ export const metadata: Metadata = {
 // signing in, and whether a sign-in link failed), so they stream in at request time.
 export default function SignInPage({ searchParams }: PageProps<"/sign-in">) {
   return (
-    <main className="mx-auto w-full max-w-md flex-1 px-6 py-12 sm:py-16">
-      <p className="text-eyebrow text-accent-dark uppercase">Ozark Blues Society</p>
-      <h1 className="mt-2">Member sign in</h1>
-      <Suspense fallback={<p className="mt-8 text-muted">Loading the sign-in form…</p>}>
-        <SignInForms searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <>
+      <PageHeader title="Member sign in" />
+      <div className="mx-auto w-full max-w-site px-gutter pb-12 sm:pb-16">
+        <div className="max-w-md">
+          <Suspense fallback={<p className="mt-8 text-muted">Loading the sign-in form…</p>}>
+            <SignInForms searchParams={searchParams} />
+          </Suspense>
+        </div>
+      </div>
+    </>
   );
 }
 
