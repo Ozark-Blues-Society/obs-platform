@@ -162,9 +162,9 @@ them in the Supabase dashboard (Authentication → Emails → SMTP settings):
 
 The address is on the `mail.` subdomain chosen in
 [decision 0005](docs/decisions/0005-resend-sending-subdomain.md). Resend accepts it only once that
-domain is verified in Resend, after its DNS records are added
-([decision 0004](docs/decisions/0004-email-dns-guide-launch-1.md)). Until then the sender has to be
-`onboarding@resend.dev`, which reaches test addresses only (see Test mode below).
+domain is verified in Resend, after the records in the
+[Resend DNS guide](docs/launch/resend-dns-records.md) are added (decision 0004). Until then the
+sender has to be `onboarding@resend.dev`, which reaches test addresses only (see Test mode below).
 
 Also on the hosted project: paste the subject and HTML of `supabase/templates/magic-link.html`
 into the Magic link email template, set the site URL to the site's address, and set the email
