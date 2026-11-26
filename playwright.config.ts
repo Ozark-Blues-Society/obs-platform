@@ -48,7 +48,9 @@ export default defineConfig({
       url: baseURL,
       reuseExistingServer: !isCI,
       timeout: 120_000,
-      env: SANITY_STAND_IN_ENV,
+      // SITE_URL: the site's own address, which links in the monthly newsletter start with. CI
+      // has no .env.local to set it.
+      env: { ...SANITY_STAND_IN_ENV, SITE_URL: baseURL },
     },
   ],
 });
