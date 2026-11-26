@@ -21,6 +21,12 @@ and desktop widths. The gallery exists in development only: a production build a
 - **Dates show in the Society's time zone** (Central Time, `SOCIETY_TIME_ZONE`), whatever the
   server's or the visitor's: pass an ISO date-time and the card formats it with
   `lib/society-time.ts`.
+- **Don't show a toast while a `Modal` is open.** The open dialog makes the rest of the page inert,
+  the toast's live region included, so screen readers don't announce the message, and the dialog's
+  backdrop covers the toast. Close the modal, then show the toast (in the same handler, as
+  `ModalDemo` in `app/dev/components/demos.tsx` does), or confirm inside the dialog, for example
+  with a `role="status"` line. The concept's event modal shows "Added to your calendar" and "Share
+  link copied" toasts while it stays open: don't copy that part.
 - Client components (`"use client"`) are only the ones with state or event handlers: `Modal`,
   `ToastProvider`/`useToast` and `PillFilters`. The rest render on the server too.
 
@@ -34,8 +40,8 @@ and desktop widths. The gallery exists in development only: a production build a
 | `PillFilters` | `pill-filters.tsx` | Picking one filter (an event or post category). A labelled group of toggle buttons; the selected one is `aria-pressed`. Controlled: `value` + `onChange`. |
 | `Table` | `table.tsx` | Data tables. Typed columns (`cell`, `numeric`, `rowHeader`), a caption that names the table, and an empty message. Scrolls sideways in a focusable region on narrow screens. |
 | `TextField`, `TextareaField`, `SelectField`, `CheckboxField`, `Fieldset` | `form-fields.tsx` | Labelled controls with `hint` and `error`, wired to `aria-describedby` and `aria-invalid`. Mark optional fields in the label ("Photo (optional)"). Group checkboxes in a `Fieldset` with a `legend`. |
-| `Modal` | `modal.tsx` | Dialogs, on `<dialog>`: the page behind is inert, Tab cycles inside, Escape and the × button call `onClose`, and focus returns to where it was. Focus starts on the first control or on `data-autofocus`. The parent owns `open`. |
-| `ToastProvider`, `useToast` | `toast.tsx` | Short confirmations ("Saved"). One at a time, 5 seconds, in a polite live region that's always in the page. Wrap the part of the app that calls `useToast()` in a `ToastProvider`. |
+| `Modal` | `modal.tsx` | Dialogs, on `<dialog>`: the page behind is inert, Tab cycles inside, Escape and the × button call `onClose`, and focus returns to where it was. Focus starts on the first control or on `data-autofocus`. The parent owns `open`. No toasts while it's open (see the rules). |
+| `ToastProvider`, `useToast` | `toast.tsx` | Short confirmations ("Saved"). One at a time, 5 seconds, in a polite live region that's always in the page. Wrap the part of the app that calls `useToast()` in a `ToastProvider`. Not while a `Modal` is open (see the rules). |
 | `LockOverlay` | `lock-overlay.tsx` | What a visitor sees instead of a members-only page or section: a lock box with Sign in and Join now over a blurred placeholder. Point `signInHref` back at the page (`/sign-in?next=…`). |
 | `EventCard` | `event-card.tsx` | An event in a list: date badge, tags (Members only, category, Weekly/Monthly), title linked to the event, venue and time, price and members' price. Leave `venue` out where the viewer may not see it. |
 | `PostCard` | `post-card.tsx` | A post in a list: cover (a `next/image` with `fill`, or a placeholder), tags, date, title and excerpt. `locked` shows the headline and a blurred stand-in sentence, and accepts no excerpt. |

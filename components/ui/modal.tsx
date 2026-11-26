@@ -50,6 +50,10 @@ type ModalProps = {
  * reached while it's open. Tab and Shift+Tab cycle through the dialog's controls, Escape closes it,
  * and focus goes back to where it was. Focus starts on the first control, or on the element with a
  * `data-autofocus` attribute.
+ *
+ * Don't show a toast while it's open: the page behind is inert, the toast's live region included,
+ * so screen readers don't announce it, and the backdrop covers it. Close the modal, then show the
+ * toast, or confirm inside the dialog (for example a `role="status"` line).
  */
 export function Modal({ open, onClose, title, children, closeLabel = "Close" }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);

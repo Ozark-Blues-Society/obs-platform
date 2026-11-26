@@ -17,6 +17,10 @@ type ToastProviderProps = {
  * Shows short confirmations ("Saved", "Link copied") at the bottom of the screen, one at a time.
  * Put it around the part of the app that calls `useToast()`. Its live region is always in the
  * page, so screen readers announce each message as it appears.
+ *
+ * Not while a `Modal` is open: the dialog makes the rest of the page inert, this live region
+ * included, so screen readers don't announce the message, and its backdrop covers the toast.
+ * Close the modal, then show the toast, or confirm inside the dialog.
  */
 export function ToastProvider({ children, duration = 5000 }: ToastProviderProps) {
   const [toast, setToast] = useState<{ id: number; message: string } | null>(null);
@@ -57,7 +61,10 @@ export function ToastProvider({ children, duration = 5000 }: ToastProviderProps)
   );
 }
 
-/** Returns `toast(message)`, which shows a message. Needs a `<ToastProvider>` above. */
+/**
+ * Returns `toast(message)`, which shows a message. Needs a `<ToastProvider>` above. Don't call it
+ * while a `Modal` is open (see `ToastProvider`).
+ */
 export function useToast(): ShowToast {
   const show = useContext(ToastContext);
   if (!show) throw new Error("useToast() needs a <ToastProvider> around the component");
