@@ -60,6 +60,29 @@ well-known demo keys on every machine and only work against the local stack. F-4
 The ports are fixed, so a machine runs one stack (project id `obs-platform`), and
 `supabase db reset` resets it for everyone using it.
 
+### Keep the stack off the network
+
+Unless told otherwise, Docker publishes container ports on every network interface, so other
+machines on your network can reach Postgres (as superuser, password `postgres`) and Studio (no
+sign-in). To publish them on `127.0.0.1` only, put this in Docker's `daemon.json`
+(`~/.config/docker/daemon.json` for rootless Docker, `/etc/docker/daemon.json` otherwise; Docker
+Desktop edits it under Settings → Docker Engine):
+
+```json
+{
+  "ip": "127.0.0.1",
+  "default-network-opts": {
+    "bridge": { "com.docker.network.bridge.host_binding_ipv4": "127.0.0.1" }
+  }
+}
+```
+
+Then run `supabase stop`, restart Docker (that stops every container) and run `supabase start`.
+`ip` covers Docker's default network and `default-network-opts` covers networks created after the
+restart, including the one `supabase start` creates. An existing network keeps its old setting
+until `supabase stop` removes it. On Linux, `ss -ltn | grep ':543'` should then list only
+`127.0.0.1`. The factory server is set up this way.
+
 ### Migrations and database tests
 
 - `supabase migration new <name>` creates a migration in `supabase/migrations/`.
