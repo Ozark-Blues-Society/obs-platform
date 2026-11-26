@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { signOut } from "@/lib/auth/actions";
 import { requireUser } from "@/lib/auth/user";
+import { NEW_LISTING_PATH } from "@/lib/site/navigation";
 
 export const metadata: Metadata = {
   title: "My Account · Ozark Blues Society",
@@ -37,6 +38,9 @@ async function AccountSummary() {
       <p className="mt-2 text-muted">Your membership details will appear here soon.</p>
       <p className="mt-6">
         <Link href="/account/password">Set or change your password</Link>
+      </p>
+      <p className="mt-2">
+        <Link href={NEW_LISTING_PATH}>Post a classifieds listing</Link>
       </p>
       <form action={signOut} className="mt-8">
         <button

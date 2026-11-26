@@ -90,14 +90,19 @@ select policies_are(
   'member_files has only the policies tested here'
 );
 
+-- Every bucket's policies are on storage.objects: the listing-photos ones (K-1) are tested in
+-- listings_test.sql.
 select policies_are(
   'storage', 'objects',
   array[
     'Members download member files they may',
     'Editors upload member files',
-    'Editors remove member files'
+    'Editors remove member files',
+    'Anyone sees the photos of listings they can read',
+    'Active members upload listing photos',
+    'Members remove their unused listing photos'
   ],
-  'storage.objects has only the policies tested here'
+  'storage.objects has only the policies tested here and in listings_test.sql'
 );
 
 select table_privs_are(

@@ -1,6 +1,6 @@
 /**
- * Synthetic classifieds listings, posted by fixture members. The listings table arrives with K-1;
- * add these to the seed (seed-sql.mts) then.
+ * Synthetic classifieds listings, posted by fixture members. The seed (seed-sql.mts) loads them
+ * into the listings table (supabase/migrations/20261126210923_listings.sql).
  */
 import { fixtureUuid, memberByEmail } from "./members.mts";
 
@@ -29,7 +29,10 @@ export interface FixtureListing {
   body: string;
   /** Asking price in US dollars, or null when nothing is for sale. */
   price: number | null;
-  /** How the poster prefers to be contacted. K-1 settles the real options. */
+  /**
+   * How the poster prefers to be contacted: by email, through the site (the address stays
+   * private), or by phone, at the number on their profile.
+   */
   contactPref: "email" | "phone";
   status: ListingStatus;
   rejectReason: string | null;

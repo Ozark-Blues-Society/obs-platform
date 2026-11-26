@@ -137,3 +137,36 @@ values
   ('00000000-0000-4000-8100-000000000002'::uuid, 'membership_manager'),
   ('00000000-0000-4000-8100-000000000003'::uuid, 'editor'),
   ('00000000-0000-4000-8100-000000000017'::uuid, 'moderator');
+
+-- Classifieds listings. Dates are days before now; an approved listing runs 60 days.
+-- Loading it again changes nothing.
+insert into public.listings (
+  id, profile_id, category, title, body, price, contact_pref, status, reject_reason, created_at,
+  approved_at, expires_at
+)
+select
+  f.id, f.profile_id, f.category::public.listing_category, f.title, f.body, f.price,
+  f.contact_pref::public.listing_contact, f.status::public.listing_status, f.reject_reason,
+  now() - make_interval(days => f.created_days_ago),
+  now() - make_interval(days => f.approved_days_ago),
+  now() - make_interval(days => f.approved_days_ago) + make_interval(days => 60)
+from (
+  values
+    ('00000000-0000-4000-8200-000000000001'::uuid, '00000000-0000-4000-8100-000000000017'::uuid, 'musicians_wanted', 'Bass player needed for a Chicago-style blues band', 'Gigging two or three times a month. Rehearsals on Thursdays. Must read a chart.', null, 'email', 'live', null, 12, 10),
+    ('00000000-0000-4000-8200-000000000002'::uuid, '00000000-0000-4000-8100-000000000018'::uuid, 'member_connect', 'Vocalist available for weekend gigs', 'Soul and blues vocalist, 15 years on stage. Own PA for small rooms.', null, 'phone', 'live', null, 57, 56),
+    ('00000000-0000-4000-8200-000000000003'::uuid, '00000000-0000-4000-8100-000000000019'::uuid, 'gear', 'Tweed-style 1x12 tube amp, 15 W', 'Hand-wired and in great condition. Local pickup only.', 650, 'email', 'live', null, 20, 19),
+    ('00000000-0000-4000-8200-000000000004'::uuid, '00000000-0000-4000-8100-000000000022'::uuid, 'gear', 'Harmonica set (7 keys) with case', 'Lightly used. Keys of C, G, A, D, E, F and B♭.', 120, 'email', 'pending', null, 1, null),
+    ('00000000-0000-4000-8200-000000000005'::uuid, '00000000-0000-4000-8100-000000000020'::uuid, 'musicians_wanted', 'Keys player wanted for a gospel blues group', 'Hammond experience a plus. Two rehearsals a month.', null, 'email', 'pending', null, 2, null),
+    ('00000000-0000-4000-8200-000000000006'::uuid, '00000000-0000-4000-8100-000000000007'::uuid, 'gear', 'CHEAP SUNGLASSES best prices click here!!!', 'Visit my site for deals.', 5, 'email', 'rejected', 'Not related to music or the Society.', 3, null),
+    ('00000000-0000-4000-8200-000000000007'::uuid, '00000000-0000-4000-8100-000000000021'::uuid, 'merch', 'Band T-shirts, all sizes', 'Screen-printed shirts from our fall tour. Pick one up at the weekly open jam.', 20, 'email', 'live', null, 30, 29),
+    ('00000000-0000-4000-8200-000000000008'::uuid, '00000000-0000-4000-8100-000000000027'::uuid, 'street_team', 'Poster crew for the Winter Blues Revue', 'Help hang posters around town the two weekends before the show. Free entry for the crew.', null, 'phone', 'live', null, 8, 7),
+    ('00000000-0000-4000-8200-000000000009'::uuid, '00000000-0000-4000-8100-000000000005'::uuid, 'member_connect', 'Carpool to the Blues Challenge auditions', 'Driving from the north side with two seats free. Split the gas?', null, 'email', 'live', null, 5, 4),
+    ('00000000-0000-4000-8200-000000000010'::uuid, '00000000-0000-4000-8100-000000000015'::uuid, 'gear', 'Vintage Silvertone acoustic guitar', 'Plays well. Case included.', 400, 'phone', 'expired', null, 80, 75),
+    ('00000000-0000-4000-8200-000000000011'::uuid, '00000000-0000-4000-8100-000000000006'::uuid, 'musicians_wanted', 'Drummer looking for a working band', 'Shuffle, swing and Texas styles. Has transportation and a cajón for quiet gigs.', null, 'email', 'expired', null, 70, 68),
+    ('00000000-0000-4000-8200-000000000012'::uuid, '00000000-0000-4000-8100-000000000028'::uuid, 'street_team', 'Merch table helpers for Delta Night', 'Two volunteers to run the Society table. Helpers get in free.', null, 'email', 'pending', null, 0, null),
+    ('00000000-0000-4000-8200-000000000013'::uuid, '00000000-0000-4000-8100-000000000035'::uuid, 'merch', 'Posters from past blues festivals', 'Signed and numbered prints.', 15, 'email', 'live', null, 40, 38)
+) as f (
+  id, profile_id, category, title, body, price, contact_pref, status, reject_reason,
+  created_days_ago, approved_days_ago
+)
+on conflict (id) do nothing;
