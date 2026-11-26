@@ -1,6 +1,133 @@
 @import "tailwindcss";
 
 /*
- * Design tokens (colors, fonts, spacing, radii) from docs/design/prototype.html arrive with D-1.
- * Until then the scaffold uses Tailwind's defaults.
+ * Design tokens (backlog D-1), taken from the approved concept in docs/design/prototype.html.
+ * docs/design/tokens.md lists every token, the prototype value it comes from, and the WCAG
+ * contrast of each text/background pair the site uses. lib/design/tokens.test.ts checks that
+ * document against this file.
+ *
+ * The Society's real logo and colors are still PENDING (docs/spec/board-decisions.md, "Brand and
+ * content"). Token names describe roles, not hues, so the real brand goes in by changing the values
+ * here, after which `pnpm test` re-checks the contrast. Pages and components use these tokens
+ * only: no hex, rgb() or Tailwind palette colors anywhere else, which
+ * lib/design/no-hard-coded-colors.test.ts enforces.
  */
+
+@theme {
+  /* Tailwind's default palette is switched off: these are the only colors. */
+  --color-*: initial;
+
+  /* Primary: the concept's navy blues. */
+  --color-primary-dark: #0e1a2b; /* --night: header, footer, hero, toast; text on accent */
+  --color-primary: #1d3557; /* --blue: page header, dark buttons, date badges, selected pills */
+  --color-primary-light: #2b4c7e; /* --blue2: links */
+  --color-primary-soft: #e6ecf5; /* --blue-soft: default tags and calendar chips */
+
+  /* Accent: the concept's brass. */
+  --color-accent: #c9973f; /* --brass: main buttons, call-to-action band, selected borders */
+  --color-accent-light: #f0d49a; /* --brass-l: accent text on primary and primary-dark */
+  --color-accent-soft: #f6e6c3; /* brass tag background: members only, pending, expiring */
+  --color-accent-dark: #7a5512; /* brass tag text; accent-colored text on light backgrounds */
+
+  /* Status. */
+  --color-success: #2b7349; /* --green (#2f7d4f), darkened to pass AA on success-soft */
+  --color-success-soft: #dcefe3;
+  --color-danger: #a8452f; /* --rust */
+  --color-danger-soft: #f4dcd5;
+
+  /* Neutrals. Light theme only. */
+  --color-canvas: #f7f2e8; /* --cream: page background */
+  --color-surface: #fffdf8; /* --paper: cards and panels */
+  --color-white: #ffffff;
+  --color-ink: #1c1a17; /* --ink: text */
+  --color-muted: #6b6458; /* --muted: secondary text */
+  --color-muted-soft: #ece8df; /* grey tag background */
+  --color-muted-on-dark: #cfd8e6; /* secondary text on primary and primary-dark */
+  --color-line: #e4dccb; /* --line: dividers and card borders (decorative) */
+  --color-line-strong: #8c8473; /* form field borders: 3:1 against every light surface */
+  --color-focus: #a97d2b; /* keyboard focus outline: 3:1 against light and dark surfaces */
+
+  /*
+   * Type scale. Tailwind's default sizes stay available too: text-xs (12px), text-sm (14px),
+   * text-lg (18px), text-xl (20px) match sizes the concept uses.
+   */
+  --text-h1: clamp(2rem, 5vw, 3.375rem); /* 32-54px */
+  --text-h1--line-height: 1.15;
+  --text-h2: clamp(1.5rem, 3vw, 2.125rem); /* 24-34px */
+  --text-h2--line-height: 1.15;
+  --text-h3: 1.25rem; /* 20px */
+  --text-h3--line-height: 1.15;
+  --text-lead: 1.125rem; /* 18px */
+  --text-lead--line-height: 1.55;
+  --text-body: 0.9375rem; /* 15px */
+  --text-body--line-height: 1.55;
+  --text-small: 0.8125rem; /* 13px: the prototype's .small (text-sm is 14px) */
+  --text-eyebrow: 0.75rem; /* 12px; add `uppercase` */
+  --text-eyebrow--letter-spacing: 0.14em;
+  --text-eyebrow--font-weight: 700;
+  --text-tag: 0.6875rem; /* 11px; add `uppercase` */
+  --text-tag--letter-spacing: 0.06em;
+  --text-tag--font-weight: 700;
+
+  /* Layout. Tailwind's spacing scale (p-1 = 4px) covers the rest of the concept's spacing. */
+  --spacing-gutter: 1.25rem; /* page side padding (20px) */
+  --spacing-section: 3.5rem; /* vertical padding of a page section (56px) */
+  --container-site: 72.5rem; /* content width (1160px): max-w-site */
+
+  /* Radii. Tailwind's defaults cover the rest: rounded-sm (4px) tags, rounded-md (6px) nav links,
+     rounded-lg (8px) form fields and date badges, rounded-full buttons and pills. */
+  --radius-card: 0.625rem; /* --r: cards, toasts (10px) */
+  --radius-panel: 0.875rem; /* the hero's "Next up" panel (14px) */
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.06), 0 6px 20px --alpha(var(--color-primary-dark) / 8%);
+}
+
+/* next/font (app/layout.tsx) defines --font-inter and --font-dm-serif-display. */
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: var(--font-dm-serif-display), Georgia, serif;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+
+  /* DM Serif Display has one weight (400); bold would be synthesized, so headings stay at 400. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    line-height: 1.15;
+  }
+
+  h1 {
+    font-size: var(--text-h1);
+  }
+
+  h2 {
+    font-size: var(--text-h2);
+  }
+
+  h3 {
+    font-size: var(--text-h3);
+  }
+
+  a {
+    color: var(--color-primary-light);
+    text-decoration-line: underline;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}

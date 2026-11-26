@@ -197,6 +197,14 @@ Later backlog items add the rest of the target layout in
 [`docs/spec/architecture.md`](docs/spec/architecture.md): `sanity/`, `emails/` and the rest of
 `scripts/`.
 
+## Design tokens
+
+Colors, fonts, type sizes, spacing and radii come from the approved concept
+(`docs/design/prototype.html`) and live in `app/globals.css` as Tailwind theme tokens. Use their
+classes (`bg-canvas`, `text-muted`, `rounded-card`), never hex values or Tailwind's own palette; a
+unit test fails on hard-coded colors. [`docs/design/tokens.md`](docs/design/tokens.md) lists the
+tokens, the WCAG contrast of each color pair, and how to swap in the Society's real brand.
+
 ## Next.js 16 notes
 
 - This project uses Next.js 16 with **Cache Components** and **Partial Prefetching** enabled
