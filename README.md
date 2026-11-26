@@ -478,7 +478,10 @@ pnpm email:preview   # preview server at http://localhost:3030
 The preview shows each template with its sample props (`PreviewProps`), at desktop and phone
 width, as HTML and as plain text, and reloads as you edit. It also sends the rendered sample to
 React Email's spam checker at react.email, one more reason the sample props stay synthetic: never
-put real member data in them.
+put real member data in them. Don't use the preview's **Send** button: it emails whatever address is
+typed through React Email's own service, outside Resend's test mode, which could reach a real
+person (`CLAUDE.md`: never email real people). To see an email arrive, send it locally, where it
+lands in Mailpit (see "Sending" below).
 
 - **Templates** get everything they show as props, so they never fetch anything or read the
   environment. Each file's default export is the component, with a `subject` function and
@@ -487,11 +490,16 @@ put real member data in them.
   later templates to reuse. The preview lists every `.tsx` file in `emails/` except those in
   folders that start with `_`.
 - **Sending.** `renderEmail(template, props)` (`emails/render.ts`) returns the subject, the HTML and
-  the plain-text version, to pass to Resend together. It works in Route Handlers. Links in an
-  email must be absolute, so every template takes the site's address as `siteUrl`. The sender's
-  address isn't in the templates: it's one setting that everything sending email shares (decision
-  0005: `noreply@mail.<Society domain>`, `onboarding@resend.dev` in test mode). Nothing in
-  `emails/` sends email; the backlog items in the table above call `renderEmail`.
+  the plain-text version, and the sender that `getEmailSender()` (`lib/email/send.ts`) returns
+  sends them. It works in Route Handlers. Links in an email must be absolute, so every template
+  takes the site's address as `siteUrl` (the `SITE_URL` setting). The sender's address isn't in the
+  templates: every email leaves from `EMAIL_FROM` with the name "Ozark Blues Society" (decision
+  0005: `noreply@mail.<Society domain>`, `onboarding@resend.dev` in test mode). With
+  `RESEND_API_KEY` set, emails go through Resend, with an idempotency key when the caller gives one
+  (Resend then delivers a repeat of it within 24 hours only once). Without it, they go to Mailpit at
+  `MAILPIT_URL` (in `.env.example`), next to the sign-in emails, and never leave the machine;
+  `MAILPIT_URL` must be a local address. Nothing in `emails/` sends email; the backlog items in the
+  table above do.
 - **Links.** The renewal emails link to the Join page, where members renew (M-4). The listing
   emails link to My listings and the classifieds, at `MY_LISTINGS_PATH` (`/account/listings`, K-4)
   and `CLASSIFIEDS_PATH` (`/classifieds`, K-3) in `lib/site/navigation.ts`, which K-3 and K-4 build.
@@ -514,6 +522,77 @@ put real member data in them.
   links, token colors only, a plain-text version with no gaps), so it covers a new template
   without changes. `e2e/emails.spec.ts` loads each email in the browser at desktop and 390px
   width.
+
+## Daily jobs
+
+Once a day, at 13:00 UTC (7 AM in the Ozarks in winter, 8 AM in summer), Netlify runs the scheduled
+function `netlify/functions/daily-jobs.mts`, on the production deploy only. It calls
+`POST /api/cron/daily` (`app/api/cron/daily/route.ts`) with the secret `CRON_SECRET`, and the route
+runs `runDailyJobs()` (`lib/jobs/daily.ts`). Why Netlify, and the options it was chosen over:
+[decision 0006](docs/decisions/0006-daily-jobs-netlify-scheduled-function.md). Each run:
+
+1. **Updates the statuses.** `refresh_membership_statuses(now)` sets each `profiles.status` from
+   `expires_at`: `lapsed` from the moment it passes (there's no grace period, board decisions §4),
+   `expiring` when the membership ends within 30 days, `active` otherwise. Members on yearly
+   auto-renew show as expiring too, until Stripe renews them.
+2. **Sends the membership emails due.** `due_membership_emails(now)` lists the first renewal
+   reminder (30 days before a membership ends), the last one (7 days before), both only for members
+   not on yearly auto-renew (Stripe emails those who are), and the lapsed note (14 days after). The
+   job claims each email in `membership_emails`, which holds one email of each kind per member and
+   membership end, then renders it, sends it and records the email service's id.
+
+Both functions are in `supabase/migrations/20261126143035_membership_emails.sql`, with the rules
+spelled out at the top. Days count on the Society's calendar, in Central Time. How the job behaves:
+
+- **Nothing goes out twice.** A second run the same day, or two runs at once, find every email
+  claimed. Netlify's **Run now** button is safe.
+- **Failures are retried.** An email that fails loses its claim, so the next run sends it. Each email
+  stays due for a few days after its day (the first reminder until 8 days before, the last until
+  the membership ends, the lapsed note until 20 days after), so a missed run catches up, and nothing
+  older is ever sent.
+- **It stops in time.** Netlify allows a scheduled function 30 seconds, so a run starts no email
+  after 20 seconds; the next run sends the rest.
+- **The answer is a summary**, with counts and no addresses: statuses moved, emails sent of each
+  kind, failed, claimed by another run, left for the next run, and the errors (with profile ids).
+  The route answers 500 if anything failed, so it shows in Netlify's log; both functions log the
+  summary.
+- **Only server code reaches it.** `membership_emails` and both functions are for the service role:
+  members and visitors can't read the claims, list who is due or call the functions.
+
+**Turning it on in production** is a human gate (production settings, and emails to real members;
+renewal emails are Launch 2, decision 0002). In Netlify's environment variables:
+
+| Variable              | Value                                                              |
+| --------------------- | ------------------------------------------------------------------ |
+| `CRON_SECRET`         | A long random secret, such as the output of `openssl rand -hex 32` |
+| `SUPABASE_SECRET_KEY` | The Supabase project's secret key (Project Settings → API Keys)    |
+| `SITE_URL`            | `https://<Society domain>`                                         |
+| `EMAIL_FROM`          | `noreply@mail.<Society domain>` (decision 0005)                    |
+| `RESEND_API_KEY`      | A Resend API key with sending access                               |
+
+Without `CRON_SECRET`, the function logs "The daily jobs are off" and does nothing.
+
+**Running it locally.** Put any `CRON_SECRET` and the local `SUPABASE_SECRET_KEY` (`supabase status`
+prints it as `SECRET_KEY`) in `.env.local`, restart `pnpm dev`, then:
+
+```bash
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/daily
+```
+
+The emails land in Mailpit. This runs on the real clock across every member in the local database:
+it updates the fixture members' statuses and claims their emails, so a second try sends nothing until
+`supabase db reset`. On a seed more than a day old, the new statuses can fail
+`supabase/tests/seed_test.sql` until that reset, so don't run it against a database others are using.
+
+**Tests.** `supabase/tests/membership_emails_test.sql` tests the rules with a fake clock in June 2031
+(each boundary, Central Time's midnight, auto-renew, claims, who can reach what).
+`lib/jobs/daily.test.ts` tests a run (claims, retries, the deadline, failures) with a fake clock and
+store. `e2e/daily-jobs.spec.ts` runs the jobs against the local database and Mailpit with a clock in
+June 2001, when only the members it creates are due, and checks the route refuses requests without
+the secret. `lib/email/send.test.ts`, `lib/jobs/membership-store.test.ts`,
+`lib/jobs/daily-jobs-function.test.ts` and `app/api/cron/daily/route.test.ts` cover the rest.
+
+K-4 (listing expiry) and E-3 (the nightly MailerLite sync) add their jobs to `runDailyJobs()`.
 
 ## Scripts
 
@@ -616,7 +695,8 @@ accounts"). So CI keeps runs short:
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
 components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
-lib/            Server and shared code: Supabase clients, sign-in helpers
+lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs
+netlify/        Netlify Functions: the daily jobs' schedule (netlify/functions/)
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
 emails/         Email templates (React Email)

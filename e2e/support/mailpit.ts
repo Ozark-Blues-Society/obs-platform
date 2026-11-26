@@ -1,9 +1,10 @@
 import { expect, type APIRequestContext } from "@playwright/test";
 
-// Mailpit catches every email the local Supabase stack sends (see "Local Supabase" in the README).
-const MAILPIT_URL = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324";
+// Mailpit catches every email the local Supabase stack sends (see "Local Supabase" in the README),
+// and locally the app's own emails too (lib/email/send.ts).
+export const MAILPIT_URL = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324";
 
-type MessageSummary = { ID: string };
+type MessageSummary = { ID: string; Subject: string };
 
 function sentTo(address: string) {
   return { query: `to:"${address}"` };
@@ -15,6 +16,17 @@ export async function clearInbox(request: APIRequestContext, address: string): P
     params: sentTo(address),
   });
   expect(response.ok(), `Mailpit at ${MAILPIT_URL} should answer`).toBe(true);
+}
+
+/** The emails Mailpit holds for `address`, newest first: each one's id and subject. */
+export async function emailsTo(
+  request: APIRequestContext,
+  address: string,
+): Promise<MessageSummary[]> {
+  const response = await request.get(`${MAILPIT_URL}/api/v1/search`, { params: sentTo(address) });
+  expect(response.ok(), `Mailpit at ${MAILPIT_URL} should answer`).toBe(true);
+  const { messages } = (await response.json()) as { messages: MessageSummary[] };
+  return messages.map(({ ID, Subject }) => ({ ID, Subject }));
 }
 
 /** Waits for the sign-in email sent to `address` and returns the link in it. */
