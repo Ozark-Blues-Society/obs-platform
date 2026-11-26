@@ -27,6 +27,15 @@ and desktop widths. The gallery exists in development only: a production build a
   `ModalDemo` in `app/dev/components/demos.tsx` does), or confirm inside the dialog, for example
   with a `role="status"` line. The concept's event modal shows "Added to your calendar" and "Share
   link copied" toasts while it stays open: don't copy that part.
+- **Each try gets a new message element.** While a form is sending (`pending`), hide its
+  last error and its last confirmation. The next message is then a new element, which screen
+  readers read out even when the text is the same; a message that stays on screen unchanged is read
+  out by nobody. A check that fails in the browser, with no sending in between, gives its alert a
+  `key` that changes with each try instead (`app/admin/files/upload-file-form.tsx` counts them).
+- **Submit buttons stay enabled while their form sends.** Give `Button` the form's `pending`, not
+  `disabled`: it's announced as unavailable (`aria-disabled`) and ignores presses, so the form isn't
+  sent twice, but it keeps focus. Browsers take focus away from a disabled button, and screen reader
+  users then lose their place.
 - Client components (`"use client"`) are only the ones with state or event handlers: `Modal`,
   `ToastProvider`/`useToast` and `PillFilters`. The rest render on the server too.
 
@@ -34,7 +43,7 @@ and desktop widths. The gallery exists in development only: a production build a
 
 | Component | File | Use for |
 | --- | --- | --- |
-| `Button`, `ButtonLink` | `button.tsx` | Actions (`<button>`, `type="button"` by default) and links that look like buttons. Variants: `primary` (brass, the main call to action), `dark` (navy), `ghost` (outline in the surrounding text color, for light or dark backgrounds), `approve`, `reject`. Sizes `md` and `sm`. `buttonClasses()` for other elements. On a brass background use `dark`, and add `focus-visible:outline-primary-dark` (tokens.md). |
+| `Button`, `ButtonLink` | `button.tsx` | Actions (`<button>`, `type="button"` by default) and links that look like buttons. Variants: `primary` (brass, the main call to action), `dark` (navy), `ghost` (outline in the surrounding text color, for light or dark backgrounds), `approve`, `reject`. Sizes `md` and `sm`. `pending` while its form is sending (see the rules). `buttonClasses()` for other elements. On a brass background use `dark`, and add `focus-visible:outline-primary-dark` (tokens.md). |
 | `Card` | `card.tsx` | A paper panel with a border and soft shadow, no padding. `as="article"` for an item, `as="li"` in a list. |
 | `Tag` | `tag.tsx` | Uppercase labels. Tones: `primary` (categories), `accent` ("Members only", "Pending", "Expiring soon"), `success` ("Active"), `danger` ("Lapsed"), `muted` ("Weekly"). |
 | `PillFilters` | `pill-filters.tsx` | Picking one filter (an event or post category). A labelled group of toggle buttons; the selected one is `aria-pressed`. Controlled: `value` + `onChange`. |

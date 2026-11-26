@@ -147,11 +147,15 @@ test.describe("an editor", () => {
       buffer: Buffer.from("Minutes"),
     });
     // Enter in the empty Name box: focus is already there, so the message is announced instead.
+    // Each time: the second Enter shows it in a new alert, which screen readers read out again.
+    const nameAlert = upload.getByRole("alert");
     await upload.getByLabel("Name").press("Enter");
-    await expect(upload.getByRole("alert")).toHaveText(
-      "Give the file a name members will recognize.",
-    );
+    await expect(nameAlert).toHaveText("Give the file a name members will recognize.");
     await expect(upload.getByLabel("Name")).toBeFocused();
+    await nameAlert.evaluate((node) => node.setAttribute("data-first-try", ""));
+    await upload.getByLabel("Name").press("Enter");
+    await expect(upload.locator("[data-first-try]")).toHaveCount(0);
+    await expect(nameAlert).toHaveText("Give the file a name members will recognize.");
     await upload.getByLabel("Name").fill(title);
     await upload.getByRole("button", { name: "Upload file" }).click();
     await expect(upload.getByText(`Added "${title}".`)).toBeVisible();
