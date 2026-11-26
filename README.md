@@ -90,7 +90,9 @@ until `supabase stop` removes it. On Linux, `ss -ltn | grep ':543'` should then 
 - Every new table needs row level security, policies and pgTAP tests (see `CLAUDE.md`). Tests go in
   `supabase/tests/` as `<name>_test.sql`; `supabase test new <name>` writes a template.
 - `supabase/tests/rls_baseline_test.sql` fails if any table in `public` has row level security
-  off, or any view there bypasses it (no `security_invoker`).
+  off, any view there bypasses it (no `security_invoker`), or `public` holds a materialized view
+  or a foreign table. Those two can't have row level security, so keep them in a schema the API
+  doesn't expose.
 
 ### Fixtures and seed data
 
