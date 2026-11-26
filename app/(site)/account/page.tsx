@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageHeader } from "@/components/layout/page-header";
 import { signOut } from "@/lib/auth/actions";
 import { requireUser } from "@/lib/auth/user";
 
@@ -12,12 +13,16 @@ export const metadata: Metadata = {
 // page (membership status, renewal date, perks, profile and email preferences).
 export default function AccountPage() {
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12 sm:py-16">
-      <h1>My Account</h1>
-      <Suspense fallback={<p className="mt-4 text-muted">Loading your account…</p>}>
-        <AccountSummary />
-      </Suspense>
-    </main>
+    <>
+      <PageHeader title="My Account" />
+      <div className="mx-auto w-full max-w-site px-gutter pb-12 sm:pb-16">
+        <div className="max-w-2xl">
+          <Suspense fallback={<p className="mt-8 text-muted">Loading your account…</p>}>
+            <AccountSummary />
+          </Suspense>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -26,7 +31,7 @@ async function AccountSummary() {
 
   return (
     <>
-      <p className="mt-4 text-lg">
+      <p className="mt-8 text-lg">
         You&rsquo;re signed in as <strong>{user.email}</strong>.
       </p>
       <p className="mt-2 text-muted">Your membership details will appear here soon.</p>

@@ -21,7 +21,7 @@
 
 ```
 app/(site)/...        public pages, events, blog, classifieds, sponsors, donate
-app/account/...       My Account, my listings
+app/(site)/account/   My Account, my listings (in the site layout, for its header and footer)
 app/admin/...         members, moderation (role-gated)
 app/studio/[[...]]    Sanity Studio
 app/api/stripe/webhook
