@@ -24,6 +24,16 @@ Change Order). Launch target: about 10–11 weeks from kickoff.
 | Training & handover | Two recorded training sessions (humans), written how-to guide, technical docs in the repo. |
 | Launch & support | Launch on the client's domain, redirects from old URLs, 30 days of launch support. |
 
+## Complimentary add-ons (agreed, not billed)
+
+| Area | Included |
+| --- | --- |
+| Member gig submission | Band/Business/Sponsor members submit gigs from My Account; creates a draft event for an editor to approve. See `docs/decisions/0003-member-gig-submission.md`. Agreed 2026-11-26. |
+
+## Delivery plan
+
+Soft launch ("Launch 1") by 2026-12-11, then "Launch 2" — see `docs/decisions/0002-soft-launch-plan.md`.
+
 ## Assumptions
 
 - Up to 15 pages set up with client-provided content; volunteers enter the rest.

@@ -19,6 +19,7 @@ must be asked through `tools/ask-human.sh` before building the part that depends
 | --- | :-: | :-: | :-: | :-: |
 | Post in the classifieds | ✓ | ✓ | ✓ | ✓ |
 | Event calendar (view, members-only events) | ✓ | ✓ | ✓ | ✓ |
+| 10% off paid Society events and other paid items | — | — | — | ✓ |
 | Monthly newsletter | ✓ | ✓ | ✓ | ✓ |
 | Eligible for VIP drawings, All Access passes and giveaways | ✓ | ✓ | ✓ | ✓ |
 | 15% off Society merchandise (not bulk) | ✓ | ✓ | ✓ | ✓ |
@@ -32,7 +33,7 @@ must be asked through `tools/ask-human.sh` before building the part that depends
 - Benefits are shown as text on the Membership Benefits & Join page, driven by this table (keep it data, not hard-coded copy).
 - **Venue directory** is level-gated at the field level: every member sees venue names and details; booking contacts are visible only to Band, Business and Sponsor. Contacts must not be readable by Individual members or the public through any API (see `docs/decisions/0001-members-only-storage.md`).
 - **Drawings, passes, giveaways, merch discount, pre-sales and early entry** are benefits the Society fulfills offline. The site only lists them and shows a member perk code on My Account. No merch store, raffle system or ticketing is built (out of scope).
-- **"Post gigs on the Event Calendar"** for Band/Business/Sponsor is **OPEN** — not in the signed scope. See Open questions, Q-A.
+- **"Post gigs on the Event Calendar"** for Band/Business/Sponsor: members submit gigs through a form that creates a draft event for an editor to approve. Complimentary add-on — see `docs/decisions/0003-member-gig-submission.md` (Launch 2).
 
 ## 2. Family memberships
 
@@ -49,7 +50,7 @@ Each member renews on their **join anniversary**.
 ## 5. Member discounts
 
 - All members and sponsors: **15% off Society merchandise** (not bulk purchases). Fulfilled offline; show a perk code on My Account.
-- **Tentative:** 10% sponsor discounts on select items. **OPEN** — see Q-D.
+- Sponsors: **10% off paid Society events and other paid items** (from the Society). Fulfilled offline; show as a Sponsor benefit and a Sponsor perk code on My Account. No ticketing is built.
 
 ## 6. Members-only content
 
@@ -57,7 +58,7 @@ Driven by the benefits table above. In short: the event calendar's members-only 
 
 ## 7. Classifieds
 
-- **Viewing is public.** Posting requires an active membership (any level).
+- **Viewing is public.** Posting requires an active membership (any level). **Every level can post in all five categories.**
 - **Categories:** Musicians Wanted, Gear, Merch, Street Team, Member Connect.
 - **Moderator:** Kelly.
 - **Listing duration:** 60 days (contract default; the board didn't specify), with a renewal reminder 5 days before.
@@ -68,7 +69,7 @@ The $500/year Sponsor membership exists now. **The three sponsor tiers are TBD �
 
 ## 9. Target launch
 
-The board's target is **December 11, 2026 or earlier** (before Christmas, mid-month). **OPEN** — this conflicts with the contract timeline (about 10–11 weeks from the Nov 10 kickoff, i.e. late January). See Q-B. Do not compress quality gates to chase this date without Parker's decision.
+The board's target is **December 11, 2026 or earlier**. **Decided: a reduced soft launch ("Launch 1") by Dec 11, the rest ("Launch 2") after** — see `docs/decisions/0002-soft-launch-plan.md` for exactly what is in each and the critical-path dates.
 
 ## Accounts and access (status from the board, 2026-11-25)
 
@@ -96,10 +97,12 @@ content and the approved design concept (`docs/design/`) until real content arri
 | Old website account holder | Diane |
 | Project Contact, Content coordinator, Administrators, Membership Manager, Editors, Treasurer, Newsletter writer | **PENDING** |
 
-## Open questions (for Parker)
+## Resolved questions (Parker, 2026-11-26)
 
-- **Q-A — Members posting gigs.** Band/Business/Sponsor members "post gigs on the Event Calendar." The contract has editors add events in the Content Studio, not members. Options: (1) members email gigs to an editor, no new feature; (2) a simple member gig-submission form that creates a draft event an editor approves (Change Order); (3) give trusted members editor access. *Recommendation: (1) for launch, (2) as a Change Order if the board wants it.*
-- **Q-B — Launch date.** Board wants ≤ Dec 11; contract plans late January; Stripe and other accounts aren't created yet and no content has arrived. Options: (1) keep the contract timeline; (2) a reduced "soft launch" by Dec 11 (e.g. public pages + join/renew) with the rest following; (3) attempt full scope by Dec 11. *Needs Parker.*
-- **Q-C — Classifieds by level.** Each level lists "Gear classifieds." Can every member post in all five categories, or are some categories limited by level?
-- **Q-D — Sponsor discounts.** What is the "tentative 10% sponsor discounts on select items" — sponsors' businesses offering members 10% off, or the Society giving sponsors 10%? Does the site need to show it?
-- **Q-E — Business level and the calendar.** The Business list omits "Calendar" while Individual and Band include it. Assumed an omission (everyone sees the calendar) — confirm.
+| Q | Answer |
+| --- | --- |
+| Q-A Members posting gigs | Member gig-submission form → draft event → editor approves. Complimentary add-on (decision 0003), Launch 2. |
+| Q-B Launch date | Reduced soft launch by Dec 11; build continues around the clock (decision 0002). |
+| Q-C Classifieds by level | All members can post in all five categories. |
+| Q-D Sponsor discount | The Society gives sponsors 10% off paid events and other paid items. |
+| Q-E Business + calendar | Everyone sees the calendar (it was an omission). |

@@ -3,6 +3,11 @@
 The Mayor turns this file into beads (work items) with the dependencies shown. Each item lists its
 acceptance criteria. 🧑 marks a human gate; file it with `tools/ask-human.sh` and don't build past it.
 
+**Priority (decision 0002):** label every bead `launch-1` or `launch-2` and work `launch-1` first.
+Launch 1 = F-*, D-*, C-*, P-*, M-1 to M-8, A-1, A-2, E-1 (welcome + receipt only), G-1, Q-1 to Q-3, Q-5.
+Launch 2 = K-* (classifieds, incl. A-3), N-* (gig submission), E-1 (remaining), E-2 to E-5, G-2 if
+deferred, Q-4. Launch 2 work may run in parallel when it doesn't slow Launch 1.
+
 ## F — Foundation (start here)
 
 - **F-1 Scaffold the app.** Next.js App Router + TypeScript strict + Tailwind + pnpm. ESLint, Prettier,
@@ -80,6 +85,15 @@ acceptance criteria. 🧑 marks a human gate; file it with `tools/ask-human.sh` 
   for Musicians Wanted, Gear, Merch, Street Team, Member Connect; contact poster via site (email stays
   private).
 - **K-4 Expiry** after 60 days, reminder at −5 days, renew flow; "My listings".
+
+## N — Member gig submission (decision 0003, Launch 2)
+
+- **N-1 Submission form** in My Account for Band/Business/Sponsor (server-side level check), creating a
+  Sanity draft event (+ draft venue if new) with submittedBy and submissionStatus: pending.
+- **N-2 Editor workflow:** Studio "Member submissions" list; editor email on new submission; publish or
+  decline updates the member's view.
+- **N-3 My submissions** list in My Account with status; limits (5 pending, rate limit, image limits);
+  tests for level checks and drafts staying unpublished.
 
 ## E — Email
 
