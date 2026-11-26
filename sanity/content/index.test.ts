@@ -196,6 +196,17 @@ describe("getGatedItem", () => {
   it("refuses members-only fields that aren't a projection", async () => {
     await expect(getGatedItem("post", "x", "body")).rejects.toThrow("GROQ projection in braces");
   });
+
+  it("refuses members-only fields that read other documents, before asking Sanity", async () => {
+    await expect(
+      getGatedItem("page", "home", '{ "events": *[_type == "event"]{ body } }'),
+    ).rejects.toThrow("can't use * outside quotes");
+    await expect(
+      getGatedItem("post", "x", '{ body[]{ ..., markDefs[]{ ..., "target": internal-> } } }'),
+    ).rejects.toThrow("must follow each -> with a projection");
+    expect(mocks.getViewer).not.toHaveBeenCalled();
+    expect(mocks.sanityFetch).not.toHaveBeenCalled();
+  });
 });
 
 describe("listGatedItems", () => {
@@ -245,5 +256,13 @@ describe("listGatedItems", () => {
   it("returns nothing when Sanity's answer isn't a list", async () => {
     mocks.sanityFetch.mockResolvedValue({ data: null });
     await expect(listGatedItems("page", "{ blocks }")).resolves.toEqual([]);
+  });
+
+  it("refuses a filter that reads other documents, before asking Sanity", async () => {
+    await expect(
+      listGatedItems("post", "{ body }", { filter: 'count(*[_type == "post"]) > 0' }),
+    ).rejects.toThrow("The list filter can't use * outside quotes");
+    expect(mocks.getViewer).not.toHaveBeenCalled();
+    expect(mocks.sanityFetch).not.toHaveBeenCalled();
   });
 });

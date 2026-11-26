@@ -124,22 +124,33 @@ Every fixture member can sign in locally with their address (for example
 
 ## Sign-in (Supabase Auth)
 
-Members sign in at `/sign-in`, with a one-click link sent by email or with a password, and sign
-out from `/account`. `/account` is members-only (a placeholder until M-8 builds My Account).
+Members sign in at `/sign-in`, with a link sent by email or with a password, and sign out from
+`/account`. `/account` is members-only (a placeholder until M-8 builds My Account).
 Sign-in links never create accounts: people become members by joining.
 
 Locally, every email Auth sends lands in Mailpit at <http://127.0.0.1:54324>; nothing leaves the
-machine. Ask for a link for a fixture member (see the table above), open the email in Mailpit and
-follow its link. Or sign in with the fixture password `obs-local-dev`.
+machine. Ask for a link for a fixture member (see the table above), open the email in Mailpit,
+follow its link and press **Finish signing in**. Or sign in with the fixture password
+`obs-local-dev`.
 
 How it fits together:
 
 - **The sign-in email** is `supabase/templates/magic-link.html`, registered in
   `supabase/config.jsonc` (`auth.email.template.magic_link`). Its link goes to
-  `{site_url}/auth/confirm` with a one-time token hash. That route (`app/auth/confirm/route.ts`)
-  verifies it and starts the session, so a link opened on another device still works. After
-  changing the template settings or `auth.site_url`, restart the stack (`supabase stop`, then
-  `supabase start`); the data is kept.
+  `{site_url}/auth/confirm` with a one-time token hash. That page
+  (`app/(site)/auth/confirm/page.tsx`) has a **Finish signing in** button, which sends the token
+  hash to `confirmSignIn()` in `lib/auth/actions.ts`. It verifies the token hash on the server and
+  starts the session, so a link opened on another device still works. After changing the template
+  settings or `auth.site_url`, restart the stack (`supabase stop`, then `supabase start`); the
+  data is kept.
+- **Why the button:** some mail systems open the links in incoming email before the member does,
+  to scan them: link scanners such as Microsoft Defender Safe Links, and some gateways and link
+  previewers. If opening the link verified the token, the scan would use it up, and the member
+  would be told the link had expired or was already used. Scanners load the page but don't press
+  its button, so the link still works for the member. Don't make the page submit the form by
+  itself: scanners that run scripts would then use the link up again. Supabase's
+  [Auth email templates guide](https://supabase.com/docs/guides/auth/auth-email-templates#email-prefetching)
+  describes the problem ("Email prefetching").
 - **Sessions** live in cookies. `proxy.ts` (Next.js 16's name for middleware) refreshes an expired
   session on every request before the page renders, and sends visitors who open `/account` or an
   admin screen (`/admin`) to sign in first.
@@ -354,18 +365,31 @@ const post = await getGatedItem("post", slug, "{ excerpt, body }");
 - The loader first works out who is viewing (`getViewer()` in `lib/members/viewer.ts`: the session,
   then the member's own profile row). It then asks Sanity with the viewer's active level as
   `$memberLevel`. The query (`sanity/content/gated-query.ts`) fills in `content` only when that
-  level can see the item, so a members-only body never leaves Sanity for anyone else. The loader
-  then checks again with `checkAccess`.
+  level can see the item, so the item's members-only fields never leave Sanity for anyone else.
+  The loader then checks again with `checkAccess`.
 - Each type's public fields are fixed in `PUBLIC_FIELDS`, after the approved concept. A locked post
   shows its headline, category, date and cover photo, a locked event its title, date, time, prices
   and photo (not the venue), and a locked page its title. Everything else goes in `content`.
 - `listGatedItems(type, content, { filter, params, order, limit })` does the same for lists, feeds
-  and sitemaps. Filter on public fields only.
+  and sitemaps.
+- The gate covers the item a loader returns, not other documents its GROQ reads. So `content`,
+  `filter` and `order` are fixed strings in the code. Values go in `params`, never built from
+  request input. And:
+  - No `*` outside quotes: the loaders refuse it, because a query of the whole dataset reads other
+    documents without their gates. Load other pages, posts and events, and the lists that fill a
+    block (upcoming events, sponsor logos, the venue directory), with their own loader call.
+  - A dereference (`->`) skips the target's gate. Venues, people and sponsors can be dereferenced
+    freely. From a page, post or event (`link.internal`), take only `LINK_TARGET`:
+    `{ _type, "slug": slug.current, title }`. In `content`, each `->` needs a projection that lists
+    the fields it reads (the loaders refuse `internal->` or `internal->{ ... }`).
+  - `filter` and `order` use public fields only: a filter on a members-only field answers questions
+    about it, and an order on one leaks its ranking.
 - Loaders run at request time and read the session, so call them inside `<Suspense>`. Results are
   cached per query, viewer level and preview mode, never per person, so a visitor never gets an
   entry a member's visit filled.
-- ESLint refuses `sanityFetch`, the Sanity `client` and `createClient` anywhere else
-  (`eslint.config.mjs`; `sanity/content/lint-guard.test.ts` proves the rule works). The menus
+- ESLint refuses `sanityFetch`, the Sanity `client` and `createClient` anywhere else, and any
+  dynamic `import()` of their modules (`eslint.config.mjs`; `sanity/content/lint-guard.test.ts`
+  proves the rule works). The menus
   (`sanity/site-chrome.ts`: public page titles and links) and the draft-mode route are the only
   exceptions. Put new reads in `sanity/content/`.
 
@@ -530,7 +554,7 @@ Supabase accounts for about one of them, mostly pulling its Docker images.
 ```
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
-components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/) and form classes
+components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
 lib/            Server and shared code: Supabase clients, sign-in helpers
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
@@ -553,6 +577,16 @@ cards. With `pnpm dev` running, <http://localhost:3000/dev/components> shows the
 placeholder content (development only: a production build answers 404 there).
 [`docs/design/components.md`](docs/design/components.md) says what each one is for and the rules
 they follow, such as never passing members-only content to a component that blurs it.
+
+## Design Approval package
+
+`/design-preview` holds the home page and the four page templates with sample content (backlog
+D-4), for the Society's Design Approval. Unlike `/dev/components`, it's in production builds, so
+the preview deploy serves it; search engines are asked to skip it. The home page's sections, the
+page blocks and the templates live in `components/home/`, `components/blocks/` and
+`components/templates/`, where P-1 and C-2 fill them from the Studio.
+[`docs/design/approval-package.md`](docs/design/approval-package.md) lists the pages, the open
+questions and how a revision round works. Delete the folder before launch.
 
 ## Design tokens
 
