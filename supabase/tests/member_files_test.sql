@@ -7,7 +7,7 @@
 -- tables are blocked by a trigger unless storage.allow_delete_query is on; the tests turn it on so
 -- that only the policies decide.
 begin;
-select plan(35);
+select plan(49);
 
 insert into auth.users (id, email)
 values
@@ -18,7 +18,10 @@ values
   ('00000000-0000-4000-8910-000000000005', 'test.never-paid@example.com'),
   ('00000000-0000-4000-8910-000000000006', 'test.editor@example.com'),
   ('00000000-0000-4000-8910-000000000007', 'test.admin@example.com'),
-  ('00000000-0000-4000-8910-000000000008', 'test.sponsor@example.com');
+  ('00000000-0000-4000-8910-000000000008', 'test.sponsor@example.com'),
+  ('00000000-0000-4000-8910-000000000009', 'test.moderator@example.com'),
+  ('00000000-0000-4000-8910-000000000010', 'test.membership-manager@example.com'),
+  ('00000000-0000-4000-8910-000000000011', 'test.individual-staff@example.com');
 
 -- Memberships: only server code (the service role) or postgres can write these. now() is the
 -- transaction's start, the same instant the policies compare against.
@@ -27,6 +30,7 @@ set
   level = case id
     when '00000000-0000-4000-8910-000000000002' then 'individual'::public.membership_level
     when '00000000-0000-4000-8910-000000000008' then 'sponsor'
+    when '00000000-0000-4000-8910-000000000011' then 'individual'
     else 'band'
   end,
   expires_at = case id
@@ -37,13 +41,17 @@ set
 where id in (
   '00000000-0000-4000-8910-000000000001', '00000000-0000-4000-8910-000000000002',
   '00000000-0000-4000-8910-000000000003', '00000000-0000-4000-8910-000000000004',
-  '00000000-0000-4000-8910-000000000008'
+  '00000000-0000-4000-8910-000000000008', '00000000-0000-4000-8910-000000000011'
 );
 
 insert into public.user_roles (profile_id, role)
 values
   ('00000000-0000-4000-8910-000000000006', 'editor'),
-  ('00000000-0000-4000-8910-000000000007', 'admin');
+  ('00000000-0000-4000-8910-000000000007', 'admin'),
+  ('00000000-0000-4000-8910-000000000009', 'moderator'),
+  ('00000000-0000-4000-8910-000000000010', 'membership_manager'),
+  ('00000000-0000-4000-8910-000000000011', 'moderator'),
+  ('00000000-0000-4000-8910-000000000011', 'membership_manager');
 
 -- Three files: for every member, for Band and up, for Sponsors only.
 insert into public.member_files (id, title, object_path, file_name, audience, levels)
@@ -371,6 +379,132 @@ select is(
   (select count(*)::int from public.member_files),
   3,
   'an administrator reads every file'
+);
+
+reset role;
+
+-- Staff who don't manage files: the Moderator handles the classifieds queue and the Membership
+-- Manager handles members (docs/spec/scope.md). Neither role gives access to any file.
+
+-- An Individual member who is also a moderator and a membership manager: the roles add nothing
+
+set local role authenticated;
+set local request.jwt.claims to
+  '{"sub": "00000000-0000-4000-8910-000000000011", "role": "authenticated"}';
+
+select results_eq(
+  $$ select title from public.member_files order by title $$,
+  array['Meeting minutes'],
+  'an Individual member with both roles reads only the file for every member'
+);
+
+select results_eq(
+  $$ select name from storage.objects where bucket_id = 'member-files' order by name $$,
+  array['00000000-0000-4000-8920-000000000001/minutes.pdf'],
+  'an Individual member with both roles downloads only the file for every member'
+);
+
+reset role;
+
+-- A moderator without a membership. Here and for the membership manager:
+--   - the writes come first, so a row or object one of them let through shows up in the reads
+--     after it, even when an earlier delete has emptied the table;
+--   - the deletes read no column (returning 1, no where clause). Reading one would also apply the
+--     SELECT policy, which hides every file from them, so a DELETE policy opened to them would
+--     pass unnoticed.
+
+set local role authenticated;
+set local request.jwt.claims to
+  '{"sub": "00000000-0000-4000-8910-000000000009", "role": "authenticated"}';
+
+select throws_ok(
+  $$
+    insert into public.member_files (id, title, object_path, file_name)
+    values ('00000000-0000-4000-8920-000000000010', 'Queue rules',
+      '00000000-0000-4000-8920-000000000010/queue-rules.pdf', 'queue-rules.pdf')
+  $$,
+  '42501', null,
+  'a moderator can''t add files'
+);
+
+select throws_ok(
+  $$
+    insert into storage.objects (bucket_id, name)
+    values ('member-files', '00000000-0000-4000-8920-000000000010/queue-rules.pdf')
+  $$,
+  '42501', null,
+  'a moderator can''t upload to the member-files bucket'
+);
+
+select is_empty(
+  $$ select id from public.member_files $$,
+  'a moderator without a membership reads no files'
+);
+
+select is_empty(
+  $$ select name from storage.objects where bucket_id = 'member-files' $$,
+  'a moderator without a membership can''t list or download any file'
+);
+
+select is_empty(
+  $$ delete from public.member_files returning 1 $$,
+  'a moderator can''t remove files'
+);
+
+set local storage.allow_delete_query = 'true';
+
+select is_empty(
+  $$ delete from storage.objects returning 1 $$,
+  'a moderator can''t remove files from the bucket'
+);
+
+reset role;
+
+-- A membership manager without a membership
+
+set local role authenticated;
+set local request.jwt.claims to
+  '{"sub": "00000000-0000-4000-8910-000000000010", "role": "authenticated"}';
+
+select throws_ok(
+  $$
+    insert into public.member_files (id, title, object_path, file_name)
+    values ('00000000-0000-4000-8920-000000000011', 'Renewals',
+      '00000000-0000-4000-8920-000000000011/renewals.csv', 'renewals.csv')
+  $$,
+  '42501', null,
+  'a membership manager can''t add files'
+);
+
+select throws_ok(
+  $$
+    insert into storage.objects (bucket_id, name)
+    values ('member-files', '00000000-0000-4000-8920-000000000011/renewals.csv')
+  $$,
+  '42501', null,
+  'a membership manager can''t upload to the member-files bucket'
+);
+
+select is_empty(
+  $$ select id from public.member_files $$,
+  'a membership manager without a membership reads no files'
+);
+
+select is_empty(
+  $$ select name from storage.objects where bucket_id = 'member-files' $$,
+  'a membership manager without a membership can''t list or download any file'
+);
+
+select is_empty(
+  $$ delete from public.member_files returning 1 $$,
+  'a membership manager can''t remove files'
+);
+
+set local storage.allow_delete_query = 'true';
+
+select is_empty(
+  $$ delete from storage.objects returning 1 $$,
+  'a membership manager can''t remove files from the bucket'
 );
 
 reset role;
