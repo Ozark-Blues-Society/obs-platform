@@ -185,8 +185,9 @@
   "auth": {
     "enabled": true,
     // The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
-    // in emails.
-    "site_url": "http://127.0.0.1:3000",
+    // in emails. The sign-in email links to {site_url}/auth/confirm, so this is the address `pnpm dev`
+    // serves. Hosted projects set their own site URL in the dashboard.
+    "site_url": "http://localhost:3000",
     // The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
     // "external_url": "",
     // A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
@@ -271,24 +272,31 @@
       // Number of seconds before the email OTP expires (defaults to 1 hour).
       "otp_expiry": 3600,
 
-      // Use a production-ready SMTP server
-      // "smtp": {
-      //   "enabled": true,
-      //   "host": "smtp.sendgrid.net",
-      //   "port": 587,
-      //   "user": "apikey",
-      //   "pass": "env(SENDGRID_API_KEY)",
-      //   "admin_email": "admin@email.com",
-      //   "sender_name": "Admin"
-      // },
+      // Auth emails (sign-in links) go through Resend's SMTP server, because Supabase's built-in
+      // sender is heavily rate-limited. Off here, so local email goes to Mailpit (local_smtp above)
+      // and never leaves the machine. Hosted projects enter these settings in the dashboard. To try
+      // Resend locally in test mode, see "Sign-in emails through Resend" in the README.
+      "smtp": {
+        "enabled": false,
+        "host": "smtp.resend.com",
+        "port": 465,
+        "user": "resend",
+        "pass": "env(RESEND_API_KEY)",
+        // Resend's shared test sender. Production uses an address on the Society's domain once its
+        // DNS records are in (decision 0004).
+        "admin_email": "onboarding@resend.dev",
+        "sender_name": "Ozark Blues Society"
+      },
 
-      // Uncomment to customize email template
-      // "template": {
-      //   "invite": {
-      //     "subject": "You have been invited",
-      //     "content_path": "./supabase/templates/invite.html"
-      //   }
-      // },
+      // The sign-in email (backlog M-1). Hosted projects need the same subject and HTML pasted
+      // into the dashboard (Authentication > Emails > Magic link); see the README. Restart the
+      // stack (`supabase stop && supabase start`) after adding or renaming a template.
+      "template": {
+        "magic_link": {
+          "subject": "Your Ozark Blues Society sign-in link",
+          "content_path": "./supabase/templates/magic-link.html"
+        }
+      },
 
       // Uncomment to customize notification email template
       // "notification": {

@@ -25,12 +25,13 @@ them.
 git clone https://github.com/Ozark-Blues-Society/obs-platform.git
 cd obs-platform
 pnpm install
+cp .env.example .env.local   # local Supabase settings; .env.local is git-ignored
 pnpm dev
 ```
 
-Then open <http://localhost:3000>.
-
-No environment variables are needed yet. Typed environment config and `.env.example` arrive with
+Then open <http://localhost:3000>. Signing in needs the local Supabase stack running (see
+[Local Supabase](#local-supabase)); the public pages work without it. `.env.example` lists the
+environment variables, set to the local stack's values. Typed validation of them arrives with
 backlog item F-4. Never commit secrets.
 
 ## Local Supabase
@@ -47,8 +48,8 @@ supabase stop       # stop the stack; the data is kept until the next reset
 ```
 
 `supabase start` and `supabase status` print the local URLs and API keys. The keys are the same
-well-known demo keys on every machine and only work against the local stack. F-4 adds them to
-`.env.example`.
+well-known demo keys on every machine and only work against the local stack. `.env.example` holds
+the two the app uses.
 
 | Service                                             | Local address                                             |
 | --------------------------------------------------- | --------------------------------------------------------- |
@@ -115,6 +116,62 @@ adds them:
 | Membership Manager | `jordan.ellis@example.com`  |
 | Editor             | `morgan.hale@example.com`   |
 | Moderator          | `dale.ramsey@example.com`   |
+
+## Sign-in (Supabase Auth)
+
+Members sign in at `/sign-in`, with a one-click link sent by email or with a password, and sign
+out from `/account`. `/account` is members-only (a placeholder until M-8 builds My Account).
+Sign-in links never create accounts: people become members by joining.
+
+Locally, every email Auth sends lands in Mailpit at <http://127.0.0.1:54324>; nothing leaves the
+machine. Ask for a link for a fixture member (see the table above), open the email in Mailpit and
+follow its link. Or sign in with the fixture password `obs-local-dev`.
+
+How it fits together:
+
+- **The sign-in email** is `supabase/templates/magic-link.html`, registered in
+  `supabase/config.jsonc` (`auth.email.template.magic_link`). Its link goes to
+  `{site_url}/auth/confirm` with a one-time token hash. That route (`app/auth/confirm/route.ts`)
+  verifies it and starts the session, so a link opened on another device still works. After
+  changing the template settings or `auth.site_url`, restart the stack (`supabase stop`, then
+  `supabase start`); the data is kept.
+- **Sessions** live in cookies. `proxy.ts` (Next.js 16's name for middleware) refreshes an expired
+  session on every request before the page renders, and sends visitors who open `/account` to sign
+  in first.
+- **Server code** gets the member from `getCurrentUser()` or `requireUser()` in
+  `lib/auth/user.ts`, and a Supabase client acting as the member from `createClient()` in
+  `lib/supabase/server.ts`. Both read the request, so call them inside a `<Suspense>` boundary
+  (Cache Components). Check the member in every page, Server Function and Route Handler that needs
+  one; the proxy's redirect is a convenience, not the security check.
+
+### Sign-in emails through Resend
+
+Hosted Supabase projects send Auth emails through Resend's SMTP server, because Supabase's
+built-in sender is heavily rate-limited. The settings are in `supabase/config.jsonc` under
+`auth.email.smtp`, switched off there so local email stays in Mailpit. For a hosted project, enter
+them in the Supabase dashboard (Authentication → Emails → SMTP settings):
+
+| Setting      | Value                                                                          |
+| ------------ | ------------------------------------------------------------------------------ |
+| Host         | `smtp.resend.com`                                                              |
+| Port         | `465`                                                                          |
+| Username     | `resend`                                                                       |
+| Password     | a Resend API key with sending access                                           |
+| Sender email | `onboarding@resend.dev` until the Society's domain is verified (decision 0004) |
+| Sender name  | `Ozark Blues Society`                                                          |
+
+Also on the hosted project: paste the subject and HTML of `supabase/templates/magic-link.html`
+into the Magic link email template, set the site URL to the site's address, and set the email
+rate limit (Authentication → Rate limits) high enough for a busy sign-in day. Creating
+hosted projects and Resend accounts, and production settings, are human gates
+([`docs/HUMAN_GATES.md`](docs/HUMAN_GATES.md)).
+
+Test mode: `onboarding@resend.dev` delivers only to Resend's test addresses (such as
+`delivered@resend.dev`) and the Resend account's owner, so it can't reach real members. To try
+Resend from your machine, put a test API key in `supabase/.env` as `RESEND_API_KEY=...`
+(git-ignored), set `"enabled": true` under `auth.email.smtp` without committing it, restart the
+stack, and request a link for a user whose address is `delivered@resend.dev` (add one in Studio).
+Resend's dashboard shows the delivery. Switch it off and restart again afterwards.
 
 ## Scripts
 
@@ -186,6 +243,8 @@ Supabase accounts for about one of them, mostly pulling its Docker images.
 ```
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
+lib/            Server and shared code: Supabase clients, sign-in helpers
+proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
 scripts/        Synthetic fixtures (scripts/fixtures/) and the seed generator
 supabase/       Local Supabase config, migrations, seed and pgTAP tests
