@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { errorClass, successBoxClass } from "@/components/form-classes";
+import { FormError, SuccessBox } from "@/components/ui/form-fields";
 import { removalValue, type RevokeRoleState, type StaffMember } from "@/lib/admin/roles-state";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 
@@ -26,13 +26,9 @@ export function StaffList({
     <form action={formAction} className="mt-4">
       {/* Always in the page, so screen readers announce the message when it appears. */}
       <div role="status">
-        {state.status === "revoked" && <p className={`${successBoxClass} mb-4`}>{state.message}</p>}
+        {state.status === "revoked" && <SuccessBox className="mb-4">{state.message}</SuccessBox>}
       </div>
-      {state.status === "error" && (
-        <p role="alert" className={`${errorClass} mb-4`}>
-          {state.message}
-        </p>
-      )}
+      {state.status === "error" && <FormError className="mt-2 mb-4">{state.message}</FormError>}
       <ul className="divide-y divide-line rounded-card border border-line bg-surface">
         {staff.map((person) => {
           const isYou = person.id === currentUserId;

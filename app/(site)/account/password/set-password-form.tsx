@@ -1,13 +1,8 @@
 "use client";
 
-import { useActionState, useId } from "react";
-import {
-  buttonClass,
-  errorClass,
-  inputClass,
-  labelClass,
-  successBoxClass,
-} from "@/components/form-classes";
+import { useActionState } from "react";
+import { Button } from "@/components/ui/button";
+import { SuccessBox, TextField } from "@/components/ui/form-fields";
 import {
   PASSWORD_MESSAGES,
   type PasswordField,
@@ -19,66 +14,45 @@ type SetPasswordAction = (state: SetPasswordState, formData: FormData) => Promis
 
 export function SetPasswordForm({ action, email }: { action: SetPasswordAction; email: string }) {
   const [state, formAction, pending] = useActionState(action, { status: "idle" });
-  const id = useId();
-  const passwordId = `${id}-password`;
-  const confirmId = `${id}-confirm`;
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
-  const errorOn = (field: PasswordField) => state.status === "error" && state.field === field;
-  const error = state.status === "error" && (
-    <p id={errorId} role="alert" className={errorClass}>
-      {state.message}
-    </p>
-  );
+  // The message goes on the field it's about, as an alert so screen readers read it out.
+  const errorOn = (field: PasswordField) =>
+    state.status === "error" && state.field === field && <span role="alert">{state.message}</span>;
 
   return (
     <form action={formAction} noValidate className="mt-8">
       {/* Tells password managers which account the new password belongs to. */}
       <input type="text" name="username" autoComplete="username" value={email} readOnly hidden />
-      <label htmlFor={passwordId} className={labelClass}>
-        New password
-      </label>
-      <p id={hintId} className="mt-1 text-sm text-muted">
-        {PASSWORD_MESSAGES.hint}
-      </p>
-      <input
-        id={passwordId}
+      <TextField
+        label="New password"
         name="password"
         type="password"
         autoComplete="new-password"
         required
-        aria-invalid={errorOn("password") || undefined}
-        aria-describedby={errorOn("password") ? `${hintId} ${errorId}` : hintId}
-        className={inputClass}
+        hint={PASSWORD_MESSAGES.hint}
+        error={errorOn("password")}
       />
-      {errorOn("password") && error}
-      <label htmlFor={confirmId} className={`${labelClass} mt-4`}>
-        Type the new password again
-      </label>
-      <input
-        id={confirmId}
+      <TextField
+        label="Type the new password again"
         name="confirm"
         type="password"
         autoComplete="new-password"
         required
-        aria-invalid={errorOn("confirm") || undefined}
-        aria-describedby={errorOn("confirm") ? errorId : undefined}
-        className={inputClass}
+        error={errorOn("confirm")}
+        className="mt-4"
       />
-      {errorOn("confirm") && error}
-      <button type="submit" disabled={pending} className={buttonClass}>
+      <Button type="submit" variant="dark" disabled={pending} className="mt-4 w-full">
         {pending ? "Saving…" : "Save password"}
-      </button>
+      </Button>
       {/* Always in the page, so screen readers announce the message when it appears. */}
       <div role="status" className="mt-4">
         {state.status === "saved" && (
-          <div className={successBoxClass}>
+          <SuccessBox>
             <p className="font-semibold">Your new password is saved.</p>
             <p className="mt-1">
               Next time, sign in with your email address and this password, or with an email link as
               before.
             </p>
-          </div>
+          </SuccessBox>
         )}
       </div>
     </form>

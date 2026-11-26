@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { errorClass, successBoxClass } from "@/components/form-classes";
 import { Button } from "@/components/ui/button";
+import { FormError, SuccessBox } from "@/components/ui/form-fields";
 import {
   audienceLabel,
   formatBytes,
@@ -25,13 +25,9 @@ export function FileList({ files, action }: { files: MemberFileRow[]; action: Re
     <form action={formAction} className="mt-4">
       {/* Always in the page, so screen readers announce the message when it appears. */}
       <div role="status">
-        {state.status === "removed" && <p className={`${successBoxClass} mb-4`}>{state.message}</p>}
+        {state.status === "removed" && <SuccessBox className="mb-4">{state.message}</SuccessBox>}
       </div>
-      {state.status === "error" && (
-        <p role="alert" className={`${errorClass} mb-4`}>
-          {state.message}
-        </p>
-      )}
+      {state.status === "error" && <FormError className="mt-2 mb-4">{state.message}</FormError>}
       {files.length === 0 ? (
         <p className="text-muted">No files yet.</p>
       ) : (
