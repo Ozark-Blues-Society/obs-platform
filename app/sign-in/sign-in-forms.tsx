@@ -1,22 +1,18 @@
 "use client";
 
 import { useActionState, useId } from "react";
+import {
+  buttonClass,
+  errorClass,
+  inputClass,
+  labelClass,
+  successBoxClass,
+} from "@/components/form-classes";
 import type { EmailLinkState, PasswordState } from "@/lib/auth/sign-in-state";
 
 // The Server Functions arrive as props (from page.tsx), so the forms can be tested on their own.
 type EmailLinkAction = (state: EmailLinkState, formData: FormData) => Promise<EmailLinkState>;
 type PasswordAction = (state: PasswordState, formData: FormData) => Promise<PasswordState>;
-
-const labelClass = "block text-sm font-semibold text-ink";
-const inputClass =
-  "mt-1 block w-full rounded-lg border border-line-strong bg-white px-3 py-2 text-base text-ink " +
-  "focus:border-ink focus:ring-2 focus:ring-focus focus:outline-none " +
-  "aria-[invalid=true]:border-danger";
-const buttonClass =
-  "mt-4 inline-flex w-full items-center justify-center rounded-full bg-primary px-5 py-2.5 " +
-  "font-semibold text-white hover:bg-primary-light focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-focus disabled:cursor-wait disabled:opacity-70";
-const errorClass = "mt-2 text-sm font-medium text-danger";
 
 export function EmailLinkForm({ action }: { action: EmailLinkAction }) {
   const [state, formAction, pending] = useActionState(action, { status: "idle" });
@@ -53,7 +49,7 @@ export function EmailLinkForm({ action }: { action: EmailLinkAction }) {
       {/* Always in the page, so screen readers announce the message when it appears. */}
       <div role="status" className="mt-4">
         {state.status === "sent" && (
-          <div className="rounded-lg border border-success bg-success-soft p-4 text-sm text-ink">
+          <div className={successBoxClass}>
             <p className="font-semibold">Check your email.</p>
             <p className="mt-1">
               If <strong>{state.email}</strong> belongs to a member, a sign-in link is on its way.

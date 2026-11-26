@@ -38,7 +38,7 @@ async function SignInForms({ searchParams }: Pick<PageProps<"/sign-in">, "search
         </p>
       )}
 
-      <section aria-labelledby="email-link-heading" className="mt-8">
+      <section id="email-link" aria-labelledby="email-link-heading" className="mt-8">
         <h2 id="email-link-heading" className="text-h3">
           Email me a sign-in link
         </h2>
@@ -53,6 +53,12 @@ async function SignInForms({ searchParams }: Pick<PageProps<"/sign-in">, "search
           Sign in with a password
         </h2>
         <PasswordForm action={signInWithPassword} next={safeNextPath(next)} />
+        {/* Members who join online or are imported have no password until they set one. */}
+        <p className="mt-4 text-sm text-muted">
+          Forgot your password, or never set one?{" "}
+          <a href="#email-link">Email yourself a sign-in link</a>, then set a new password on My
+          Account.
+        </p>
       </section>
     </>
   );

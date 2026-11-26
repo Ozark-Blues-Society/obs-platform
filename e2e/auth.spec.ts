@@ -7,6 +7,7 @@ import {
   type TestInfo,
 } from "@playwright/test";
 import { clearInbox, signInLinkFor } from "./support/mailpit";
+import { restorePassword } from "./support/supabase-auth";
 
 // Sign-in against the local Supabase stack, with the synthetic fixture members
 // (scripts/fixtures/members.mts), who all share this password locally. Every test and browser
@@ -18,6 +19,7 @@ const MEMBERS = {
   password: { desktop: "jesse.carter@example.com", phone: "terry.mills@example.com" },
   signOut: { desktop: "glen.pruitt@example.com", phone: "june.little@example.com" },
   refresh: { desktop: "bev.grant@example.com", phone: "otis.ivy@example.com" },
+  setPassword: { desktop: "hazel.monroe@example.com", phone: "walt.ferris@example.com" },
 };
 
 function member(flow: keyof typeof MEMBERS, testInfo: TestInfo): string {
@@ -34,8 +36,13 @@ function passwordForm(page: Page) {
 
 /** Asks for a sign-in link on /sign-in and returns the link from the email that arrives. */
 async function emailedSignInLink(page: Page, request: APIRequestContext, email: string) {
-  await clearInbox(request, email);
   await page.goto("/sign-in");
+  return requestSignInLink(page, request, email);
+}
+
+/** Asks for a sign-in link with the sign-in page's form and returns the link from the email. */
+async function requestSignInLink(page: Page, request: APIRequestContext, email: string) {
+  await clearInbox(request, email);
   const form = emailLinkForm(page);
   await form.getByLabel("Email address").fill(email);
   await form.getByRole("button", { name: "Email me a sign-in link" }).click();
@@ -134,6 +141,112 @@ test.describe("password sign-in", () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+  });
+});
+
+test.describe("setting a password", () => {
+  const NEW_PASSWORD = "delta blues forever";
+
+  // Both tests change the same member's password, so they run one after the other. Other tests and
+  // supabase/tests/seed_test.sql expect the fixture password, so it goes back after each test, and
+  // before each in case an earlier run stopped halfway.
+  test.describe.configure({ mode: "default" });
+  test.beforeEach(async ({ request }, testInfo) => {
+    await restorePassword(request, member("setPassword", testInfo), NEW_PASSWORD, PASSWORD);
+  });
+  test.afterEach(async ({ request }, testInfo) => {
+    await restorePassword(request, member("setPassword", testInfo), NEW_PASSWORD, PASSWORD);
+  });
+
+  function newPasswordField(page: Page) {
+    return page.getByLabel("New password", { exact: true });
+  }
+
+  function confirmField(page: Page) {
+    return page.getByLabel("Type the new password again");
+  }
+
+  async function saveNewPassword(page: Page, password: string, confirm: string) {
+    await newPasswordField(page).fill(password);
+    await confirmField(page).fill(confirm);
+    await page.getByRole("button", { name: "Save password" }).click();
+  }
+
+  async function signOut(page: Page) {
+    await page.getByRole("link", { name: "Back to My Account" }).click();
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await expect(page).toHaveURL(/^http:\/\/[^/]+\/$/);
+  }
+
+  test("a signed-in member changes their password", async ({ page }, testInfo) => {
+    const email = member("setPassword", testInfo);
+    await page.goto("/sign-in");
+    await signInWithPassword(page, email, PASSWORD);
+    await expectSignedInAs(page, email);
+
+    await page.getByRole("link", { name: "Set or change your password" }).click();
+    await expect(page).toHaveURL(/\/account\/password$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Set or change your password");
+
+    // Each problem is announced and tied to the field it's about.
+    const main = page.getByRole("main");
+    await saveNewPassword(page, "short", "short");
+    await expect(main.getByRole("alert")).toContainText("too short");
+    await expect(newPasswordField(page)).toHaveAttribute("aria-invalid", "true");
+    await expect(newPasswordField(page)).toHaveAccessibleDescription(
+      /At least 8 characters.+too short/,
+    );
+
+    await saveNewPassword(page, NEW_PASSWORD, `${NEW_PASSWORD}!`);
+    await expect(main.getByRole("alert")).toContainText("don't match");
+    await expect(confirmField(page)).toHaveAttribute("aria-invalid", "true");
+    await expect(confirmField(page)).toHaveAccessibleDescription(/don't match/);
+
+    await saveNewPassword(page, NEW_PASSWORD, NEW_PASSWORD);
+    await expect(main.getByRole("status")).toContainText("Your new password is saved.");
+    await expect(main.getByRole("alert")).toHaveCount(0);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, "no sideways scrolling at phone width").toBeLessThanOrEqual(0);
+
+    // The old password stops working and the new one signs in.
+    await signOut(page);
+    await page.goto("/sign-in");
+    await signInWithPassword(page, email, PASSWORD);
+    await expect(passwordForm(page).getByRole("alert")).toContainText("don't match");
+    await signInWithPassword(page, email, NEW_PASSWORD);
+    await expectSignedInAs(page, email);
+  });
+
+  test("a member who forgot their password gets in with an email link and sets a new one", async ({
+    page,
+    request,
+  }, testInfo) => {
+    const email = member("setPassword", testInfo);
+    await page.goto("/sign-in");
+
+    // The password form points to the email link.
+    const help = passwordForm(page).getByText("Forgot your password, or never set one?");
+    await expect(help).toBeVisible();
+    await help.getByRole("link", { name: "Email yourself a sign-in link" }).click();
+    await expect(page).toHaveURL(/\/sign-in#email-link$/);
+    await expect(emailLinkForm(page).getByLabel("Email address")).toBeInViewport();
+
+    const link = await requestSignInLink(page, request, email);
+    await page.goto(`${link.pathname}${link.search}`);
+    await expectSignedInAs(page, email);
+
+    await page.getByRole("link", { name: "Set or change your password" }).click();
+    await saveNewPassword(page, NEW_PASSWORD, NEW_PASSWORD);
+    await expect(page.getByRole("main").getByRole("status")).toContainText(
+      "Your new password is saved.",
+    );
+
+    await signOut(page);
+    await page.goto("/sign-in");
+    await signInWithPassword(page, email, NEW_PASSWORD);
+    await expectSignedInAs(page, email);
   });
 });
 
