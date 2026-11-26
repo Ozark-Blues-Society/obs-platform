@@ -15,8 +15,11 @@ test("the Content Studio loads at /studio and contacts the configured Sanity pro
 
   await expect(page).toHaveTitle("Content Studio | Ozark Blues Society");
   // The Studio draws its own screen, not a blank or error page. Here it's the one for Sanity being
-  // unreachable, since the test blocks Sanity.
-  await expect(page.getByRole("dialog", { name: "Network error" })).toBeVisible();
+  // unreachable, since the test blocks Sanity. The Studio is a large app: on CI's two CPUs, with
+  // two test workers, drawing it can take longer than the default 5 s.
+  await expect(page.getByRole("dialog", { name: "Network error" })).toBeVisible({
+    timeout: 15_000,
+  });
 });
 
 test("search engines are asked not to index the Studio", async ({ page }) => {
