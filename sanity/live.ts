@@ -11,11 +11,28 @@ const readToken = process.env.SANITY_API_READ_TOKEN?.trim() || undefined;
 
 export const hasReadToken = readToken !== undefined;
 
+/**
+ * End-to-end tests only: the address of a local stand-in for Sanity's API
+ * (e2e/support/sanity-stand-in.mts), so pages can show content in CI without a Sanity project.
+ * Only a loopback address is accepted, so a mistake can't send the read token anywhere else. Leave
+ * SANITY_API_HOST_STAND_IN unset everywhere else.
+ */
+export function readStandInHost(value: string | undefined): string | undefined {
+  const host = value?.trim();
+  if (!host) return undefined;
+  if (/^http:\/\/(127\.0\.0\.1|localhost):\d{2,5}$/.test(host)) return host;
+  console.error("SANITY_API_HOST_STAND_IN must be http://127.0.0.1:<port>; ignoring it.");
+  return undefined;
+}
+
+const standInHost = readStandInHost(process.env.SANITY_API_HOST_STAND_IN);
+
 export const client = createClient({
   projectId,
   dataset,
   apiVersion,
   useCdn: true,
+  ...(standInHost ? { apiHost: standInHost, useProjectHostname: false } : {}),
   perspective: "published",
   token: readToken,
   // In draft mode, text carries invisible markers so editors can click it to edit it.

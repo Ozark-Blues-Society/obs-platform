@@ -11,6 +11,11 @@ type LockOverlayProps = {
   signInHref?: string;
   /** Where Join now goes (Membership Benefits & Join). */
   joinHref?: string;
+  /**
+   * Buttons to show instead of Sign in and Join now, for someone already signed in: Renew, for
+   * example (components/members/members-only-lock.tsx).
+   */
+  actions?: ReactNode;
   headingLevel?: 2 | 3;
   className?: string;
 };
@@ -27,6 +32,7 @@ export function LockOverlay({
   description = "Sign in to see it, or join the Society.",
   signInHref = "/sign-in",
   joinHref = "/join",
+  actions,
   headingLevel = 2,
   className,
 }: LockOverlayProps) {
@@ -45,12 +51,16 @@ export function LockOverlay({
           <Heading className="mt-2 text-h3">{title}</Heading>
           <p className="mt-2 text-small text-muted">{description}</p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <ButtonLink href={signInHref} variant="dark" size="sm">
-              Sign in
-            </ButtonLink>
-            <ButtonLink href={joinHref} size="sm">
-              Join now
-            </ButtonLink>
+            {actions ?? (
+              <>
+                <ButtonLink href={signInHref} variant="dark" size="sm">
+                  Sign in
+                </ButtonLink>
+                <ButtonLink href={joinHref} size="sm">
+                  Join now
+                </ButtonLink>
+              </>
+            )}
           </div>
         </div>
       </div>
