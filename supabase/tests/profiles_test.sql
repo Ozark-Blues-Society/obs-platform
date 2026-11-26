@@ -7,12 +7,17 @@
 -- Data API does for a request. postgres, which runs the setup and the checks between, bypasses row
 -- level security.
 begin;
-select plan(34);
+select plan(37);
 
+-- Anyone with the publishable key can sign up and put whatever they like in the sign-up's user
+-- metadata (options.data). So test.alice's metadata also asks for a paid, active membership and
+-- the other columns only server code writes. The sign-up trigger must read only the names.
 insert into auth.users (id, email, raw_user_meta_data)
 values
   ('00000000-0000-4000-8900-000000000001', 'test.alice@example.com',
-    '{"first_name": "Alice", "last_name": "Archer"}'),
+    '{"first_name": "Alice", "last_name": "Archer", "level": "sponsor", "status": "active",
+      "expires_at": "2099-01-01T00:00:00Z", "auto_renew": true, "stripe_customer_id": "cus_fake",
+      "joined_at": "2020-01-01T00:00:00Z", "notes": "Comped by the board"}'),
   ('00000000-0000-4000-8900-000000000002', 'test.bob@example.com',
     '{"first_name": "Bob", "last_name": "Baker"}'),
   ('00000000-0000-4000-8900-000000000003', 'test.moderator@example.com', '{}'),
@@ -24,17 +29,21 @@ values
 
 select results_eq(
   $$
-    select email, first_name, last_name, level, status, expires_at, auto_renew
+    select
+      email, first_name, last_name, level, status, expires_at, auto_renew, stripe_customer_id,
+      joined_at, notes
     from public.profiles
     where id = '00000000-0000-4000-8900-000000000001'
   $$,
   $$
     values (
       'test.alice@example.com', 'Alice', 'Archer', null::public.membership_level,
-      null::public.membership_status, null::timestamptz, false
+      null::public.membership_status, null::timestamptz, false, null::text, null::timestamptz,
+      null::text
     )
   $$,
-  'signing up creates a profile with the address and names from the sign-up, and no membership'
+  'signing up creates a profile with the address and names from the sign-up, and no membership '
+    || 'even though the sign-up''s metadata asks for one'
 );
 
 select is(
@@ -297,6 +306,16 @@ select is(
   'an administrator reads every role'
 );
 
+select is_empty(
+  $$
+    update public.profiles
+    set first_name = 'Mallory'
+    where id = '00000000-0000-4000-8900-000000000002'
+    returning id
+  $$,
+  'an administrator can''t update another member''s profile'
+);
+
 -- The membership manager
 
 set local request.jwt.claims to
@@ -314,9 +333,27 @@ select results_eq(
   'a membership manager reads only their own role'
 );
 
--- A visitor
+select is_empty(
+  $$
+    update public.profiles
+    set first_name = 'Mallory'
+    where id = '00000000-0000-4000-8900-000000000002'
+    returning id
+  $$,
+  'a membership manager can''t update another member''s profile'
+);
 
 reset role;
+
+select is(
+  (select first_name from public.profiles where id = '00000000-0000-4000-8900-000000000002'),
+  'Bob',
+  'the other member''s profile is still unchanged after the administrator and the membership '
+    || 'manager tried'
+);
+
+-- A visitor
+
 set local role anon;
 set local request.jwt.claims to '{"role": "anon"}';
 
