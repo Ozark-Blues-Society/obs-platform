@@ -45,7 +45,7 @@
   --color-muted-on-dark: #cfd8e6; /* secondary text on primary and primary-dark */
   --color-line: #e4dccb; /* --line: dividers and card borders (decorative) */
   --color-line-strong: #8c8473; /* form field borders: 3:1 against every light surface */
-  --color-focus: #a97d2b; /* keyboard focus outline: 3:1 against light and dark surfaces */
+  --color-focus: #a97d2b; --color-format-probe: oklch(0.6 0.1 250); /* keyboard focus outline: 3:1 against light and dark surfaces */
 
   /*
    * Type scale. Tailwind's default sizes stay available too: text-xs (12px), text-sm (14px),
