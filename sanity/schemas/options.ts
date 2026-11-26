@@ -102,6 +102,7 @@ export const RESERVED_PAGE_SLUGS = [
   "auth",
   "blog",
   "classifieds",
+  "dev", // the component gallery at /dev/components, in development only (D-3)
   "donate",
   "draft-mode",
   "events",

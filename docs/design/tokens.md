@@ -62,6 +62,7 @@ A pair the site uses belongs here.
 | `ink`           | `white`        | Text in form fields and filter pills                   | 17.36:1 | 4.5:1    |
 | `muted`         | `canvas`       | Secondary text                                         | 5.24:1  | 4.5:1    |
 | `muted`         | `surface`      | Secondary text on cards                                | 5.76:1  | 4.5:1    |
+| `muted`         | `white`        | Placeholder text in form fields, sponsor names         | 5.85:1  | 4.5:1    |
 | `primary-light` | `canvas`       | Links                                                  | 7.72:1  | 4.5:1    |
 | `primary-light` | `surface`      | Links on cards                                         | 8.47:1  | 4.5:1    |
 | `accent-dark`   | `canvas`       | Eyebrows on light backgrounds                          | 6.00:1  | 4.5:1    |
