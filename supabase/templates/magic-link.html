@@ -8,8 +8,9 @@
   <!--
     Supabase Auth's "Magic link" email (backlog M-1). The local stack loads it through
     supabase/config.jsonc; hosted projects need it pasted into the dashboard (see the README).
-    The link goes to the site's /auth/confirm route with a one-time token hash, so it works on
-    any device. Keep "one hour" in step with the OTP expiry setting.
+    The link goes to the site's /auth/confirm page with a one-time token hash, so it works on
+    any device. The member finishes signing in with a button there, so mail systems that open
+    links to scan them don't use the token up. Keep "one hour" in step with the OTP expiry setting.
   -->
   <body
     style="

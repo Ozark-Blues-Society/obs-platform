@@ -21,8 +21,8 @@ import {
 import { requireUser } from "./user";
 
 /**
- * Emails a one-click sign-in link (supabase/templates/magic-link.html). It never creates an
- * account: people become members by joining, so an unknown address just gets no email.
+ * Emails a sign-in link (supabase/templates/magic-link.html). It never creates an account: people
+ * become members by joining, so an unknown address just gets no email.
  */
 export async function sendSignInLink(
   _previous: EmailLinkState,
@@ -61,6 +61,34 @@ export async function sendSignInLink(
     console.error("Sending a sign-in link failed:", cause);
     return { status: "error", email, message: MESSAGES.unavailable };
   }
+}
+
+/**
+ * Finishes signing in from an emailed link, when the member presses the button on the page the link
+ * opens (app/(site)/auth/confirm/page.tsx). Verifying the link's one-time token hash here, on the
+ * server, starts the session, so the link works on whichever device opens it. Opening the link
+ * doesn't verify anything, so mail systems that open links to scan them can't use it up.
+ */
+export async function confirmSignIn(formData: FormData): Promise<void> {
+  const tokenHash = formData.get("token_hash");
+  let signedIn = false;
+
+  if (typeof tokenHash === "string" && tokenHash !== "") {
+    try {
+      const supabase = await createClient();
+      const { error } = await supabase.auth.verifyOtp({ type: "email", token_hash: tokenHash });
+      signedIn = !error;
+      // "otp_expired" covers links that are used, expired or made up. Anything else is a fault.
+      if (error && error.code !== "otp_expired") {
+        console.error("Finishing an email-link sign-in failed:", error.code, error.message);
+      }
+    } catch (cause) {
+      console.error("Finishing an email-link sign-in failed:", cause);
+    }
+  }
+
+  // Outside the try block: redirect() works by throwing.
+  redirect(signedIn ? safeNextPath(formData.get("next")) : "/sign-in?error=link-expired");
 }
 
 /** Signs in with an email address and password, then goes to the page that asked (`next`). */
