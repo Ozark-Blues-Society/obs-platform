@@ -8,12 +8,14 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
-const SCANNED_DIRS = ["app", "components", "lib"];
+const SCANNED_DIRS = ["app", "components", "lib", "emails"];
 const SOURCE_FILE = /\.(?:[cm]?[jt]sx?|css)$/;
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 // Files that may hold color values, with the reason.
 const ALLOWED: Record<string, string> = {
   "app/globals.css": "the design tokens themselves",
+  "emails/_lib/theme.ts":
+    "the emails' copy of the tokens (email clients can't read CSS variables); theme.test.ts checks it",
 };
 
 const TAILWIND_PALETTE =
