@@ -281,6 +281,53 @@ the board created no family memberships (board decisions §2).
   give (`removeRole()` in `e2e/support/supabase-roles.ts`), because
   `supabase/tests/seed_test.sql` expects the fixture roles.
 
+## Membership dues in Stripe
+
+The four levels and their yearly dues (board decisions §1) are written down once, in
+`MEMBERSHIP_LEVELS` (`sanity/schemas/options.ts`, `duesCents`), which the site, the Studio and the
+emails already use for the levels. In Stripe, each level is a product with two prices at its dues
+(`lib/stripe/catalog.ts`): one that renews every year, a subscription, and one year paid once (the
+architecture's one-time "pay for a year").
+
+| Level      | Product                 | Price that renews every year       | Price for one year, paid once    |
+| ---------- | ----------------------- | ---------------------------------- | -------------------------------- |
+| Individual | `membership_individual` | `membership_individual_auto_renew` | `membership_individual_one_time` |
+| Band       | `membership_band`       | `membership_band_auto_renew`       | `membership_band_one_time`       |
+| Business   | `membership_business`   | `membership_business_auto_renew`   | `membership_business_one_time`   |
+| Sponsor    | `membership_sponsor`    | `membership_sponsor_auto_renew`    | `membership_sponsor_one_time`    |
+
+The products have these ids, and the prices these lookup keys: the site finds the price to charge
+by its lookup key (`priceLookupKey()`), and each product and price carries its `level` (and each
+price its `billing`) in its metadata.
+
+`pnpm stripe:prices` creates them in **Stripe test mode**, or brings them back in line. Put a
+test-mode secret key (`sk_test_…`) in `.env.local` as `STRIPE_SECRET_KEY`: it's on the
+[API keys](https://dashboard.stripe.com/apikeys) page while you're viewing a sandbox. Then run it. It
+prints a line for each product and price (created, updated, replaced or unchanged), and you can run
+it as often as you like.
+
+- **Test mode only.** It refuses a live key (`sk_live_…`, `rk_live_…`) and anything else that isn't
+  a test key (`sk_test_…`, or a restricted `rk_test_…` key that can write products and prices),
+  before it sends a request. Setting up the live prices is part of the launch (backlog Q-5), a human
+  gate.
+- **A second run changes nothing.** The script retrieves each product by its id and finds each price
+  by its lookup key, so it never makes a second set. If it stops partway (a network error, say),
+  run it again to finish.
+- **New dues.** Change `duesCents` (a board decision) and run it again. Stripe can't change a
+  price's amount, so the script adds a price at the new amount, moves the lookup key to it and
+  archives the old price. Members already on auto-renew keep paying the old price until their
+  subscription is moved to the new one, which the script doesn't do.
+- **Names.** The product's name (`Band membership`) is what members see on Stripe Checkout, their
+  receipts and the Customer Portal; a price's nickname shows only in the Stripe Dashboard. The
+  script puts back a name, nickname or metadata that was changed in the Dashboard, and makes an
+  archived product or price active again, so change them in `lib/stripe/catalog.ts`. It never
+  deletes anything, and leaves other products and prices alone.
+- **Tests.** `scripts/stripe/prices.test.ts` runs the script against a stand-in for Stripe's API
+  (`lib/stripe/fake-api.ts`), never Stripe itself: a first run, a second run, changes made in the
+  Dashboard, new dues, a failure partway, and the keys it refuses. `lib/stripe/catalog.test.ts`
+  checks the dues against the board's table and keeps the ids and lookup keys that Stripe already
+  has.
+
 ## Content Studio (Sanity)
 
 Editors manage the site's content in the Content Studio at `/studio`: Sanity Studio, embedded in
@@ -810,6 +857,7 @@ stand-in API, for the members it creates only.
 | `pnpm test:db`           | Database tests (pgTAP) against the local Supabase stack            |
 | `pnpm fixtures:generate` | Regenerate `supabase/seed.sql` from `scripts/fixtures/`            |
 | `pnpm check:dataset`     | Check that anonymous queries can't read the Sanity dataset         |
+| `pnpm stripe:prices`     | Set up the membership products and prices in Stripe test mode      |
 | `pnpm email:preview`     | Preview the email templates at http://localhost:3030               |
 | `pnpm format`            | Format the code with Prettier                                      |
 | `pnpm format:check`      | Check formatting without writing changes                           |
@@ -902,12 +950,12 @@ accounts"). So CI keeps runs short:
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
 components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
-lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs, the MailerLite sync
+lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs, the MailerLite sync, the Stripe catalog
 netlify/        Netlify Functions: the daily jobs' schedule (netlify/functions/)
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
 emails/         Email templates (React Email)
-scripts/        Synthetic fixtures (scripts/fixtures/) and the seed generator
+scripts/        Synthetic fixtures and the seed generator (scripts/fixtures/), the Stripe setup (scripts/stripe/)
 sanity/         Sanity client, live preview helpers, Studio structure and content schemas
 supabase/       Local Supabase config, migrations, seed and pgTAP tests
 docs/           Specs, decisions, design concept, backlog

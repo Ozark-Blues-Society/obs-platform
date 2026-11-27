@@ -6,14 +6,16 @@
 export const SOCIETY_TIME_ZONE = "America/Chicago";
 
 /**
- * Membership levels (docs/spec/board-decisions.md §1), as stored on member profiles
- * (scripts/fixtures/members.mts LEVELS). There are no family memberships (§2).
+ * Membership levels and their yearly dues (docs/spec/board-decisions.md §1), as stored on member
+ * profiles (scripts/fixtures/members.mts LEVELS). There are no family memberships (§2). The dues
+ * are in cents, Stripe's unit; the membership products and prices in Stripe are made from them
+ * (lib/stripe/catalog.ts, `pnpm stripe:prices`). Changing them is a board decision.
  */
 export const MEMBERSHIP_LEVELS = [
-  { value: "individual", title: "Individual" },
-  { value: "band", title: "Band" },
-  { value: "business", title: "Business" },
-  { value: "sponsor", title: "Sponsor" },
+  { value: "individual", title: "Individual", duesCents: 30_00 },
+  { value: "band", title: "Band", duesCents: 50_00 },
+  { value: "business", title: "Business", duesCents: 100_00 },
+  { value: "sponsor", title: "Sponsor", duesCents: 500_00 },
 ] as const;
 
 /** Who can see a page, post or event (decision 0001; gated on the server by M-7). */

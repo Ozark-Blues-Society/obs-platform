@@ -15,6 +15,7 @@
     "test:db": "supabase test db",
     "fixtures:generate": "node scripts/fixtures/generate.mts",
     "check:dataset": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/sanity/check-private-dataset.mts",
+    "stripe:prices": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/stripe/setup-prices.mts",
     "email:preview": "email dev --dir emails --port 3030",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -28,6 +29,7 @@
     "react-dom": "19.3.1",
     "react-email": "6.11.16",
     "sanity": "6.25.0",
+    "stripe": "23.2.0",
     "styled-components": "6.7.0"
   },
   "devDependencies": {
