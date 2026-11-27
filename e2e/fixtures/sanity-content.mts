@@ -128,9 +128,45 @@ export const SPONSORS = {
     name: "E2E Riverbend Brewing",
     logoAlt: "E2E Riverbend logo",
     website: "https://riverbend.example.com",
+    // The featured sponsor in the spotlight on the Sponsors page and the home page (backlog P-4).
+    blurb: "E2E Riverbend hosts the Tuesday jam.",
   },
   noLogo: { id: "sponsor-e2e-hilltop", name: "E2E Hilltop Guitar Works" },
   ended: { id: "sponsor-e2e-gone", name: "E2E Gone Diner" },
+} as const;
+
+/**
+ * More for the Sponsors page (backlog P-4): a second tier, which comes after the first by its order
+ * though not by its name; two more featured sponsors, neither of which may be in the spotlight; and
+ * a name long enough to wrap on a phone.
+ */
+export const SPONSORS_PAGE = {
+  /** The fixtures' first tier: logos. */
+  tier: { name: "E2E Sponsor", price: "$500 a year", benefit: "E2E logo on the Sponsors page" },
+  /** The second tier: names only, even for a sponsor with a logo. */
+  friendTier: { name: "E2E Friend", benefit: "E2E name on the Sponsors page" },
+  /** Featured too, but changed before Riverbend was. */
+  featuredBefore: {
+    id: "sponsor-e2e-old-mill",
+    name: "E2E Old Mill Hall",
+    blurb: "E2E-OLDER-SPOTLIGHT-3b7e",
+  },
+  /** Featured and changed last, but its sponsorship has ended. */
+  featuredEnded: {
+    id: "sponsor-e2e-closed",
+    name: "E2E Closed Cafe",
+    blurb: "E2E-ENDED-SPOTLIGHT-8d2f",
+  },
+  friend: {
+    id: "sponsor-e2e-second-spin",
+    name: "E2E Second Spin Records",
+    logoAlt: "E2E Second Spin logo",
+    website: "https://secondspin.example.com",
+  },
+  longName: {
+    id: "sponsor-e2e-long-name",
+    name: "E2E Ozark Mountain Vintage Guitar, Amplifier and Record Repair Workshop",
+  },
 } as const;
 
 /** A date `days` from today, as Sanity stores date fields. */
@@ -430,14 +466,49 @@ const SPONSOR_DOCUMENTS = [
     _createdAt: daysFromNow(-10),
     _updatedAt: daysFromNow(-10),
     _rev: "e2e",
-    name: "E2E Sponsor",
+    name: SPONSORS_PAGE.tier.name,
     sortOrder: 1,
     logoPlacement: "logo",
+    pricePerYear: 500,
+    benefits: [SPONSORS_PAGE.tier.benefit],
   },
+  {
+    _id: "sponsor-tier-e2e-friend",
+    _type: "sponsorTier",
+    _createdAt: daysFromNow(-10),
+    _updatedAt: daysFromNow(-10),
+    _rev: "e2e",
+    name: SPONSORS_PAGE.friendTier.name,
+    sortOrder: 2,
+    logoPlacement: "name",
+    benefits: [SPONSORS_PAGE.friendTier.benefit],
+  },
+  sponsor(SPONSORS_PAGE.friend.id, SPONSORS_PAGE.friend.name, {
+    tier: { _type: "reference", _ref: "sponsor-tier-e2e-friend" },
+    website: SPONSORS_PAGE.friend.website,
+    logo: photo("e2eSponsorLogo2", SPONSORS_PAGE.friend.logoAlt),
+  }),
+  sponsor(SPONSORS_PAGE.longName.id, SPONSORS_PAGE.longName.name, {
+    tier: { _type: "reference", _ref: "sponsor-tier-e2e-friend" },
+  }),
+  sponsor(SPONSORS_PAGE.featuredBefore.id, SPONSORS_PAGE.featuredBefore.name, {
+    featured: true,
+    blurb: SPONSORS_PAGE.featuredBefore.blurb,
+    _updatedAt: daysFromNow(-5),
+  }),
+  sponsor(SPONSORS_PAGE.featuredEnded.id, SPONSORS_PAGE.featuredEnded.name, {
+    featured: true,
+    blurb: SPONSORS_PAGE.featuredEnded.blurb,
+    _updatedAt: daysFromNow(0),
+    // Days before today in any time zone, so it has ended on the Society's calendar too.
+    endsAt: dateFromNow(-3),
+  }),
   sponsor(SPONSORS.current.id, SPONSORS.current.name, {
     website: SPONSORS.current.website,
     logo: photo("e2eSponsorLogo1", SPONSORS.current.logoAlt),
     endsAt: dateFromNow(30),
+    featured: true,
+    blurb: SPONSORS.current.blurb,
   }),
   sponsor(SPONSORS.noLogo.id, SPONSORS.noLogo.name),
   sponsor(SPONSORS.ended.id, SPONSORS.ended.name, { endsAt: dateFromNow(-30) }),

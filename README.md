@@ -454,6 +454,15 @@ so the Studio can sign in from there. Every address that serves the site needs t
   `sanityFetch` inside a `"use cache"` function and resolve `getDynamicFetchOptions()` outside it,
   as in Sanity's guide
   [Sanity Live with Next.js Cache Components](https://www.sanity.io/docs/nextjs/cache-components).
+- **Sponsors** (backlog P-4): `/sponsors` (`app/(site)/sponsors/page.tsx`) shows the featured
+  sponsor's spotlight, then every current sponsor grouped by tier (`components/sponsors/`). The
+  home page's sponsor band (`components/home/home-sponsors.tsx`) shows the same spotlight and
+  every current sponsor's logo. Both read `listCurrentSponsors([])`, so a sponsor leaves both the
+  day after its `endsAt`. Tiers are data in the Studio (board decisions §8): `groupSponsorsByTier`
+  orders them by their order field, then name, and a tier's logo placement applies on the Sponsors
+  page only. The Studio allows one featured sponsor at a time, but its check can be stale when a
+  sponsor is published, so `pickFeaturedSponsor` takes the one changed most recently
+  (`_updatedAt`), then the lowest id.
 
 ## Members-only content
 
@@ -948,7 +957,10 @@ stand-in API, for the members it creates only.
   one. Add documents there for your own tests, kept out of menus so the layout tests still see the
   built-in ones. For draft mode, a test opens a shared preview link (`openSharedPreviewLink()` in
   `e2e/support/sanity.ts`): the stand-in holds the link's secret, and the server sets its own
-  draft-mode cookie, so this works against both `pnpm dev` and the production build.
+  draft-mode cookie, so this works against both `pnpm dev` and the production build. Photos and
+  logos point at Sanity's image CDN, so a spec that opens a page showing them, the home page
+  included (its sponsor band), stops those requests leaving the machine: `blockSanity()`, or a
+  `context.route` that aborts everything but loopback.
 - **Emails in end-to-end tests** go to the local stack's Mailpit, never through Resend: Playwright
   gives the app server `EMAIL_FROM`, `MAILPIT_URL` and an empty `RESEND_API_KEY`, which wins over
   `.env.local`. It also gives it the local service role key (`SUPABASE_SECRET_KEY`, or what

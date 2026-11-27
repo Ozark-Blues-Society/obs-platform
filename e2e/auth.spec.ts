@@ -8,6 +8,7 @@ import {
 } from "@playwright/test";
 import { holdPosts, systemColor } from "./support/forms";
 import { clearInbox, signInLinkFor } from "./support/mailpit";
+import { blockSanity } from "./support/sanity";
 import { restorePassword } from "./support/supabase-auth";
 
 // Sign-in against the local Supabase stack, with the synthetic fixture members
@@ -27,6 +28,12 @@ const MEMBERS = {
 function member(flow: keyof typeof MEMBERS, testInfo: TestInfo): string {
   return MEMBERS[flow][testInfo.project.name as "desktop" | "phone"];
 }
+
+// Signing in or out can land on the home page, whose sponsor band shows logos from
+// Sanity's image CDN (backlog P-4): keep those requests on the machine.
+test.beforeEach(async ({ page }) => {
+  await blockSanity(page);
+});
 
 function emailLinkForm(page: Page) {
   return page.getByRole("region", { name: "Email me a sign-in link" });
