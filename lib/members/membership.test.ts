@@ -68,7 +68,7 @@ describe("membershipStanding", () => {
     });
   });
 
-  it("never ends soon for a member on yearly auto-renew: Stripe renews it", () => {
+  it("never ends soon for a member on yearly auto-renew: it renews by itself", () => {
     expect(membershipStanding(band("2027-01-02T06:00:00Z", true), NOW)).toEqual({
       kind: "active",
       level: "band",

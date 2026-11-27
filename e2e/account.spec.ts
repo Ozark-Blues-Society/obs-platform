@@ -49,7 +49,7 @@ async function deleteMembers(admin: SupabaseClient, prefix: string) {
 }
 
 /**
- * Runs `body` with a new member who has this membership, as the Stripe webhook will record it, and
+ * Runs `body` with a new member who has this membership, as the payment webhook (M-5) will record it, and
  * deletes them afterwards, with any an earlier run of the same test left behind.
  */
 async function withMember(
@@ -174,7 +174,7 @@ test("an active Sponsor member sees their membership and both perk codes", async
 test("an Individual member on auto-renew gets the member code but never the Sponsor code", async ({
   page,
 }, testInfo) => {
-  // Within 30 days of the renewal date, but Stripe renews it: nothing for the member to do.
+  // Within 30 days of the renewal date, but it renews by itself: nothing for the member to do.
   const membership = { level: "individual", expiresInDays: 12, autoRenew: true } as const;
   await withMember(testInfo, "auto-renew", membership, async (member) => {
     await signIn(page, member.email);

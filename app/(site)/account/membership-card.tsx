@@ -13,8 +13,8 @@ import { JOIN_PATH } from "@/lib/site/navigation";
 
 /**
  * The member's own membership on My Account (backlog M-8): level, status, renewal date and
- * auto-renew, and what to do when it's ending, has ended or hasn't started. Changing the card or
- * auto-renew happens on Stripe's Customer Portal (backlog M-6).
+ * auto-renew, and what to do when it's ending, has ended or hasn't started. Payments and auto-renew
+ * are managed on the payment service's own pages, which M-6 links to from here.
  */
 export function MembershipCard({
   membership,

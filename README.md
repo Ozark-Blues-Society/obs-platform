@@ -495,7 +495,7 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
   (`getMyAccount()` in `lib/account/my-account.ts`). The status is worked out from `expires_at` as
   the page renders (`lib/members/membership.ts`), by the database's rule: ended once `expires_at`
   has passed, and "Expiring soon" within 30 days on the Society's calendar, except for members on
-  yearly auto-renew, whom Stripe renews. A lapsed member gets a Renew button, and someone who never
+  yearly auto-renew, which renews by itself. A lapsed member gets a Renew button, and someone who never
   paid a Join button (both go to `/join`, M-4).
 - **Member perks:** the benefits of the member's level and the perk codes for it, from Site
   settings: the benefits table, and the codes in the Studio's **Member perks** tab
@@ -512,7 +512,7 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
 - Links to set a password and to post a classifieds listing, and Sign out.
 
 Still to come: email preferences (waiting on Parker's answer to Q-20261127-174756-24341), the
-Stripe Customer Portal link (M-6) and "My listings" (K-4).
+"Manage payment or auto-renew" link (M-6) and "My listings" (K-4).
 
 ## Classifieds listings
 

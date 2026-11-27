@@ -9,7 +9,7 @@
 //   - active otherwise.
 // It agrees with activeLevel() in ./access.ts, which decides what the member may see: active means
 // a level and an expires_at still in the future. One difference from the database: a member on
-// yearly auto-renew isn't told their membership is expiring, because Stripe renews it for them.
+// yearly auto-renew isn't told their membership is expiring, because it renews by itself.
 
 import { MEMBERSHIP_LEVELS, SOCIETY_TIME_ZONE, optionTitle } from "@/sanity/schemas/options";
 import type { MembershipLevel } from "@/sanity/schemas/options";
@@ -23,7 +23,7 @@ export type MembershipFacts = {
   level: MembershipLevel | null;
   /** profiles.expires_at, an ISO 8601 timestamp: null until the first payment. */
   expiresAt: string | null;
-  /** profiles.auto_renew: Stripe renews the membership each year. */
+  /** profiles.auto_renew: the membership renews by itself each year. */
   autoRenew: boolean;
 };
 

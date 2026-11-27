@@ -17,7 +17,7 @@ export type MyAccount = MembershipFacts & {
 };
 
 // Everything the page shows, and nothing else: not the staff notes, which members may read but My
-// Account doesn't show, nor the Stripe customer.
+// Account doesn't show, nor stripe_customer_id.
 const COLUMNS = "email, first_name, last_name, phone, level, expires_at, auto_renew, joined_at";
 
 const text = (value: unknown): string | null =>

@@ -39,6 +39,10 @@ Each perk code has:
 - **Levels that get it**: tick every membership level that gets the code. The board's rules: every
   member gets the member code, and Sponsor members also get the Sponsor code (board decisions §5).
 
+If a code gets a discount on something paid through Zeffy, such as event tickets, create the same
+code in Zeffy as well. Zeffy is what applies the discount; Site settings only shows the code to
+members.
+
 The codes are for members only. A code shows on My Account to members at the levels ticked, while
 their membership is active, and nowhere else on the website. When a membership ends, its codes
 disappear from that member's page until they renew.
