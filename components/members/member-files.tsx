@@ -18,9 +18,12 @@ export type MemberFileLink = { title?: unknown; fileId?: unknown };
 export function MemberFiles({
   files,
   headingLevel = 2,
+  className = "mt-10",
 }: {
   files: readonly MemberFileLink[] | null | undefined;
   headingLevel?: 2 | 3;
+  /** Spacing above the list: none where its container already spaces its children. */
+  className?: string;
 }) {
   const headingId = useId();
   const listed = new Set<string>();
@@ -38,7 +41,7 @@ export function MemberFiles({
 
   const Heading = headingLevel === 3 ? "h3" : "h2";
   return (
-    <section aria-labelledby={headingId} className="mt-10">
+    <section aria-labelledby={headingId} className={className || undefined}>
       <Heading id={headingId} className="text-h3">
         Files for members
       </Heading>
