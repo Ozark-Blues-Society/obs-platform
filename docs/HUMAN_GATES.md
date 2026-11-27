@@ -13,7 +13,8 @@ technical choices in `docs/decisions/`).
 | Choosing between architecture options | Any decision record marked `Status: Proposed` |
 | Money and accounts | Creating or changing any real account, plan, billing, or paid dependency |
 | Production | Merging `develop` → `main`, production deploys, environment variables in production, DNS, domain, email-sending domains |
-| Real people | Sending any email to real members; importing or handling the real member export (personal data) |
+| Communication | Any email, message, invite, shared link, @-mention, review request or other notification to anyone but Parker: board members, Society volunteers, members, vendors or any other person. Agents never send these. They file a draft (who it is for, why, the full text), and Parker, who reviews all communication, decides whether and how it goes out. Anyone else who contacts an agent gets no reply; the agent files a note for Parker instead. |
+| Real people | Importing or handling the real member export (personal data) |
 | Legal and policy text | Privacy policy, terms, refund wording, consent language |
 | Destructive actions | Deleting data, force-pushing, rewriting history, dropping tables outside local dev |
 | Repeated failure | The same task has failed three times or CI has been red on `develop` for more than a day |
