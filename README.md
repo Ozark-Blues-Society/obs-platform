@@ -361,8 +361,12 @@ so the Studio can sign in from there. Every address that serves the site needs t
     address built from the video's id (`lib/pages/video.ts`, which the Studio's link check uses
     too).
   - The blocks that fill themselves load their content with their own calls, never through the
-    page's query: upcoming events and sponsor logos come in C-2's second part, the venue
-    directory with M-9 and the volunteer form with P-5. Until then they show nothing.
+    page's query. Sponsor logos: `listCurrentSponsors` (`sanity/content/sponsors.ts`; sponsors
+    are public) gives the editor's picks or every current sponsor, never one past its last day
+    (`endsAt`, a Central Time date), cached per day like the menus, and
+    `components/blocks/current-sponsors.tsx` draws them. Upcoming events wait for P-2's events
+    loader, the venue directory for M-9's and the volunteer form for P-5. Until then they show
+    nothing.
   - `[slug]` matches every address without a page of its own, so ESLint's
     `@next/next/no-html-link-for-pages` now flags any `<a href="/…">` written as a literal. Use
     `next/link`, or pass the address as an expression where a plain `<a>` is deliberate, as

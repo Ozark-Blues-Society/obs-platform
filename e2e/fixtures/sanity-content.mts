@@ -1,7 +1,7 @@
 /**
  * Synthetic Sanity documents that the e2e stand-in for Sanity serves (../support/sanity-stand-in.mts):
  * blog posts for each audience, one scheduled post and one draft, pages in each template and for
- * each audience, and the secret for shared preview links. Each members-only field holds a marker,
+ * each audience, sponsors for the sponsor logos blocks, and the secret for shared preview links. Each members-only field holds a marker,
  * so a test can check that no response reaches a viewer who may not see it. All but the post for
  * Band and up are marked for the monthly email digest.
  *
@@ -83,6 +83,21 @@ export const PAGES = {
   members: { slug: "e2e-members-directory", title: "E2E members directory" },
   bandUp: { slug: "e2e-band-page", title: "E2E page for Band and up", hero: "E2E band hero" },
 } as const;
+
+/** Sponsors: two current ones (one without a logo) and one whose sponsorship has ended. */
+export const SPONSORS = {
+  current: {
+    id: "sponsor-e2e-riverbend",
+    name: "E2E Riverbend Brewing",
+    logoAlt: "E2E Riverbend logo",
+    website: "https://riverbend.example.com",
+  },
+  noLogo: { id: "sponsor-e2e-hilltop", name: "E2E Hilltop Guitar Works" },
+  ended: { id: "sponsor-e2e-gone", name: "E2E Gone Diner" },
+} as const;
+
+/** A date `days` from today, as Sanity stores date fields. */
+const dateFromNow = (days: number) => daysFromNow(days).slice(0, 10);
 
 /** A photo in the Studio: an asset id names its file. Tests refuse requests to Sanity's CDN. */
 function photo(name: string, alt: string) {
@@ -184,6 +199,8 @@ const PAGE_DOCUMENTS = [
         },
       },
       { _type: "quoteBlock", _key: "quote", quote: "E2E pull quote", attribution: "E2E player" },
+      // Every current sponsor.
+      { _type: "sponsorStripBlock", _key: "sponsors", heading: "E2E sponsors" },
       { _type: "e2eCarouselBlock", _key: "unknown", heading: UNKNOWN_BLOCK_MARKER },
     ],
     { intro: "E2E intro for the standard page." },
@@ -208,6 +225,16 @@ const PAGE_DOCUMENTS = [
         },
       },
       { _type: "quoteBlock", _key: "quote", quote: "E2E spotlight quote" },
+      // Two picked sponsors, one of them past its last day.
+      {
+        _type: "sponsorStripBlock",
+        _key: "sponsors",
+        heading: "E2E picked sponsors",
+        sponsors: [
+          { _type: "reference", _key: "s1", _ref: SPONSORS.ended.id },
+          { _type: "reference", _key: "s2", _ref: SPONSORS.noLogo.id },
+        ],
+      },
     ],
   ),
   // Members only: a Directory page with a searchable table and a file. The intro is public.
@@ -265,6 +292,40 @@ const PAGE_DOCUMENTS = [
   ),
 ];
 
+/** A sponsor in the fixtures' one tier. */
+function sponsor(id: string, name: string, extra: object = {}) {
+  return {
+    _id: id,
+    _type: "sponsor",
+    _createdAt: daysFromNow(-10),
+    _updatedAt: daysFromNow(-1),
+    _rev: "e2e",
+    name,
+    tier: { _type: "reference", _ref: "sponsor-tier-e2e" },
+    ...extra,
+  };
+}
+
+const SPONSOR_DOCUMENTS = [
+  {
+    _id: "sponsor-tier-e2e",
+    _type: "sponsorTier",
+    _createdAt: daysFromNow(-10),
+    _updatedAt: daysFromNow(-10),
+    _rev: "e2e",
+    name: "E2E Sponsor",
+    sortOrder: 1,
+    logoPlacement: "logo",
+  },
+  sponsor(SPONSORS.current.id, SPONSORS.current.name, {
+    website: SPONSORS.current.website,
+    logo: photo("e2eSponsorLogo1", SPONSORS.current.logoAlt),
+    endsAt: dateFromNow(30),
+  }),
+  sponsor(SPONSORS.noLogo.id, SPONSORS.noLogo.name),
+  sponsor(SPONSORS.ended.id, SPONSORS.ended.name, { endsAt: dateFromNow(-30) }),
+];
+
 export const DOCUMENTS = [
   post(POSTS.public.slug, POSTS.public.title, { _type: "visibility", audience: "everyone" }),
   {
@@ -301,6 +362,7 @@ export const DOCUMENTS = [
     _id: `drafts.post-${POSTS.members.slug}`,
   },
   ...PAGE_DOCUMENTS,
+  ...SPONSOR_DOCUMENTS,
   // Preview sharing turned on in the Studio, as @sanity/preview-url-secret stores it. A shared link
   // turns on draft mode only if its secret matches this one.
   {

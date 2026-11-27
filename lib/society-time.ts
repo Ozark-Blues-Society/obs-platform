@@ -33,6 +33,20 @@ export function formatSocietyDate(instant: string | Date): string {
   return dateFormat.format(new Date(instant));
 }
 
+const isoDateFormat = format({ year: "numeric", month: "2-digit", day: "2-digit" });
+
+/**
+ * The date (YYYY-MM-DD) that `instant` falls on in the Society's time zone, as Sanity stores date
+ * fields such as a sponsorship's last day, or undefined for an invalid date.
+ */
+export function dateInSocietyTimeZone(instant: string | Date): string | undefined {
+  const date = new Date(instant);
+  if (Number.isNaN(date.getTime())) return undefined;
+  const parts = isoDateFormat.formatToParts(date);
+  const part = (type: string) => parts.find((each) => each.type === type)?.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 // Months on the Society's calendar, written "2026-11", such as the monthly email digest's
 // (backlog E-4).
 const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;

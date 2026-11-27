@@ -22,6 +22,16 @@ vi.mock("next-sanity/image", () => ({
   ),
 }));
 
+// The sponsor logos block loads its sponsors on the server (components/blocks/current-sponsors.tsx,
+// tested there); here it shows what it was given.
+vi.mock("@/components/blocks/current-sponsors", () => ({
+  CurrentSponsors: ({ heading, sponsorIds }: { heading: string; sponsorIds: string[] }) => (
+    <p>
+      Sponsor logos: {heading} [{sponsorIds.join(", ")}]
+    </p>
+  ),
+}));
+
 const ASSET = "image-Tb9Ew8CXIwaY6R1kjMvI0uRR-2000x1125-jpg";
 const photo = (alt: string) => ({ _type: "image", asset: { _ref: ASSET }, alt });
 const paragraph = (key: string, text: string, markDefs: unknown[] = [], marks: string[] = []) => ({
@@ -296,14 +306,35 @@ describe("ContentPage", () => {
     );
   });
 
-  it("shows nothing yet for the blocks that fill themselves from other content", () => {
+  it("fills the sponsor logos block with its own loader, with the sponsors the editor picked", () => {
+    render(
+      <ContentPage
+        page={page({
+          content: {
+            blocks: [
+              { _type: "sponsorStripBlock", _key: "all", heading: "Our sponsors" },
+              {
+                _type: "sponsorStripBlock",
+                _key: "picked",
+                heading: "Presented by",
+                sponsors: [{ _ref: "sp-2" }, { _ref: "sp-1" }],
+              },
+            ],
+          },
+        })}
+      />,
+    );
+    expect(screen.getByText("Sponsor logos: Our sponsors []")).toBeInTheDocument();
+    expect(screen.getByText("Sponsor logos: Presented by [sp-2, sp-1]")).toBeInTheDocument();
+  });
+
+  it("shows nothing yet for the blocks whose loaders other backlog items build", () => {
     const { container } = render(
       <ContentPage
         page={page({
           content: {
             blocks: [
               { _type: "upcomingEventsBlock", _key: "e", heading: "Upcoming shows", count: 3 },
-              { _type: "sponsorStripBlock", _key: "s", heading: "Our sponsors" },
               { _type: "tableBlock", _key: "d", heading: "Venue directory", source: "directory" },
               { _type: "formBlock", _key: "f", form: "volunteer", heading: "Sign up" },
             ],
@@ -311,7 +342,7 @@ describe("ContentPage", () => {
         })}
       />,
     );
-    for (const heading of ["Upcoming shows", "Our sponsors", "Venue directory", "Sign up"]) {
+    for (const heading of ["Upcoming shows", "Venue directory", "Sign up"]) {
       expect(screen.queryByText(heading)).not.toBeInTheDocument();
     }
     expect(container.querySelectorAll("h1")).toHaveLength(1);

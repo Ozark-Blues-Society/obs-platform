@@ -3,24 +3,13 @@
 import { getPublishedId, type SlugValue, type ValidationContext } from "sanity";
 import { isFileId } from "@/lib/members/files";
 import { videoEmbed, type VideoProvider } from "@/lib/pages/video";
+import { dateInSocietyTimeZone } from "@/lib/society-time";
 import { apiVersion } from "@/sanity/env";
-import { SOCIETY_TIME_ZONE } from "./options";
 
 export type RuleResult = true | string;
 
-/** The calendar date (YYYY-MM-DD) of an instant in the Society's time zone, or undefined. */
-export function dateInSocietyTimeZone(instant: string | Date): string | undefined {
-  const date = typeof instant === "string" ? new Date(instant) : instant;
-  if (Number.isNaN(date.getTime())) return undefined;
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: SOCIETY_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const part = (type: string) => parts.find((p) => p.type === type)?.value;
-  return `${part("year")}-${part("month")}-${part("day")}`;
-}
+// The Society's calendar date of an instant (lib/society-time.ts), for the rules below and tests.
+export { dateInSocietyTimeZone };
 
 /** "2026-11-26" → "November 26, 2026". */
 function longDate(isoDate: string): string {

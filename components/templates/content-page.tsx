@@ -1,4 +1,5 @@
 import { stegaClean } from "next-sanity";
+import { CurrentSponsors } from "@/components/blocks/current-sponsors";
 import { HeroBlock } from "@/components/blocks/hero-block";
 import { TableBlock } from "@/components/blocks/list-blocks";
 import { ImageBlock, QuoteBlock, VideoBlock } from "@/components/blocks/media-blocks";
@@ -163,11 +164,13 @@ function Block({ block, template }: { block: PageBlock; template: PageTemplateNa
       );
     case "quote":
       return <QuoteBlock quote={block.quote} attribution={block.attribution} />;
-    // These fill themselves from other content, each with its own loader: upcoming events and
-    // sponsor logos come in C-2's second part, the venue directory with M-9 and the volunteer form
-    // with P-5. Until then they show nothing.
-    case "upcomingEvents":
+    // The blocks that fill themselves load their content with their own calls, never through the
+    // page's query.
     case "sponsorStrip":
+      return <CurrentSponsors heading={block.heading} sponsorIds={block.sponsorIds} />;
+    // Upcoming events wait for P-2's events loader, the venue directory for M-9's and the
+    // volunteer form for P-5. Until then they show nothing.
+    case "upcomingEvents":
     case "directory":
     case "form":
       return null;

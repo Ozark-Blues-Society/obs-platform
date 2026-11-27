@@ -4,6 +4,7 @@ import {
   PAGES,
   PAGE_FILE_CODE,
   POSTS,
+  SPONSORS,
   UNKNOWN_BLOCK_MARKER,
 } from "./fixtures/sanity-content.mts";
 import { FIXTURE_PASSWORD } from "./support/member-files";
@@ -93,6 +94,14 @@ test.describe("a visitor", () => {
       `/blog/${POSTS.public.slug}`,
     );
     await expect(main.getByText("E2E pull quote")).toBeVisible();
+    // Every current sponsor: a logo linking to the website, or the name. Never one that ended.
+    await expect(main.getByRole("heading", { name: "E2E sponsors" })).toBeVisible();
+    await expect(main.getByRole("link", { name: SPONSORS.current.logoAlt })).toHaveAttribute(
+      "href",
+      `${SPONSORS.current.website}/`,
+    );
+    await expect(main.getByText(SPONSORS.noLogo.name)).toBeVisible();
+    await expect(page.getByText(SPONSORS.ended.name)).toHaveCount(0);
     await expect(page.getByText(UNKNOWN_BLOCK_MARKER)).toHaveCount(0);
     await expectNoSidewaysScroll(page);
   });
@@ -114,6 +123,11 @@ test.describe("a visitor", () => {
       "/events",
     );
     await expect(main.getByText("E2E spotlight quote")).toBeVisible();
+    // Only the sponsors picked for this block, without the one whose sponsorship has ended.
+    await expect(main.getByRole("heading", { name: "E2E picked sponsors" })).toBeVisible();
+    await expect(main.getByText(SPONSORS.noLogo.name)).toBeVisible();
+    await expect(main.getByRole("link", { name: SPONSORS.current.logoAlt })).toHaveCount(0);
+    await expect(page.getByText(SPONSORS.ended.name)).toHaveCount(0);
     await expectNoSidewaysScroll(page);
   });
 
