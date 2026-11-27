@@ -76,6 +76,16 @@ export const POSTS = {
   members: { slug: "e2e-members-post", title: "E2E members post" },
   bandUp: { slug: "e2e-band-post", title: "E2E post for Band and up" },
   scheduled: { slug: "e2e-scheduled-post", title: "E2E scheduled post" },
+  recap: { slug: "e2e-recap-post", title: "E2E recap post" },
+  education: { slug: "e2e-education-post", title: "E2E education post" },
+} as const;
+
+/** The author of the recap post, from People. */
+export const AUTHOR = {
+  id: "person-e2e-author",
+  name: "E2E Dee Harmon",
+  role: "E2E volunteer coordinator",
+  bio: "E2E bio: twelve years at the door table.",
 } as const;
 
 export const PAGES = {
@@ -433,6 +443,77 @@ const SPONSOR_DOCUMENTS = [
   sponsor(SPONSORS.ended.id, SPONSORS.ended.name, { endsAt: dateFromNow(-30) }),
 ];
 
+/** A paragraph of formatted text, or a list item with `listItem`. */
+function block(key: string, text: string, extra: object = {}) {
+  return {
+    ...body(text)[0],
+    _key: key,
+    children: [{ _type: "span", _key: `${key}s`, text, marks: [] }],
+    ...extra,
+  };
+}
+
+/**
+ * Two more posts for the blog's own tests (e2e/blog.spec.ts), and the author of one: a recap with a
+ * cover photo, an author and formatted text, and an older education post. Neither is marked for the
+ * monthly email digest, so the digest's tests don't see them.
+ */
+const BLOG_DOCUMENTS = [
+  {
+    _id: AUTHOR.id,
+    _type: "person",
+    _createdAt: daysFromNow(-10),
+    _updatedAt: daysFromNow(-10),
+    _rev: "e2e",
+    name: AUTHOR.name,
+    role: AUTHOR.role,
+    bio: AUTHOR.bio,
+    photo: photo("e2eAuthorPhoto1", AUTHOR.name),
+  },
+  // The latest post: a recap with a cover photo, an author and every kind of formatted text.
+  {
+    ...post(
+      POSTS.recap.slug,
+      POSTS.recap.title,
+      { _type: "visibility", audience: "everyone" },
+      { publishedInDays: -1, inDigest: false },
+    ),
+    category: "recap",
+    coverImage: photo("e2eRecapCover1", "E2E recap cover photo"),
+    author: { _type: "reference", _ref: AUTHOR.id },
+    body: [
+      block("p1", `The post ${POSTS.recap.title} in full.`),
+      block("h2", "E2E recap highlights", { style: "h2" }),
+      block("li1", "E2E first highlight", { listItem: "bullet", level: 1 }),
+      block("li2", "E2E second highlight", { listItem: "bullet", level: 1 }),
+      {
+        ...block("p2", "See the events calendar for more."),
+        markDefs: [{ _type: "link", _key: "l1", href: "/events" }],
+        children: [
+          { _type: "span", _key: "p2a", text: "See ", marks: [] },
+          { _type: "span", _key: "p2b", text: "the events calendar", marks: ["l1"] },
+          { _type: "span", _key: "p2c", text: " for more.", marks: [] },
+        ],
+      },
+      {
+        ...photo("e2eRecapInline1", "E2E photo in the recap"),
+        _key: "img",
+        caption: "E2E caption",
+      },
+    ],
+  },
+  // An older post in another category, with no cover photo and no author.
+  {
+    ...post(
+      POSTS.education.slug,
+      POSTS.education.title,
+      { _type: "visibility", audience: "everyone" },
+      { publishedInDays: -20, inDigest: false },
+    ),
+    category: "education",
+  },
+];
+
 export const DOCUMENTS = [
   post(POSTS.public.slug, POSTS.public.title, { _type: "visibility", audience: "everyone" }),
   {
@@ -468,6 +549,7 @@ export const DOCUMENTS = [
     ),
     _id: `drafts.post-${POSTS.members.slug}`,
   },
+  ...BLOG_DOCUMENTS,
   ...PAGE_DOCUMENTS,
   ...SPONSOR_DOCUMENTS,
   ...DIRECTORY_DOCUMENTS,

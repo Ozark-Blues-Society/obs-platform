@@ -1,37 +1,43 @@
 import type { Metadata } from "next";
-import { PortableText, stegaClean, type PortableTextBlock } from "next-sanity";
+import { stegaClean } from "next-sanity";
 import { draftMode } from "next/headers";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
-import { PageHeader } from "@/components/layout/page-header";
-import { MemberFiles, type MemberFileLink } from "@/components/members/member-files";
-import { MembersOnlyLock } from "@/components/members/members-only-lock";
-import { Tag } from "@/components/ui/tag";
-import { formatSocietyDate } from "@/lib/society-time";
+import { cache, Suspense } from "react";
+import { PostView } from "@/components/blog/post-view";
+import { isPublished, POST_CONTENT, type PostContent } from "@/lib/blog/posts";
 import { getGatedItem } from "@/sanity/content";
-import { postPath } from "@/sanity/paths";
-import { POST_CATEGORIES, optionTitle } from "@/sanity/schemas/options";
 
-// A blog post (backlog P-3), as far as members-only gating needs it (M-7): the headline, category
-// and date for anyone, then the post itself for viewers who may read it, or a lock for everyone
-// else. P-3 adds the blog list, the cover photo, photos in the text, the author and the design.
+// A blog post (backlog P-3), at /blog/<web address>: its headline, category, date and cover photo
+// for anyone, then the post for viewers who may read it, or a lock for everyone else (M-7). A post
+// with a later publish date is scheduled: not found until then, except in a preview.
 //
-// The post is read through sanity/content, which leaves the summary, the post and its files out
-// of Sanity's answer for a viewer who may not read it, so they never reach this page, its HTML or
-// its RSC payload. It reads the session, so everything below the layout renders at request time.
+// The post is read through sanity/content, which leaves the summary, the post, its author and its
+// files out of Sanity's answer for a viewer who may not read it, so they never reach this page,
+// its HTML or its RSC payload. It reads the session, so everything below the layout renders at
+// request time.
 
-export const metadata: Metadata = {
-  title: "Blog · Ozark Blues Society",
-};
+/** Web addresses as the Studio makes them (sanity/schemas/validation.ts slugRule). */
+const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-/** The members-only fields: from other documents, only what the rule allows (sanity/content). */
-const POST_CONTENT = "{ excerpt, body, memberFiles[]{ title, fileId } }";
+// One read per request, shared by the metadata and the page. An address no post could have isn't
+// sent to Sanity, and a scheduled post isn't there until its date, so neither the page nor its
+// tab title can give away its headline early.
+const loadPost = cache(async (slug: string) => {
+  if (!SLUG.test(slug)) return null;
+  const [post, { isEnabled: preview }] = await Promise.all([
+    getGatedItem<"post", PostContent>("post", slug, POST_CONTENT),
+    draftMode(),
+  ]);
+  return post && (preview || isPublished(post.publishedAt, new Date())) ? post : null;
+});
 
-type PostContent = {
-  excerpt?: string;
-  body?: PortableTextBlock[];
-  memberFiles?: MemberFileLink[];
-};
+export async function generateMetadata({ params }: PageProps<"/blog/[slug]">): Promise<Metadata> {
+  const post = await loadPost((await params).slug);
+  // The headline is public, like the page header that shows it. In a preview it carries edit
+  // markers.
+  const title = typeof post?.title === "string" ? stegaClean(post.title).trim() : "";
+  return title ? { title: `${title} · Ozark Blues Society` } : {};
+}
 
 export default function PostPage({ params }: PageProps<"/blog/[slug]">) {
   return (
@@ -42,53 +48,7 @@ export default function PostPage({ params }: PageProps<"/blog/[slug]">) {
 }
 
 async function Post({ params }: Pick<PageProps<"/blog/[slug]">, "params">) {
-  const { slug } = await params;
-  const post = await getGatedItem<"post", PostContent>("post", slug, POST_CONTENT);
+  const post = await loadPost((await params).slug);
   if (!post) notFound();
-  // A post with a later publish date is scheduled: hidden until then, except in a preview.
-  const { isEnabled: preview } = await draftMode();
-  if (!preview && !isPublished(post.publishedAt)) notFound();
-
-  const category = optionTitle(POST_CATEGORIES, stegaClean(post.category ?? ""));
-  const date = post.publishedAt ? formatSocietyDate(stegaClean(post.publishedAt)) : "";
-  const { access, content } = post;
-
-  return (
-    <>
-      <PageHeader title={post.title} eyebrow={[category, date].filter(Boolean).join(" · ")}>
-        {post.visibility.audience !== "everyone" && (
-          <Tag tone="accent" className="mt-3">
-            Members only
-          </Tag>
-        )}
-      </PageHeader>
-      <div className="mx-auto w-full max-w-site px-gutter py-10">
-        {access.allowed && content ? (
-          <article className="max-w-prose">
-            {content.excerpt && <p className="text-lead text-muted">{content.excerpt}</p>}
-            {content.body && (
-              <div className="mt-6 grid gap-4">
-                <PortableText value={content.body} />
-              </div>
-            )}
-            <MemberFiles files={content.memberFiles} />
-          </article>
-        ) : (
-          !access.allowed && (
-            <MembersOnlyLock
-              reason={access.reason}
-              visibility={post.visibility}
-              thing="post"
-              returnTo={postPath(slug)}
-            />
-          )
-        )}
-      </div>
-    </>
-  );
-}
-
-function isPublished(publishedAt: string | undefined): boolean {
-  const time = publishedAt ? Date.parse(stegaClean(publishedAt)) : Number.NaN;
-  return Number.isFinite(time) && time <= Date.now();
+  return <PostView post={post} />;
 }
