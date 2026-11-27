@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { ZEFFY_LEVEL_MAPPING } from "@/lib/zeffy/level-mapping";
 import {
   LISTING_CATEGORIES as SITE_LISTING_CATEGORIES,
   LISTING_DAYS as SITE_LISTING_DAYS,
@@ -14,6 +15,7 @@ import {
   LISTINGS_SECTION_START,
   SEED_SQL_PATH,
   sqlString,
+  ZEFFY_LEVEL_MAPPING_SECTION_START,
 } from "./seed-sql.mts";
 
 const unique = (values: readonly unknown[]) => new Set(values).size === values.length;
@@ -179,6 +181,20 @@ describe("seed.sql", () => {
         `(${sqlString(l.id)}::uuid, ${sqlString(l.profileId)}::uuid`,
       );
     }
+  });
+
+  it("maps the Zeffy membership form's rates, in a section that can be loaded on its own", () => {
+    const sql = buildSeedSql();
+    const start = sql.indexOf(ZEFFY_LEVEL_MAPPING_SECTION_START);
+    const section = sql.slice(start, sql.indexOf("\n\n", start));
+    expect(section).toMatch(/\non conflict \(campaign_id, rate_id\) do nothing;$/);
+    for (const m of ZEFFY_LEVEL_MAPPING) {
+      expect(section, m.level).toContain(
+        `(${sqlString(m.campaignId)}, ${sqlString(m.rateId)}, ${sqlString(m.level)})`,
+      );
+    }
+    expect(start).toBeGreaterThan(0);
+    expect(start).toBeLessThan(sql.indexOf(LISTINGS_SECTION_START));
   });
 
   it("fills in every member's profile and gives out the staff roles", () => {

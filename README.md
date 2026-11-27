@@ -81,7 +81,8 @@ passes `process.env` to `lib/env/schema.ts`).
 | `MAILPIT_URL`                          | Server-only | The local stack's mail catcher (local addresses only) |
 | `CRON_SECRET`                          | Secret      | Turns on the daily jobs (decision 0006)               |
 | `MAILERLITE_API_KEY`                   | Secret      | Turns on the MailerLite member group sync             |
-| `STRIPE_SECRET_KEY`                    | Secret      | Stripe's API: membership dues, test mode until launch |
+| `ZEFFY_API_KEY`                        | Secret      | Zeffy's API (decision 0007); never locally or in CI   |
+| `ZEFFY_WEBHOOK_SECRET`                 | Secret      | Checks Zeffy's webhook signatures (`whsec_...`)       |
 
 Secrets are server-only. In CI, every variable is a test or made-up value (see
 [Continuous integration](#continuous-integration)). Production's are set in the hosting
@@ -177,7 +178,8 @@ Synthetic data lives in `scripts/fixtures/`. Real member data never goes in the 
 
 `supabase/seed.sql` is generated from the fixtures by `pnpm fixtures:generate`, and `pnpm test`
 fails if it's out of date. The seed loads only tables that exist: the members' sign-ins, their
-profiles, the staff roles and the classifieds listings.
+profiles, the staff roles, the Zeffy level mapping (from `lib/zeffy/level-mapping.ts`, see
+[Zeffy (payments)](#zeffy-payments)) and the classifieds listings.
 
 Every fixture member can sign in locally with their address (for example
 `avery.collins@example.com`) and the password `obs-local-dev`. These four have staff roles (see
@@ -315,9 +317,9 @@ the board created no family memberships (board decisions §2).
   `first_name` and `last_name` from the sign-up's user metadata (`options.data` in
   `supabase.auth.signUp`). Level, status and the dates stay empty until the first payment. When a
   member changes their address through Supabase Auth, the profile follows.
-- **Members can't change their membership.** Level, status, `expires_at`, auto-renew, the Stripe
-  customer, `joined_at` and the staff notes are written by server code with the service role (the
-  Stripe webhook, scheduled jobs, the importer). Column privileges block a member's own update of
+- **Members can't change their membership.** Level, status, `expires_at`, auto-renew, `joined_at`
+  and the staff notes are written by server code with the service role (the Zeffy webhook,
+  scheduled jobs, the importer). Column privileges block a member's own update of
   them, whatever the policies say. Members can read their own staff notes.
 - **Role checks** in policies call `private.has_role(...)`, in the `private` schema (see
   [Migrations and database tests](#migrations-and-database-tests)).
@@ -978,6 +980,51 @@ and answers, `supabase/tests/mailerlite_subscribers_test.sql` the records, the l
 reach them, and `e2e/mailerlite-sync.spec.ts` runs the sync against the local database with the
 stand-in API, for the members it creates only.
 
+## Zeffy (payments)
+
+Zeffy takes the Society's payments: memberships, tickets and donations
+([decision 0007](docs/decisions/0007-zeffy-payments.md)). Supabase stays the source of truth for who
+is a member and until when; [architecture](docs/spec/architecture.md) ("Zeffy → Supabase") says how
+payments become memberships (M-5).
+
+- **The client** (`lib/zeffy/client.ts`, server-only) covers what the site needs from Zeffy's Public
+  API v1: list and get payments, record an offline payment (check or cash, A-1), upsert a contact
+  (Z-4), and list and get campaigns (Z-1 to Z-3). `getZeffyClient()` returns null until
+  `ZEFFY_API_KEY` is set. The client sends the key as a bearer token, follows `next_cursor` through
+  a list (100 records a page, 20 pages unless told otherwise), and waits out a 429's `Retry-After`
+  up to three times, never past a `deadline` the caller gives it (Zeffy allows 100 requests a
+  minute and 20 a second). Zeffy's error envelope becomes a `ZeffyError` with its `status`, `code`
+  and `param`. Writes fail with 403 `organization_not_verified` until the Society finishes Zeffy's
+  Stripe verification. The error's message leaves out Zeffy's own, which can repeat an address:
+  `zeffyMessage` has that, for an administrator's screen, not for logs.
+- **The spec snapshot.** The client is built against
+  [`docs/vendor/zeffy-openapi-2026-11-27.json`](docs/vendor/zeffy-openapi-2026-11-27.json), Zeffy's
+  spec as fetched, unedited, from <https://api.zeffy.com/api/docs/openapi.json> on 2026-11-27. The
+  schemas in `lib/zeffy/schemas.ts` mirror it field for field, the client checks every answer
+  against them, and `lib/zeffy/schemas.test.ts` fails when a schema and the snapshot differ. When
+  Zeffy changes its API, save a new dated snapshot beside the old one, point `ZEFFY_SPEC_SNAPSHOT`
+  at it, and fix what the test reports.
+- **No test mode.** Zeffy has no sandbox, so nothing local or in CI calls it, and its keys are
+  never set there. The tests answer the client with synthetic fixtures (`lib/zeffy/fixtures.ts`:
+  the membership form, a ticketing campaign, a donation form, payments with auto-renew, a refund, a
+  lost dispute and one recorded by hand, contacts, and every error envelope), and a net guard in
+  `lib/zeffy/client.test.ts` fails the suite if a test opens any network connection. The webhook
+  (M-5) is tested with payloads signed with a made-up `whsec_` secret.
+- **The keys.** `ZEFFY_API_KEY` (in Zeffy, **Settings → Integrations**; organization owners only)
+  and `ZEFFY_WEBHOOK_SECRET` (the same dialog's webhook signing secret, `whsec_...`) are set by a
+  human on Netlify staging and production only ([`docs/HUMAN_GATES.md`](docs/HUMAN_GATES.md)).
+- **The level mapping.** A payment names the rate it bought, not a membership level.
+  `zeffy_level_mappings` (`supabase/migrations/20261127231530_zeffy_level_mappings.sql`) maps a
+  campaign and rate to a level: administrators read and change it (M-5 adds the screen, and sends a
+  payment whose rate isn't mapped to its review list), the service role reads it, and nobody else
+  sees a row (`supabase/tests/zeffy_level_mappings_test.sql`). The local seed fills it from
+  `lib/zeffy/level-mapping.ts`, whose ids are synthetic (`00000000-0000-4000-8300-...`). To add the
+  mapping to a stack seeded before it existed:
+  `awk '/^-- Zeffy level mapping\./,/^$/' supabase/seed.sql | docker exec -i supabase_db_obs-platform psql -U postgres -v ON_ERROR_STOP=1`.
+- **At launch** (backlog Q-5): the real membership form's campaign and rate ids go into the
+  production table, and Parker checks the whole flow with one real membership payment on staging,
+  refunded afterwards (decision 0007).
+
 ## Scripts
 
 | Command                  | What it does                                                       |
@@ -1124,7 +1171,7 @@ every page is a 404, and the build's manifest files are public.
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
 components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
-lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs, the MailerLite sync
+lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs, the MailerLite sync, the Zeffy client
 netlify/        Netlify Functions: the daily jobs' schedule (netlify/functions/)
 netlify.toml    How Netlify builds the site (see Hosting (Netlify))
 proxy.ts        Runs before every request: refreshes Supabase sessions
@@ -1133,7 +1180,7 @@ emails/         Email templates (React Email)
 scripts/        Synthetic fixtures (scripts/fixtures/) and the seed generator
 sanity/         Sanity client, live preview helpers, Studio structure and content schemas
 supabase/       Local Supabase config, migrations, seed and pgTAP tests
-docs/           Specs, decisions, design concept, backlog
+docs/           Specs, decisions, design concept, backlog, vendors' API specs (docs/vendor/)
 tools/          Helper scripts for the agent team
 ```
 
