@@ -5,6 +5,7 @@
  * `pnpm fixtures:generate`.
  */
 import { fileURLToPath } from "node:url";
+import { ZEFFY_LEVEL_MAPPING, type ZeffyLevelMapping } from "../../lib/zeffy/level-mapping.ts";
 import { LISTING_DAYS, LISTINGS, type FixtureListing, type ListingCategory } from "./listings.mts";
 import { MEMBERS, type FixtureMember } from "./members.mts";
 
@@ -115,6 +116,22 @@ values
 ${values};`;
 }
 
+/** Marks the start of the Zeffy level mapping, which can be loaded on its own (see the README). */
+export const ZEFFY_LEVEL_MAPPING_SECTION_START = "-- Zeffy level mapping.";
+
+function zeffyLevelMappingSql(mappings: readonly ZeffyLevelMapping[]): string {
+  const values = mappings
+    .map((m) => `  (${sqlString(m.campaignId)}, ${sqlString(m.rateId)}, ${sqlString(m.level)})`)
+    .join(",\n");
+
+  return `${ZEFFY_LEVEL_MAPPING_SECTION_START} The membership form's rates, from lib/zeffy/level-mapping.ts, with
+-- synthetic ids. Loading it again changes nothing.
+insert into public.zeffy_level_mappings (campaign_id, rate_id, level)
+values
+${values}
+on conflict (campaign_id, rate_id) do nothing;`;
+}
+
 /** The listings table's value for a fixture category: "Musicians Wanted" is musicians_wanted. */
 export function listingCategoryValue(category: ListingCategory): string {
   return category.toLowerCase().replaceAll(" ", "_");
@@ -168,9 +185,11 @@ on conflict (id) do nothing;`;
 export function buildSeedSql(
   members: readonly FixtureMember[] = MEMBERS,
   listings: readonly FixtureListing[] = LISTINGS,
+  levelMapping: readonly ZeffyLevelMapping[] = ZEFFY_LEVEL_MAPPING,
 ): string {
   const sections = [HEADER, authUsersSql(members), profilesSql(members)];
   if (members.some((m) => m.roles.length > 0)) sections.push(userRolesSql(members));
+  if (levelMapping.length > 0) sections.push(zeffyLevelMappingSql(levelMapping));
   if (listings.length > 0) sections.push(listingsSql(listings));
   return `${sections.join("\n\n")}\n`;
 }
