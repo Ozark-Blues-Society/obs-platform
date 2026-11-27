@@ -1,3 +1,4 @@
+import { LISTING_DAYS } from "../lib/listings/listing-state";
 import { renewListingPath } from "../lib/site/navigation";
 import { EmailLayout } from "./_components/layout";
 import { Details, Eyebrow, Note, Paragraph, PrimaryButton, SignOff, Title } from "./_components/ui";
@@ -39,7 +40,7 @@ export default function ListingExpiringEmail(props: ListingExpiringEmailProps) {
       </Title>
       <Paragraph>
         Your listing comes down from the classifieds on {date}. If you still need it, renew it from
-        My listings to keep it up.
+        My listings: it stays up, as it is, for another {LISTING_DAYS} days from the day you renew.
       </Paragraph>
       <Details
         rows={[

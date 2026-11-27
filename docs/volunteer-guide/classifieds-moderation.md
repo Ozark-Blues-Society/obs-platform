@@ -40,6 +40,14 @@ The listing stays off the classifieds and leaves the queue. To change your mind 
 select **Cancel**. The poster can post the listing again with changes, and it comes back to the
 queue.
 
+## After a listing goes live
+
+An approved listing comes down by itself after 60 days. Five days before, the poster gets an email
+and can renew it on their **My listings** page, which keeps it up for another 60 days. A renewed
+listing doesn't come back to the queue: nothing in it has changed since you approved it. If the
+poster changes anything in a listing, it comes back to the queue for you to review again. Posters
+can also remove their own listings at any time.
+
 ## If something doesn't go through
 
 - **"The poster changed … while you were looking at it"**: the poster edited the listing after
