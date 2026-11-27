@@ -6,7 +6,10 @@ import type { EventOccurrence } from "./load";
 
 export type EventCardProps = Omit<ComponentProps<typeof EventCard>, "headingLevel">;
 
-/** EventCard's props for one date of an event. The venue comes only if the viewer may see it. */
+/**
+ * EventCard's props for one date of an event. The venue comes only if the viewer may see it: for
+ * a locked event the card says the place is for members, as the event page does.
+ */
 export function eventCardProps(occurrence: EventOccurrence): EventCardProps {
   return {
     title: occurrence.title,
@@ -15,7 +18,7 @@ export function eventCardProps(occurrence: EventOccurrence): EventCardProps {
     category: occurrence.categoryTitle ?? undefined,
     repeats: occurrence.repeats ?? undefined,
     membersOnly: occurrence.membersOnly,
-    venue: occurrence.venue ?? undefined,
+    venue: occurrence.locked ? "Location visible to members" : (occurrence.venue ?? undefined),
     price: occurrence.priceText ?? undefined,
     memberPrice: occurrence.memberPrice ?? undefined,
   };

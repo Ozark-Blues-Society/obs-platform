@@ -7,6 +7,10 @@ import { societyInstant, societyWallClock, type WallClock } from "@/lib/society-
 import { SOCIETY_TIME_ZONE } from "@/sanity/schemas/options";
 import { EVENT_LENGTH_MS, type EventSchedule } from "./occurrences";
 
+/** The calendar feed anyone can subscribe to: its address on the site, and its name in apps. */
+export const FEED_PATH = "/events/feed.ics";
+export const FEED_NAME = "Ozark Blues Society events";
+
 /** One event in a calendar file. */
 export type CalendarEntry = {
   /** The same for the event in every file, so a calendar app updates it instead of adding another. */
