@@ -1,7 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { blockSanity } from "./support/sanity";
 
 // Backlog D-1: the fonts come from this site (next/font), and the page is styled by the design
 // tokens in app/globals.css.
+
+// The home page's sponsor band shows logos from Sanity's image CDN (backlog P-4): keep those
+// requests on the machine.
+test.beforeEach(async ({ page }) => {
+  await blockSanity(page);
+});
+
 test("fonts are self-hosted and the page uses the design tokens", async ({ page, baseURL }) => {
   const fontRequests: string[] = [];
   page.on("request", (request) => {

@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import Home from "./page";
+
+// The sponsor band reads Sanity on the server (components/home/home-sponsors.test.tsx tests it).
+vi.mock("@/components/home/home-sponsors", () => ({
+  HomeSponsors: () => <section aria-label="Our sponsors" />,
+}));
 
 describe("Home page", () => {
   // The site layout supplies the <main> landmark (app/(site)/layout.tsx), so the page has none.
@@ -15,5 +20,11 @@ describe("Home page", () => {
     render(<Home />);
 
     expect(screen.getByText("Ozark Blues Society")).toBeInTheDocument();
+  });
+
+  it("shows the sponsor band", () => {
+    render(<Home />);
+
+    expect(screen.getByRole("region", { name: "Our sponsors" })).toBeInTheDocument();
   });
 });

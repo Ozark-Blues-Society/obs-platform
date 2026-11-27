@@ -24,11 +24,14 @@ const PLACEMENTS: Record<LogoPlacement, string> = {
   name: "px-4 py-2.5 text-[0.9375rem]",
 };
 
-/** A sponsor's logo, or its name in a dashed box until the logo arrives. */
+/**
+ * A sponsor's logo, or its name in a dashed box until the logo arrives. A long name wraps, centered,
+ * rather than making a phone screen scroll sideways.
+ */
 export function SponsorLogo({ name, href, logo, placement = "logo", className }: SponsorLogoProps) {
   const showLogo = Boolean(logo) && placement !== "name";
   const classes = cx(
-    "inline-flex items-center justify-center rounded-lg border bg-white font-serif text-muted no-underline",
+    "inline-flex max-w-full items-center justify-center rounded-lg border bg-white text-center font-serif wrap-anywhere text-muted no-underline",
     showLogo ? "border-transparent" : "border-dashed border-line",
     href && "hover:border-line-strong",
     PLACEMENTS[placement],

@@ -1,4 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { blockSanity } from "./support/sanity";
+
+// The home page's sponsor band shows logos from Sanity's image CDN (backlog P-4): keep those
+// requests on the machine.
+test.beforeEach(async ({ page }) => {
+  await blockSanity(page);
+});
 
 test("home page renders its heading and title", async ({ page }) => {
   await page.goto("/");
