@@ -5,7 +5,7 @@
 # run reports every problem, and any failed check fails the job. It is one job rather than one per
 # check so that dependencies install once. That choice was made while the repository was private on
 # GitHub's free plan (2,000 Actions minutes a month, every job billed rounded up to the minute). The
-# repository is public now (decision 0011), so Actions minutes on GitHub's standard runners are free.
+# repository is public now (decision 0011), so Actions minutes on standard GitHub runners are free.
 #
 # Keeping runs short (bead op-73f.15): starting local Supabase is the slowest step (about two
 # minutes, mostly pulling Docker images), so it starts in the background right after pnpm's setup,
@@ -67,8 +67,8 @@ jobs:
 
       # A run that passes every check records the tree it tested (the exact content of the
       # commit) as an artifact named passed-tree-<tree>, kept 7 days (the last step). A later run of
-      # the same tree finds it and skips the checks: it still succeeds, takes about a minute
-      # instead of four or five, and its notice links the run that passed. The usual case is a push
+      # the same tree finds it and skips the checks: it still succeeds, takes seconds instead
+      # of four or five minutes, and its notice links the run that passed. The usual case is a push
       # to develop: when develop hasn't moved since a pull request's last run, the squash-merge
       # commit has exactly the tree that run tested. If the lookup fails, every check runs. Markers
       # from runs of a fork's pull request don't count: such a run uses the fork's own ci.yml.

@@ -125,10 +125,12 @@ availability (`seats` is capacity, not tickets left); My Account lists the membe
 
 ## Scheduled jobs (daily)
 
-Renewal reminders at −30 and −7 days for every member, auto-renewers included, unless the site
-setting "Zeffy sends renewal reminders" is on (then Zeffy's replace ours, decision 0007) · lapse at
-expiry, lapsed note at +14 days (decision 0013) · Zeffy payment reconciliation and check/cash retries
-· expire listings at 60 days, reminder at −5 days · MailerLite group sync (also on status changes).
+Renewal reminders at −30 and −7 days for every member, unless the site setting "Zeffy sends renewal
+reminders" is on (then Zeffy's replace ours, decision 0007); a member on auto-renew is told the
+membership renews by itself on that date, with the "Manage payment or auto-renew" link, and isn't
+asked to pay · lapse at expiry, lapsed note at +14 days (decision 0013) · Zeffy payment
+reconciliation and check/cash retries · expire listings at 60 days, reminder at −5 days · MailerLite
+group sync (also on status changes).
 
 ## Known gotchas
 

@@ -67,16 +67,16 @@ when it doesn't slow Launch 1.
   snapshot; `ZEFFY_API_KEY` and `ZEFFY_WEBHOOK_SECRET` as optional server-only env values; a
   level-mapping table (Zeffy `campaign_id` + `rate_id` → level) that administrators can edit, seeded
   from config. Removes Stripe from `.env.example` and the env schema.
-- **M-4 Join page with the Zeffy form:** the four levels and their benefits from data, "Pay with the
-  same email you sign in with", and "Join" opening the Zeffy membership form with the level picked
-  (embedded if Zeffy allows it, otherwise a link); a thank-you page at `/join/thanks` polls the
-  member's status for about 60 seconds, then says "We'll email you as soon as it's confirmed."
-  *Needs M-3.*
+- **M-4 Join page with the Zeffy form:** the four levels and their benefits from data, encouraging
+  signing in first ("Pay with the same email you sign in with"), and "Join" opening the Zeffy
+  membership form with the level picked (embedded if Zeffy allows it, otherwise a link); a thank-you
+  page at `/join/thanks` polls the member's status for about 60 seconds, then says "We'll email you
+  as soon as it's confirmed." *Needs M-3.*
 - **M-5 Zeffy webhook, nightly reconciliation and admin review list** per architecture ("Zeffy →
   Supabase"): signature-verified, idempotent `POST /api/zeffy/webhook`; membership payments become
-  membership periods (a new member gets a profile and the welcome email); refunds, lost disputes,
-  rates missing from the mapping and payments it can't match go to an admin review list; a step in
-  the daily job pulls recent payments so missed webhooks heal. Tests with signed fixtures.
+  membership periods (a new member gets a profile and the welcome email); full refunds, lost
+  disputes, rates missing from the mapping and payments it can't match go to an admin review list; a
+  step in the daily job pulls recent payments so missed webhooks heal. Tests with signed fixtures.
   *Needs M-3.*
 - **M-6 Auto-renew status and "Manage payment" link:** My Account shows auto-renew on/off from the
   latest payment's `recurring.status`, with a link to Zeffy to manage the card or auto-renew (🧑 the
@@ -130,9 +130,9 @@ Launch 1; Z-2 and Z-5 are Launch 2.
   embed) and the ticket prices from `rates[]`, cached and revalidated. No availability: `seats` is
   capacity, not tickets left. *Needs M-3, C-1.*
 - **Z-4 Contact upsert:** when a member joins or edits their profile, `PUT /api/v1/contacts` (upsert
-  by email: name, phone, address), so Zeffy's records and email tool match.
+  by email: name, phone, address), so Zeffy's records and email tool match. *Needs M-3.*
 - **Z-5 My tickets** in My Account, from the payments by the member's contact with
-  `campaign_type = ticketing`.
+  `campaign_type = ticketing`. *Needs M-3.*
 
 ## E — Email
 
@@ -140,7 +140,8 @@ Launch 1; Z-2 and Z-5 are Launch 2.
   rejected / expiring, volunteer signup. Branded. Decision 0007 drops the receipt: Zeffy sends receipts.
 - **E-2 Scheduled jobs** for reminders, lapses, expiries (idempotent; tests with fake clock). Decision
   0007: a site setting, "Zeffy sends renewal reminders", turns the −30/−7 reminders off so members
-  don't get both; while it's off, members on auto-renew get them too.
+  don't get both; while it's off, members on auto-renew get them too, worded as a notice that the
+  membership renews by itself (no request to pay).
 - **E-3 MailerLite sync** (test account): groups active/expiring/lapsed/per level; on change + nightly.
 - **E-4 Newsletter template** in MailerLite style matching the brand; monthly digest content export.
   E-3 and E-4 stay in place but on hold (decision 0007): which newsletter tool the Society uses
