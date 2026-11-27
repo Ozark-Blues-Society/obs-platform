@@ -23,6 +23,15 @@ export const page = defineType({
       description: "The page's main heading. Browser tabs and search results show it too.",
       validation: (rule) => rule.required().max(100),
     }),
+    defineField({
+      name: "intro",
+      title: "Intro",
+      type: "text",
+      rows: 2,
+      description:
+        "Optional. A sentence under the title, in the blue band at the top of the page. Like the title, everyone sees it, even on a members-only page. A page that starts with a hero photo shows the hero's text instead.",
+      validation: (rule) => rule.max(200),
+    }),
     slugField({ path: pagePath, example: "about-and-volunteer", reserved: RESERVED_PAGE_SLUGS }),
     defineField({
       name: "template",

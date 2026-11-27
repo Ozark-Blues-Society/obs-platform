@@ -40,6 +40,7 @@ const STATUS_TONE = { Active: "success", "Expiring soon": "accent", Lapsed: "dan
  * phone and desktop widths. Development only: production builds answer 404.
  */
 export default function ComponentsPage() {
+  // eslint-disable-next-line no-restricted-properties -- Next.js sets NODE_ENV; lib/env has no say.
   if (process.env.NODE_ENV === "production") notFound();
 
   return (

@@ -31,7 +31,7 @@ export type { GatedType, ListOptions } from "./gated-query";
 
 /** The public fields of each type (PUBLIC_FIELDS in ./gated-query.ts), as Sanity stores them. */
 type PublicFields = {
-  page: { title?: string; template?: string };
+  page: { title?: string; intro?: string; template?: string };
   post: { title?: string; category?: string; publishedAt?: string; coverImage?: unknown };
   event: {
     title?: string;

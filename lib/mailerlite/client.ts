@@ -4,6 +4,8 @@
 // The sync is off until MAILERLITE_API_KEY is set: getMailerLiteClient() returns null without it.
 // The tests use a stand-in for the API (lib/mailerlite/fake-api.ts), never MailerLite itself.
 
+import type { ServerEnv } from "@/lib/env/schema";
+
 const API_URL = "https://connect.mailerlite.com/api/";
 
 /** The API version this code was written against: MailerLite answers in it, whatever comes later. */
@@ -181,12 +183,13 @@ export function createMailerLiteClient(options: {
 }
 
 /**
- * The MailerLite client for this environment, from MAILERLITE_API_KEY, or null while it isn't set:
- * the member group sync is off until then.
+ * The MailerLite client for this environment's MAILERLITE_API_KEY, which the caller reads with
+ * `serverEnv("MAILERLITE_API_KEY")` (the end-to-end tests import this file, so it can't read it
+ * itself), or null while it isn't set: the member group sync is off until then.
  */
 export function getMailerLiteClient(
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  env: Pick<ServerEnv, "MAILERLITE_API_KEY">,
 ): MailerLiteClient | null {
-  const apiKey = env.MAILERLITE_API_KEY?.trim();
+  const apiKey = env.MAILERLITE_API_KEY;
   return apiKey ? createMailerLiteClient({ apiKey }) : null;
 }

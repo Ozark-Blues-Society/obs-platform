@@ -30,9 +30,69 @@ pnpm dev
 ```
 
 Then open <http://localhost:3000>. Signing in needs the local Supabase stack running (see
-[Local Supabase](#local-supabase)); the public pages work without it. `.env.example` lists the
-environment variables, set to the local stack's values. Typed validation of them arrives with
-backlog item F-4. Never commit secrets.
+[Local Supabase](#local-supabase)); the public pages work without it. `.env.local` holds the
+environment variables (see [Environment variables](#environment-variables)). Never commit secrets.
+
+## Environment variables
+
+`.env.example` lists every variable the app reads, each with a one-line note, set to values that
+work with the local stack. Copy it to `.env.local`, which git ignores (as it does every `.env*`
+file except `.env.example`), then fill in what you need:
+
+- `SUPABASE_SECRET_KEY`: the local stack's secret key, which `supabase status` prints as
+  `SECRET_KEY`. The daily jobs and the emails to classifieds posters need it.
+- The Sanity variables, once the Society's Sanity project exists (see
+  [Connecting a Sanity project](#connecting-a-sanity-project)).
+- `CRON_SECRET`, to run the daily jobs by hand (see [Daily jobs](#daily-jobs)).
+
+Leave the rest as they are. An empty value means unset, and each feature stays off until its
+variables are set: without the two Supabase variables the site runs without sign-in, without
+`RESEND_API_KEY` emails go to Mailpit, and so on.
+
+**Checked when the app builds or starts.** `lib/env/` checks every variable with zod, and
+`next build`, `next dev` and `next start` run the check first (`next.config.ts`). A value that is
+set but wrong, or half of a pair (`NEXT_PUBLIC_SUPABASE_URL` without
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, or the other way round), stops them at once with a list of
+the variables to fix. Code that needs a variable that isn't set names it when it runs, as in
+"SITE_URL isn't set: links in emails need the site's address". Messages name variables, never
+their values, since some values are secrets.
+
+**Public and server-only.** Next.js writes the value of every variable named `NEXT_PUBLIC_` into
+the JavaScript it sends to every visitor's browser, so those must never hold a secret. The app
+reads them with `publicEnv()` (`lib/env/public.ts`), which works anywhere. The others are
+server-only, and the secrets are among them: the app reads them with `serverEnv()`
+(`lib/env/server.ts`), which imports `server-only`, so importing it into browser code fails the
+build. The check also refuses a Supabase secret key in `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and
+ESLint stops app code from reading `process.env` itself (code outside the app, such as scripts,
+passes `process.env` to `lib/env/schema.ts`).
+
+| Variable                               | Kind        | What it's for                                         |
+| -------------------------------------- | ----------- | ----------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Public      | Supabase's address: sign-in, member data and files    |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public      | Supabase's publishable key (set both, or neither)     |
+| `SUPABASE_SECRET_KEY`                  | Secret      | The service role, for the daily jobs and emails       |
+| `NEXT_PUBLIC_SANITY_PROJECT_ID`        | Public      | The Sanity project (a placeholder until there is one) |
+| `NEXT_PUBLIC_SANITY_DATASET`           | Public      | The Sanity dataset: `development` unless set          |
+| `SANITY_API_READ_TOKEN`                | Secret      | Reads the private datasets (decision 0001)            |
+| `SANITY_API_HOST_STAND_IN`             | Server-only | End-to-end tests only: the stand-in for Sanity's API  |
+| `SITE_URL`                             | Server-only | The site's own address, for links in emails           |
+| `EMAIL_FROM`                           | Server-only | The address every email is sent from (decision 0005)  |
+| `RESEND_API_KEY`                       | Secret      | Sends email through Resend; without it, Mailpit       |
+| `MAILPIT_URL`                          | Server-only | The local stack's mail catcher (local addresses only) |
+| `CRON_SECRET`                          | Secret      | Turns on the daily jobs (decision 0006)               |
+| `MAILERLITE_API_KEY`                   | Secret      | Turns on the MailerLite member group sync             |
+| `STRIPE_SECRET_KEY`                    | Secret      | Stripe's API: membership dues, test mode until launch |
+
+Secrets are server-only. In CI, every variable is a test or made-up value (see
+[Continuous integration](#continuous-integration)). Production's are set in the hosting
+provider's settings by a human ([`docs/HUMAN_GATES.md`](docs/HUMAN_GATES.md), Production), and a
+production build stops at once if one is wrong.
+
+**Adding a variable:** add it to `PUBLIC_VARS` or `SERVER_VARS` in `lib/env/schema.ts`, with a
+check if its form is known, to `.env.example` with a one-line note, and to the table above. A
+public one also goes in the list in `lib/env/public.ts`: Next.js only builds in a public variable
+that is written out in full. `lib/env/env-example.test.ts` fails until `.env.example` matches the
+schema and leaves every secret empty.
 
 ## Local Supabase
 
@@ -347,6 +407,33 @@ so the Studio can sign in from there. Every address that serves the site needs t
   membership: members-only content must stay locked for a draft-mode visitor (M-7).
 - **Published changes.** `<SanityLive>` in `app/(site)/layout.tsx` listens for them and refreshes
   cached content. It needs no token, only the site's address in the CORS origins.
+- **Pages built in the Studio** (backlog C-2) live at `/<slug>`: `app/(site)/[slug]/page.tsx`
+  reads one with `getGatedItem("page", slug, PAGE_CONTENT)` and `ContentPage`
+  (`components/templates/content-page.tsx`) draws it in its template. `lib/pages/blocks.ts`
+  checks each block and turns it into the props of its component in `components/blocks/` (the
+  map is in [`docs/design/approval-package.md`](docs/design/approval-package.md)). A block of an
+  unknown type, or one that isn't complete yet, such as a draft's photo block with no photo, is
+  left out. A hero as the first block opens the page instead of the page header. A viewer who may
+  not see the page gets its header (title and intro, which are public) and `<MembersOnlyLock>`.
+  - Photos come from Sanity's image CDN through next-sanity's `<Image>`, which applies the
+    editor's crop and focal point (`components/blocks/sanity-image.tsx`). Videos play in
+    YouTube's privacy-enhanced player, Vimeo's with tracking off, or Bandcamp's player, from an
+    address built from the video's id (`lib/pages/video.ts`, which the Studio's link check uses
+    too).
+  - The blocks that fill themselves load their content with their own calls, never through the
+    page's query. Sponsor logos: `listCurrentSponsors` (`sanity/content/sponsors.ts`; sponsors
+    are public) gives the editor's picks or every current sponsor, never one past its last day
+    (`endsAt`, a Central Time date), cached per day like the menus, and
+    `components/blocks/current-sponsors.tsx` draws them. Upcoming events wait for P-2's events
+    loader, the venue directory for M-9's and the volunteer form for P-5. Until then they show
+    nothing.
+  - `[slug]` matches every address without a page of its own, so ESLint's
+    `@next/next/no-html-link-for-pages` now flags any `<a href="/…">` written as a literal. Use
+    `next/link`, or pass the address as an expression where a plain `<a>` is deliberate, as
+    `<MemberFiles>` does.
+  - An address with no page streams the not-found page with status 200 (the shell is already
+    sent), and Next.js adds `noindex` so search engines skip it. `e2e/pages.spec.ts` checks this
+    along with each template, the blocks and members-only pages.
 - **Pages that show Sanity content** go under `app/(site)/`, the route group that holds the
   draft-mode tools; the Studio stays outside it. They read pages, posts and events through
   `sanity/content` (see [Members-only content](#members-only-content)). Inside `sanity/`, call
@@ -380,7 +467,8 @@ const post = await getGatedItem("post", slug, "{ excerpt, body }");
   The loader then checks again with `checkAccess`.
 - Each type's public fields are fixed in `PUBLIC_FIELDS`, after the approved concept. A locked post
   shows its headline, category, date and cover photo, a locked event its title, date, time, prices
-  and photo (not the venue), and a locked page its title. Everything else goes in `content`.
+  and photo (not the venue), and a locked page its title and intro. Everything else goes in
+  `content`.
 - `listGatedItems(type, content, { filter, params, order, limit })` does the same for lists, feeds
   and sitemaps. `listPublicItems` takes the same arguments but always asks as a visitor, for
   published content only, whoever is signed in and even in a preview: for what goes out to
@@ -826,7 +914,7 @@ stand-in API, for the members it creates only.
   `e2e/support/sanity-stand-in.mts`, a small server that answers the app's GROQ queries with groq-js
   over the documents in `e2e/fixtures/sanity-content.mts`. It acts like a private dataset (no
   token, no content). Playwright starts it on `E2E_PORT` + 400 and gives the app
-  `SANITY_API_HOST_STAND_IN` (loopback addresses only, see `sanity/live.ts`), a made-up project ID
+  `SANITY_API_HOST_STAND_IN` (loopback addresses only, see `lib/env/schema.ts`), a made-up project ID
   and a made-up token. Next.js reads the project ID when it builds, so for `CI=1` build with the
   same values: `NEXT_PUBLIC_SANITY_PROJECT_ID=e2estandin SANITY_API_HOST_STAND_IN=http://127.0.0.1:3400 SANITY_API_READ_TOKEN=e2e-stand-in-token pnpm build`
   (CI does). A dev server you started yourself doesn't have them: stop it and let Playwright start
@@ -868,8 +956,17 @@ To reproduce a CI run locally:
 pnpm install --frozen-lockfile
 pnpm lint && pnpm format:check && pnpm typecheck && pnpm test
 supabase start && pnpm test:db
-pnpm build && CI=1 pnpm test:e2e
+NEXT_PUBLIC_SANITY_PROJECT_ID=e2estandin SANITY_API_HOST_STAND_IN=http://127.0.0.1:3400 \
+  SANITY_API_READ_TOKEN=e2e-stand-in-token pnpm build
+CI=1 pnpm test:e2e
 ```
+
+The build takes the Supabase URL and key from `.env.local` (see
+[Environment variables](#environment-variables)), and the Sanity values on its command line point
+it at the end-to-end tests' stand-in for Sanity, as CI's build does. CI has no `.env.local`: the
+app server gets only what the workflow and `playwright.config.ts` give it. To match that exactly,
+move `.env.local` aside for the build and the tests, and export the two `NEXT_PUBLIC_SUPABASE_`
+values from `.env.example` instead.
 
 CI's database is always fresh. To match it on a stack that's already running, run
 `supabase db reset` first (see [Local Supabase](#local-supabase)).

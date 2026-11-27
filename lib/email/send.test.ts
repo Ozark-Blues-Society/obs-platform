@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { parseServerEnv, type RawEnv } from "@/lib/env/schema";
 import {
   createMailpitSender,
   createResendSender,
@@ -165,6 +166,10 @@ describe("createMailpitSender", () => {
 });
 
 describe("getEmailSender", () => {
+  /** The variables as the app passes them: checked by lib/env first. */
+  const emailEnv = (vars: RawEnv) =>
+    parseServerEnv(vars, ["EMAIL_FROM", "RESEND_API_KEY", "MAILPIT_URL"]);
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -173,11 +178,13 @@ describe("getEmailSender", () => {
     const fetch = fakeFetch(200, { id: "email-id" });
     vi.stubGlobal("fetch", fetch);
 
-    const send = getEmailSender({
-      EMAIL_FROM: "onboarding@resend.dev",
-      RESEND_API_KEY: "re_test_key",
-      MAILPIT_URL: "http://127.0.0.1:54324",
-    });
+    const send = getEmailSender(
+      emailEnv({
+        EMAIL_FROM: "onboarding@resend.dev",
+        RESEND_API_KEY: "re_test_key",
+        MAILPIT_URL: "http://127.0.0.1:54324",
+      }),
+    );
     await send(EMAIL);
 
     expect(sentRequest(fetch).url).toBe("https://api.resend.com/emails");
@@ -187,17 +194,20 @@ describe("getEmailSender", () => {
     const fetch = fakeFetch(200, { ID: "mailpit-message-id" });
     vi.stubGlobal("fetch", fetch);
 
-    const send = getEmailSender({
-      EMAIL_FROM: "onboarding@resend.dev",
-      MAILPIT_URL: "http://127.0.0.1:54324",
-    });
+    const send = getEmailSender(
+      emailEnv({
+        EMAIL_FROM: "onboarding@resend.dev",
+        RESEND_API_KEY: " ",
+        MAILPIT_URL: "http://127.0.0.1:54324",
+      }),
+    );
     await send(EMAIL);
 
     expect(sentRequest(fetch).url).toBe("http://127.0.0.1:54324/api/v1/send");
   });
 
   it("refuses to send with neither Resend nor Mailpit set up", () => {
-    expect(() => getEmailSender({ EMAIL_FROM: "onboarding@resend.dev" })).toThrow(
+    expect(() => getEmailSender(emailEnv({ EMAIL_FROM: "onboarding@resend.dev" }))).toThrow(
       "Email isn't set up",
     );
   });
@@ -205,10 +215,17 @@ describe("getEmailSender", () => {
   it.each([
     ["missing", undefined],
     ["empty", " "],
+  ])("refuses to send when EMAIL_FROM is %s", (_case, from) => {
+    expect(() =>
+      getEmailSender(emailEnv({ EMAIL_FROM: from, RESEND_API_KEY: "re_test_key" })),
+    ).toThrow("EMAIL_FROM isn't set");
+  });
+
+  it.each([
     ["a name and an address", "Ozark Blues Society <noreply@mail.example.org>"],
     ["not an address", "noreply"],
-  ])("refuses an EMAIL_FROM that is %s", (_case, from) => {
-    expect(() => getEmailSender({ EMAIL_FROM: from, RESEND_API_KEY: "re_test_key" })).toThrow(
+  ])("never gets an EMAIL_FROM that is %s: lib/env refuses it", (_case, from) => {
+    expect(() => emailEnv({ EMAIL_FROM: from, RESEND_API_KEY: "re_test_key" })).toThrow(
       "EMAIL_FROM must be the address emails are sent from",
     );
   });

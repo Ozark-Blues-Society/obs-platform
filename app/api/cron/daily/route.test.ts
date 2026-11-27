@@ -147,20 +147,21 @@ describe("POST /api/cron/daily", () => {
     );
   });
 
+  const SITE_URL_MISSING =
+    "SITE_URL isn't set: links in emails need the site's address, such as https://<Society domain>.";
+  const SITE_URL_INVALID = "SITE_URL must be the site's address, such as https://<Society domain>.";
+
   it.each([
-    ["missing", undefined],
-    ["not an address", "ozarkblues.example"],
-    ["not a web address", "ftp://ozarkblues.example"],
-  ])("doesn't start when SITE_URL is %s", async (_case, siteUrl) => {
+    ["missing", undefined, SITE_URL_MISSING],
+    ["not an address", "ozarkblues.example", SITE_URL_INVALID],
+    ["not a web address", "ftp://ozarkblues.example", SITE_URL_INVALID],
+  ])("doesn't start when SITE_URL is %s", async (_case, siteUrl, problem) => {
     vi.stubEnv("SITE_URL", siteUrl);
 
     const response = await POST(cronRequest(`Bearer ${SECRET}`));
 
     expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({
-      error:
-        "The daily jobs couldn't start: SITE_URL must be the site's address, such as https://<Society domain>.",
-    });
+    expect(await response.json()).toEqual({ error: `The daily jobs couldn't start: ${problem}` });
     expect(jobs.runDailyJobs).not.toHaveBeenCalled();
   });
 
