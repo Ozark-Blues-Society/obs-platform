@@ -174,3 +174,23 @@ export function societyInstant({ year, month, day, hour, minute }: WallClock): D
   // A reading the clocks skipped: the older offset gives the later instant.
   return new Date(Math.max(guess, corrected));
 }
+
+const longDateFormat = format({ weekday: "long", month: "long", day: "numeric", year: "numeric" });
+const shortDateFormat = format({ weekday: "short", month: "short", day: "numeric" });
+
+/** An event's date in full: "Friday, December 4, 2026". */
+export function formatSocietyLongDate(instant: string | Date): string {
+  return longDateFormat.format(new Date(instant));
+}
+
+/** A date in a short list of dates: "Tue, Dec 1". */
+export function formatSocietyShortDate(instant: string | Date): string {
+  return shortDateFormat.format(new Date(instant));
+}
+
+/** A date field's value (YYYY-MM-DD, a day on the Society's calendar): "March 31, 2027". */
+export function formatCalendarDate(date: string): string {
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" }).format(
+    new Date(`${date}T12:00:00Z`),
+  );
+}

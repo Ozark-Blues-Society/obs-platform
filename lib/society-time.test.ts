@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   addMonths,
   eventDateParts,
+  formatCalendarDate,
   formatSocietyDate,
+  formatSocietyLongDate,
+  formatSocietyShortDate,
   isMonth,
   isoDate,
   monthName,
@@ -32,6 +35,15 @@ describe("Society time", () => {
   it("formats a meta-line date with the year", () => {
     expect(formatSocietyDate("2026-10-14T15:00:00Z")).toBe("Oct 14, 2026");
     expect(formatSocietyDate("2027-01-01T03:00:00Z")).toBe("Dec 31, 2026");
+  });
+
+  it("formats an event's date in full and in short, and a date field's day", () => {
+    // 02:00 UTC on Saturday, December 5 is Friday the 4th in Central Time.
+    expect(formatSocietyLongDate("2026-12-05T02:00:00Z")).toBe("Friday, December 4, 2026");
+    expect(formatSocietyShortDate(new Date("2026-12-05T02:00:00Z"))).toBe("Fri, Dec 4");
+    // A date field is a day on the calendar, the same in every time zone.
+    expect(formatCalendarDate("2027-03-31")).toBe("March 31, 2027");
+    expect(formatCalendarDate("2027-01-01")).toBe("January 1, 2027");
   });
 
   it("reads a month as the Society writes it", () => {

@@ -25,6 +25,20 @@ Open **Events** and select **+** (Create).
   who can't see a members-only event still see its title and date, but not the place or details.
 - **Photo** and **Description**: optional, but they make the event page much better.
 
+## The event page
+
+Every event has its own page at `/events/<web address>`. It shows the date and time, the venue
+with its address and map link, the prices and the description. A member who is signed in sees
+their price highlighted. A repeating event's page says how it repeats and lists its next dates.
+
+**Add to calendar** gives a calendar file that Google Calendar, Apple Calendar and Outlook open. A
+repeating event goes in with all its dates, up to the last date. Events have a start time but no
+end time, so calendars show each one as two hours long.
+
+Visitors who can't see a members-only event still see its title, date, time and prices, with
+"Location visible to members" and a sign-in prompt in place of the venue and the description.
+They can't add it to a calendar.
+
 ## Venues
 
 A venue holds a name, an address and a map link, typed once and reused by every event there.
