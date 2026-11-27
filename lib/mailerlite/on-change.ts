@@ -1,4 +1,5 @@
 import "server-only";
+import { serverEnv } from "@/lib/env/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMailerLiteClient } from "./client";
 import { createMailerLiteStore } from "./store";
@@ -21,7 +22,7 @@ const ON_CHANGE_BUDGET_MS = 10_000;
 export async function syncMembersToMailerLite(
   profileIds: readonly string[],
 ): Promise<MailerLiteSyncSummary | "off"> {
-  const client = getMailerLiteClient();
+  const client = getMailerLiteClient(serverEnv("MAILERLITE_API_KEY"));
   if (!client) return "off";
   let summary: MailerLiteSyncSummary;
   try {

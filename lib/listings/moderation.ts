@@ -4,6 +4,7 @@ import ListingRejectedEmail from "@/emails/listing-rejected";
 import { renderEmail } from "@/emails/render";
 import { getRoles } from "@/lib/auth/user";
 import { getEmailSender } from "@/lib/email/send";
+import { serverEnv } from "@/lib/env/server";
 import { siteUrl } from "@/lib/site/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -166,7 +167,8 @@ export async function emailPoster(notice: PosterNotice): Promise<boolean> {
       notice.decision === "approved"
         ? `listing_approved/${notice.listingId}/${notice.expiresAt}`
         : `listing_rejected/${notice.listingId}/${notice.revision}`;
-    await getEmailSender()({ to: poster.email, ...rendered, idempotencyKey });
+    const send = getEmailSender(serverEnv("EMAIL_FROM", "RESEND_API_KEY", "MAILPIT_URL"));
+    await send({ to: poster.email, ...rendered, idempotencyKey });
     return true;
   } catch (cause) {
     const reason = cause instanceof Error ? cause.message : String(cause);

@@ -8,6 +8,8 @@
 // - With a Resend test key and Resend's test sender, onboarding@resend.dev, Resend delivers only to
 //   its test addresses and the Resend account's owner (see the README).
 
+import { EnvError, requireEnv, type ServerEnv } from "@/lib/env/schema";
+
 /** The sender's name on every email (decision 0005). */
 export const SENDER_NAME = "Ozark Blues Society";
 
@@ -130,27 +132,29 @@ export function createMailpitSender(options: {
   };
 }
 
-/** A bare address, such as noreply@mail.example.org: the sender's name is added to it. */
-const BARE_ADDRESS = /^[^\s<>@]+@[^\s<>@]+$/;
-
 /**
- * The sender for this environment, from its variables: Resend when RESEND_API_KEY is set, otherwise
- * Mailpit when MAILPIT_URL is set. Throws when neither is, or when EMAIL_FROM is missing.
+ * The sender for this environment's variables, which the caller reads with
+ * `serverEnv("EMAIL_FROM", "RESEND_API_KEY", "MAILPIT_URL")` (lib/env checks them; the end-to-end
+ * tests import this file, so it can't read them itself): Resend when RESEND_API_KEY is set,
+ * otherwise Mailpit when MAILPIT_URL is set. Throws an EnvError when neither is, or when EMAIL_FROM
+ * isn't set.
  */
 export function getEmailSender(
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  env: Pick<ServerEnv, "EMAIL_FROM" | "RESEND_API_KEY" | "MAILPIT_URL">,
 ): SendEmail {
-  const from = env.EMAIL_FROM?.trim();
-  if (!from || !BARE_ADDRESS.test(from)) {
-    throw new Error(
-      "EMAIL_FROM must be the address emails are sent from, such as noreply@mail.<Society domain> " +
-        "(decision 0005), without a name.",
-    );
-  }
+  const from = requireEnv(
+    env,
+    "EMAIL_FROM",
+    "every email is sent from it: noreply@mail.<Society domain> in production (decision 0005).",
+  );
   if (env.RESEND_API_KEY) return createResendSender({ apiKey: env.RESEND_API_KEY, from });
   if (env.MAILPIT_URL) return createMailpitSender({ url: env.MAILPIT_URL, from });
-  throw new Error(
-    "Email isn't set up: set RESEND_API_KEY to send through Resend or, locally, MAILPIT_URL to " +
-      "deliver to Mailpit.",
-  );
+  throw new EnvError([
+    {
+      key: "RESEND_API_KEY",
+      message:
+        "Email isn't set up: set RESEND_API_KEY to send through Resend or, locally, MAILPIT_URL " +
+        "to deliver to Mailpit.",
+    },
+  ]);
 }

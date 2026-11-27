@@ -23,6 +23,23 @@ const SANITY_CLIENT_FILES = [
   "app/api/draft-mode/enable/route.ts",
 ];
 
+// Environment variables (backlog F-4): the app reads them through lib/env (publicEnv() and
+// serverEnv()), which checks them and keeps the server-only ones out of browser code. Code that
+// runs outside the app passes process.env to lib/env/schema.ts itself: build and test
+// configuration, Node scripts, the Netlify Function (which only hands CRON_SECRET to the app),
+// and tests. A test checks this rule (lib/env/lint-guard.test.ts).
+const ENV_MESSAGE =
+  "Read environment variables through lib/env (publicEnv() or serverEnv()): it checks them and keeps secrets out of browser code.";
+const ENV_READERS = [
+  "lib/env/**",
+  "next.config.ts",
+  "playwright.config.ts",
+  "scripts/**",
+  "netlify/**",
+  "e2e/**",
+  "**/*.test.{ts,tsx}",
+];
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -61,6 +78,16 @@ const eslintConfig = defineConfig([
           selector: String.raw`ImportExpression[source.value=/^(?:next-sanity|@sanity\/client(?:\/.*)?)$/i]`,
           message: SANITY_CLIENT_MESSAGE,
         },
+      ],
+    },
+  },
+  {
+    files: ["**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}"],
+    ignores: ENV_READERS,
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        { object: "process", property: "env", message: ENV_MESSAGE },
       ],
     },
   },
