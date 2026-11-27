@@ -9,7 +9,7 @@ export const DONATE_PATH = "/donate";
 export const JOIN_PATH = "/join";
 export const SIGN_IN_PATH = "/sign-in";
 export const ACCOUNT_PATH = "/account";
-/** The public classified listings (K-3, Launch 2). The listing emails link here already. */
+/** The public classified listings (K-3, Launch 2), which the listing emails link to as well. */
 export const CLASSIFIEDS_PATH = "/classifieds";
 /** A member's own listings and their statuses (K-4), part of My Account (architecture.md). */
 export const MY_LISTINGS_PATH = `${ACCOUNT_PATH}/listings`;
@@ -32,10 +32,9 @@ export type MenuEntry = NavLink & { placement: MenuPlacement };
 const link = (label: string, href: string): NavItem => ({ kind: "link", label, href });
 
 /**
- * The header's menu. Events, Blog, Sponsors and Donate are always there. Editors' "Main menu"
- * entries follow Sponsors, and About and Member Resources appear once something is in them.
- * Events becomes a group, led by the calendar, when an editor puts a page under it.
- * Classifieds (Launch 2, decision 0002) joins after Blog when K-* builds /classifieds.
+ * The header's menu. Events, Blog, Classifieds, Sponsors and Donate are always there. Editors'
+ * "Main menu" entries follow Sponsors, and About and Member Resources appear once something is in
+ * them. Events becomes a group, led by the calendar, when an editor puts a page under it.
  */
 export function buildMainNav(menu: readonly MenuEntry[]): NavItem[] {
   const entries = (placement: MenuPlacement): NavLink[] =>
@@ -55,6 +54,7 @@ export function buildMainNav(menu: readonly MenuEntry[]): NavItem[] {
         }
       : link("Events", EVENTS_PATH),
     link("Blog", BLOG_PATH),
+    link("Classifieds", CLASSIFIEDS_PATH),
     link("Sponsors", SPONSORS_PATH),
     ...entries("main").map((entry) => link(entry.label, entry.href)),
     ...group("About", entries("about")),
@@ -63,7 +63,10 @@ export function buildMainNav(menu: readonly MenuEntry[]): NavItem[] {
   ];
 }
 
-/** The footer's link columns. Editors' "Footer" entries follow Events and Blog under Explore. */
+/**
+ * The footer's link columns. Editors' "Footer" entries follow Events, Blog and Classifieds under
+ * Explore.
+ */
 export function buildFooterNav(
   menu: readonly MenuEntry[],
 ): { heading: string; links: NavLink[] }[] {
@@ -73,6 +76,7 @@ export function buildFooterNav(
       links: [
         { label: "Events", href: EVENTS_PATH },
         { label: "Blog", href: BLOG_PATH },
+        { label: "Classifieds", href: CLASSIFIEDS_PATH },
         ...menu
           .filter((entry) => entry.placement === "footer")
           .map(({ label, href }) => ({ label, href })),
