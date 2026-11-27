@@ -6,9 +6,11 @@
  * marker, so a test can check that no response reaches a viewer who may not see it. All but the
  * post for Band and up are marked for the monthly email digest.
  *
- * Nothing here is in a menu and there are no Site settings, so the header and footer stay the
- * built-in ones that other tests expect.
+ * Nothing here is in a menu, and Site settings hold only the membership benefits and perk codes
+ * (./sanity-site-settings.mts), so the header and footer stay the built-in ones that other tests
+ * expect.
  */
+import { SITE_SETTINGS_DOCUMENTS } from "./sanity-site-settings.mts";
 
 /** In every members-only field. A response to someone who may not see the post must not hold it. */
 export const MEMBERS_ONLY_MARKER = "E2E-MEMBERS-ONLY-7f3a";
@@ -635,4 +637,5 @@ export const DOCUMENTS = [
     secret: SHARED_PREVIEW_SECRET,
     studioUrl: "http://localhost:3000/studio",
   },
+  ...SITE_SETTINGS_DOCUMENTS,
 ];

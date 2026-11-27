@@ -57,6 +57,7 @@ export const siteSettings = defineType({
     { name: "footer", title: "Footer", default: true },
     { name: "social", title: "Social links" },
     { name: "membership", title: "Membership benefits" },
+    { name: "perks", title: "Member perks" },
     { name: "menus", title: "Menus" },
   ],
   fields: [
@@ -166,6 +167,78 @@ export const siteSettings = defineType({
               subtitle: (levels ?? [])
                 .map((level) => optionTitle(MEMBERSHIP_LEVELS, level))
                 .join(", "),
+            }),
+          },
+        }),
+      ],
+    }),
+    // Members-only (board-decisions §1, §5 and §6): sanity/content/member-perks.ts reads these for
+    // My Account, for members with an active membership at the levels ticked, and nothing else
+    // reads them. Other queries of Site settings list the fields they read.
+    defineField({
+      name: "perkCodes",
+      title: "Member perk codes",
+      type: "array",
+      group: "perks",
+      description:
+        "Codes members use for their perks, such as the merchandise discount. Members only: each code shows on My Account to members at the levels ticked, while their membership is active, and nowhere else on the site.",
+      of: [
+        defineArrayMember({
+          name: "perkCode",
+          title: "Perk code",
+          type: "object",
+          fields: [
+            defineField({
+              name: "label",
+              title: "Name",
+              type: "string",
+              description: "What the code is, for example Member discount code.",
+              validation: (rule) => rule.required().max(60),
+            }),
+            defineField({
+              name: "code",
+              title: "Code",
+              type: "string",
+              description: "The code itself, as members show or type it, for example BLUES-MBR-26.",
+              validation: (rule) => rule.required().max(40),
+            }),
+            defineField({
+              name: "details",
+              title: "How to use it",
+              type: "text",
+              rows: 2,
+              description:
+                "Optional. Where the code works and what it gets, for example 15% off Society merchandise at the merch table (not bulk orders).",
+              validation: (rule) => rule.max(300),
+            }),
+            defineField({
+              name: "levels",
+              title: "Levels that get it",
+              type: "array",
+              of: [defineArrayMember({ type: "string" })],
+              description: "Tick every membership level that gets this code.",
+              options: { list: optionList(MEMBERSHIP_LEVELS), layout: "grid" },
+              validation: (rule) => rule.required().min(1).unique(),
+            }),
+          ],
+          preview: {
+            select: { title: "label", code: "code", levels: "levels" },
+            prepare: ({
+              title,
+              code,
+              levels,
+            }: {
+              title?: string;
+              code?: string;
+              levels?: string[];
+            }) => ({
+              title: title || "New perk code",
+              subtitle: [
+                code,
+                (levels ?? []).map((level) => optionTitle(MEMBERSHIP_LEVELS, level)).join(", "),
+              ]
+                .filter(Boolean)
+                .join(" · "),
             }),
           },
         }),
