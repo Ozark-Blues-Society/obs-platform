@@ -54,6 +54,7 @@ payments      id, profile_id, kind (stripe|check|cash|import), amount, paid_at, 
 user_roles    profile_id, role (admin|membership_manager|moderator|editor)
 listings      id, profile_id, category, title, body, price, photo_path, contact_pref,
               status (pending|live|rejected|expired), reject_reason, created_at, approved_at, expires_at
+listing_messages id, listing_id, sender_id, sent_at              -- daily limit on messages to posters (K-3)
 gated_content id, slug, title, body, levels[]                 -- if decision 0001 picks option B
 stripe_events id, type, received_at                           -- webhook idempotency
 ```

@@ -1,32 +1,29 @@
 import Link from "next/link";
 import type { ComponentProps } from "react";
 import { PageHeader } from "@/components/layout/page-header";
-import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { categoryTitle, formatPrice } from "@/lib/listings/moderation-state";
 import { listingPath, type ListingDetail } from "@/lib/listings/public-state";
-import { CLASSIFIEDS_PATH, JOIN_PATH, SIGN_IN_PATH, telHref } from "@/lib/site/navigation";
+import { CLASSIFIEDS_PATH, SIGN_IN_PATH, telHref } from "@/lib/site/navigation";
 import { formatSocietyDate } from "@/lib/society-time";
 import { ContactForm } from "./contact-form";
 
 type ListingViewProps = {
   listing: ListingDetail;
-  /** The contact form's Server Function, bound to this listing. */
+  /** The contact form's Server Function, made by the page for this listing. */
   contact: ComponentProps<typeof ContactForm>["action"];
-  /** The signed-in viewer's address, which a message shows the poster; null for a visitor. */
-  viewerEmail: string | null;
 };
 
 /**
  * A live listing's own page (backlog K-3): its category, title, price, photo and details, who
- * posted it and when, and how to reach the poster. The poster's email address never reaches the
- * page: messages go through the site. A poster's phone number reaches it only for a signed-in
- * viewer, when the poster asked for calls.
+ * posted it and when, and how to reach the poster (decision 0009). The poster's email address
+ * never reaches the page: anyone writes through the site. A poster's phone number reaches it only
+ * for a signed-in viewer, when the poster asked for calls.
  *
  * Members write titles and details, and a long web address is common in classifieds, so both wrap
  * anywhere rather than widen the page.
  */
-export function ListingView({ listing, contact, viewerEmail }: ListingViewProps) {
+export function ListingView({ listing, contact }: ListingViewProps) {
   const { title, price, photo, poster } = listing;
   return (
     <>
@@ -65,37 +62,16 @@ export function ListingView({ listing, contact, viewerEmail }: ListingViewProps)
           <h2 id="contact-heading" className="text-h3">
             Contact the poster
           </h2>
-          <ContactPoster listing={listing} contact={contact} viewerEmail={viewerEmail} />
+          <ContactPoster listing={listing} contact={contact} />
         </Card>
       </div>
     </>
   );
 }
 
-function ContactPoster({ listing, contact, viewerEmail }: ListingViewProps) {
+function ContactPoster({ listing, contact }: ListingViewProps) {
   const who = listing.poster ?? "the poster";
   switch (listing.contact.kind) {
-    case "sign-in":
-      return (
-        <>
-          <p className="mt-2">
-            Sign in to contact {who}. Messages go through this website, so the poster&rsquo;s email
-            address stays private.
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <ButtonLink
-              href={`${SIGN_IN_PATH}?next=${encodeURIComponent(listingPath(listing.id))}`}
-              variant="dark"
-              size="sm"
-            >
-              Sign in to contact
-            </ButtonLink>
-            <Link href={JOIN_PATH} className="text-small">
-              Not a member? Join
-            </Link>
-          </div>
-        </>
-      );
     case "own":
       return (
         <p className="mt-2">
@@ -115,6 +91,23 @@ function ContactPoster({ listing, contact, viewerEmail }: ListingViewProps) {
       );
     }
     case "message":
-      return <ContactForm action={contact} poster={listing.poster} senderEmail={viewerEmail} />;
+      return (
+        <>
+          {listing.contact.phoneForMembers && (
+            <p className="mt-2">
+              {who} prefers phone calls.{" "}
+              <Link href={`${SIGN_IN_PATH}?next=${encodeURIComponent(listingPath(listing.id))}`}>
+                Sign in
+              </Link>{" "}
+              to see their number, or write to them here.
+            </p>
+          )}
+          <ContactForm
+            action={contact}
+            poster={listing.poster}
+            defaults={listing.contact.defaults}
+          />
+        </>
+      );
   }
 }

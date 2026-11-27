@@ -3,8 +3,7 @@ import { notFound } from "next/navigation";
 import { cache, Suspense } from "react";
 import { ListingView } from "@/components/classifieds/listing-view";
 import { PageHeader } from "@/components/layout/page-header";
-import { getCurrentUser } from "@/lib/auth/user";
-import { contactPoster } from "@/lib/listings/contact-actions";
+import { contactFormAction } from "@/lib/listings/contact";
 import { getLiveListing } from "@/lib/listings/public";
 import type { ListingDetail } from "@/lib/listings/public-state";
 
@@ -41,8 +40,7 @@ export default function ListingPage({ params }: PageProps<"/classifieds/[id]">) 
 }
 
 async function Listing({ params }: Pick<PageProps<"/classifieds/[id]">, "params">) {
-  const { id } = await params;
-  const [listing, viewer] = await Promise.all([loadListing(id), getCurrentUser()]);
+  const listing = await loadListing((await params).id);
   if (listing === "unavailable") {
     return (
       <>
@@ -56,11 +54,7 @@ async function Listing({ params }: Pick<PageProps<"/classifieds/[id]">, "params"
     );
   }
   if (!listing) notFound();
-  return (
-    <ListingView
-      listing={listing}
-      contact={contactPoster.bind(null, listing.id)}
-      viewerEmail={viewer?.email ?? null}
-    />
-  );
+
+  // The contact form's Server Function, sealed with this listing and this moment (decision 0009).
+  return <ListingView listing={listing} contact={contactFormAction(listing.id)} />;
 }

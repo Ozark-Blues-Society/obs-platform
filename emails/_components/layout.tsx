@@ -15,12 +15,19 @@ export type EmailLayoutProps = {
   | {
       /** Why the recipient got this email, for the footer of the site's own emails. */
       reason: string;
+      /**
+       * Who a reply reaches, for an email that passes on someone's message with their address as
+       * its Reply-To (a message to a classifieds poster). Without it, the footer says replies
+       * aren't read: the site's own emails come from a no-reply address.
+       */
+      repliesGoTo?: string;
       footer?: never;
     }
   | {
       /** A footer of the template's own instead, such as the newsletter's. */
       footer: ReactNode;
       reason?: never;
+      repliesGoTo?: never;
     }
 );
 
@@ -33,6 +40,7 @@ export function EmailLayout({
   title,
   preview,
   reason,
+  repliesGoTo,
   footer,
   siteUrl,
   children,
@@ -71,7 +79,7 @@ export function EmailLayout({
           >
             {children}
           </Section>
-          {footer ?? <Footer reason={reason ?? ""} siteUrl={siteUrl} />}
+          {footer ?? <Footer reason={reason ?? ""} repliesGoTo={repliesGoTo} siteUrl={siteUrl} />}
         </Container>
       </Body>
     </Html>
@@ -142,14 +150,25 @@ export const footerSection = { padding: "24px 28px 0" } as const;
 
 /**
  * Transactional email comes from a no-reply address (decision 0005), so the footer says where to
- * write instead.
+ * write instead. An email that passes on someone's message says that replies reach them instead.
  */
-function Footer({ reason, siteUrl }: { reason: string; siteUrl: string }) {
+function Footer({
+  reason,
+  repliesGoTo,
+  siteUrl,
+}: {
+  reason: string;
+  repliesGoTo?: string;
+  siteUrl: string;
+}) {
   return (
     <Section style={footerSection}>
       <Text style={footerText}>{reason}</Text>
       <Text style={footerText}>
-        Replies to this email aren&apos;t read. To reach the Society, use the{" "}
+        {repliesGoTo
+          ? `Replying to this email writes to ${repliesGoTo}, not to the Society.`
+          : "Replies to this email aren't read."}{" "}
+        To reach the Society, use the{" "}
         <Link href={siteLink(siteUrl, "/contact")} style={footerLink}>
           contact page
         </Link>{" "}

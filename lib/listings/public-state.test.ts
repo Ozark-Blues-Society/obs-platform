@@ -4,13 +4,14 @@ import {
   CONTACT_MESSAGES,
   MESSAGE_MAX_LENGTH,
   categoryTone,
-  checkMessage,
+  checkContact,
   classifiedsCategory,
   classifiedsHref,
   classifiedsTitle,
   isListingId,
   listingPath,
   listingsSummary,
+  readContactForm,
   sentMessage,
 } from "./public-state";
 
@@ -78,33 +79,71 @@ describe("categoryTone", () => {
   });
 });
 
-describe("checkMessage", () => {
-  it("keeps the message's line breaks, plain, and trims it", () => {
-    expect(checkMessage("  Is the amp still for sale?\r\nThanks!\r\n")).toEqual({
-      message: "Is the amp still for sale?\nThanks!",
+describe("readContactForm and checkContact", () => {
+  const values = { name: "Jo Ames", email: "jo.ames@example.com", message: "Still for sale?" };
+
+  it("reads the three fields, and nothing for one that's missing", () => {
+    const data = new FormData();
+    data.set("name", "Jo");
+    data.set("message", "Hi");
+    expect(readContactForm(data)).toEqual({ name: "Jo", email: "", message: "Hi" });
+  });
+
+  it("tidies what was typed: the name on one line, the address trimmed, plain line breaks", () => {
+    expect(
+      checkContact({
+        name: "  Jo \n Ames ",
+        email: " jo.ames@example.com ",
+        message: "  Is the amp still for sale?\r\nThanks!\r\n",
+      }),
+    ).toEqual({
+      contact: {
+        name: "Jo Ames",
+        email: "jo.ames@example.com",
+        message: "Is the amp still for sale?\nThanks!",
+      },
     });
   });
 
-  it("needs a message", () => {
-    expect(checkMessage("  \n ")).toEqual({ problem: CONTACT_MESSAGES.messageMissing });
-    expect(checkMessage(undefined)).toEqual({ problem: CONTACT_MESSAGES.messageMissing });
+  it("needs a name, an address that looks like one and a message, checked in that order", () => {
+    expect(checkContact({ name: " ", email: "", message: "" })).toEqual({
+      field: "name",
+      problem: CONTACT_MESSAGES.nameMissing,
+    });
+    expect(checkContact({ ...values, name: "a".repeat(101) })).toMatchObject({ field: "name" });
+    for (const email of ["", "jo.ames", "jo@example", "jo ames@example.com", "@example.com"]) {
+      expect(checkContact({ ...values, email })).toEqual({
+        field: "email",
+        problem: CONTACT_MESSAGES.emailInvalid,
+      });
+    }
+    expect(checkContact({ ...values, email: `${"a".repeat(250)}@example.com` })).toMatchObject({
+      field: "email",
+    });
+    expect(checkContact({ ...values, message: "  \n " })).toEqual({
+      field: "message",
+      problem: CONTACT_MESSAGES.messageMissing,
+    });
   });
 
-  it("takes up to the limit, and no more", () => {
-    expect(checkMessage("a".repeat(MESSAGE_MAX_LENGTH))).toEqual({
-      message: "a".repeat(MESSAGE_MAX_LENGTH),
+  it("takes a message up to the limit, and no more", () => {
+    expect(checkContact({ ...values, message: "a".repeat(MESSAGE_MAX_LENGTH) })).toMatchObject({
+      contact: { message: "a".repeat(MESSAGE_MAX_LENGTH) },
     });
-    expect(checkMessage("a".repeat(MESSAGE_MAX_LENGTH + 1))).toEqual({
+    expect(checkContact({ ...values, message: "a".repeat(MESSAGE_MAX_LENGTH + 1) })).toEqual({
+      field: "message",
       problem: "Keep your message to 2,000 characters.",
     });
   });
 });
 
 describe("sentMessage", () => {
-  it("tells the sender the poster will see their address", () => {
+  it("tells the sender where the poster can reply", () => {
     expect(sentMessage("Lou T.", "jo.ames@example.com")).toBe(
-      "Message sent. Lou T. will see your email address, jo.ames@example.com, and can reply to you there.",
+      "Message sent. Lou T. can reply to you at jo.ames@example.com.",
     );
-    expect(sentMessage(null, "jo.ames@example.com")).toMatch(/^Message sent\. The poster will/);
+    expect(sentMessage(null, "jo.ames@example.com")).toBe(
+      "Message sent. The poster can reply to you at jo.ames@example.com.",
+    );
   });
 });

@@ -20,17 +20,23 @@ export type PublicListing = {
   poster: string | null;
 };
 
+/** What the contact form starts with: a signed-in viewer's own name and address, or nothing. */
+export type ContactDefaults = { name: string; email: string };
+
 /**
- * How the viewer can reach a listing's poster, chosen on the server, so a visitor's page never
- * holds a phone number:
- * - sign-in: a visitor, who signs in first (the approved concept);
+ * How the viewer can reach a listing's poster (decision 0009), chosen on the server, so a visitor's
+ * page never holds a phone number:
  * - own: the viewer posted it;
- * - phone: the poster asked for calls, at the number on their profile;
- * - message: a message through the site, which emails it on; the poster's address stays private.
- *   Also when the poster asked for calls but their profile no longer has a number.
+ * - phone: the poster asked for calls, at the number on their profile, and the viewer is signed in
+ *   (numbers show to signed-in people only);
+ * - message: anyone else writes through the site, which emails the message on; the poster's
+ *   address stays private. `phoneForMembers` when the poster asked for calls but the viewer, a
+ *   visitor, may not see the number.
  */
 export type ListingContact =
-  { kind: "sign-in" } | { kind: "own" } | { kind: "phone"; phone: string } | { kind: "message" };
+  | { kind: "own" }
+  | { kind: "phone"; phone: string }
+  | { kind: "message"; phoneForMembers: boolean; defaults: ContactDefaults };
 
 /** A listing's own page adds its photo and how the viewer can reach the poster. */
 export type ListingDetail = PublicListing & {
@@ -95,37 +101,94 @@ export function listingsSummary(count: number, category: ListingCategory | null)
   return `${count} ${name}${count === 1 ? "listing" : "listings"}.`;
 }
 
+/** The most a sender's name may hold. */
+export const NAME_MAX_LENGTH = 100;
+
+/** The most an email address may hold (RFC 5321). */
+export const EMAIL_MAX_LENGTH = 254;
+
 /** The most a message to a poster may hold. */
 export const MESSAGE_MAX_LENGTH = 2000;
 
-/** How many messages one person may send posters in a day (the database counts them). */
-export const MESSAGES_PER_DAY = 10;
+/** How many messages one sender, by email or network address, may send in a day (decision 0009). */
+export const MESSAGES_PER_SENDER = 10;
+
+/** How many messages one listing may get in a day (decision 0009). */
+export const MESSAGES_PER_LISTING = 20;
+
+/**
+ * How long after the page appears a message may go: people take longer to write one, scripts that
+ * post at once don't (decision 0009).
+ */
+export const MIN_SECONDS_TO_SEND = 3;
 
 export const CONTACT_MESSAGES = {
+  nameMissing: "Give your name, so the poster knows who wrote.",
+  nameTooLong: `Keep your name to ${NAME_MAX_LENGTH} characters.`,
+  emailInvalid: "Enter your email address, such as name@example.com, so the poster can reply.",
   messageMissing: "Write your message.",
   messageTooLong: `Keep your message to ${MESSAGE_MAX_LENGTH.toLocaleString("en-US")} characters.`,
-  limit: `You've sent ${MESSAGES_PER_DAY} messages through the classifieds today, the most there can be in a day. Try again tomorrow.`,
+  tooQuick: "That was quick. Check your message, then send it again.",
+  senderLimit: `You've sent ${MESSAGES_PER_SENDER} messages through the classifieds today, the most there can be in a day. Try again tomorrow.`,
+  listingLimit:
+    "This listing has had a lot of messages today, so it can't take more until tomorrow.",
   gone: "This listing isn't on the classifieds any more, so your message wasn't sent.",
   own: "This is your own listing, so there's no one to send it to.",
   byPhone: "This poster asked to be contacted by phone, so your message wasn't sent.",
   unavailable: "Your message wasn't sent. Please try again in a few minutes.",
 } as const;
 
-/** The message as the poster will read it, with plain line breaks and trimmed, or a problem. */
-export function checkMessage(value: unknown): { message: string } | { problem: string } {
-  const message = typeof value === "string" ? value.replace(/\r\n?/g, "\n").trim() : "";
-  if (!message) return { problem: CONTACT_MESSAGES.messageMissing };
-  if (message.length > MESSAGE_MAX_LENGTH) return { problem: CONTACT_MESSAGES.messageTooLong };
-  return { message };
+/** The contact form's hidden field: a name scripts fill in, on a field people never see. */
+export const TRAP_FIELD = "website";
+
+/** A field of the contact form, also the name of its control. */
+export type ContactField = "name" | "email" | "message";
+
+/** The contact form as sent: each value as typed. */
+export type ContactValues = Record<ContactField, string>;
+
+/** The contact form's values from its form data; anything missing is empty. */
+export function readContactForm(formData: FormData): ContactValues {
+  const text = (name: ContactField) => {
+    const value = formData.get(name);
+    return typeof value === "string" ? value : "";
+  };
+  return { name: text("name"), email: text("email"), message: text("message") };
 }
 
-/** The form that writes to a poster, after each try: the message comes back unless it was sent. */
+/** An email address as people write one: something@something.something, no spaces. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * The contact form's values as the poster will read them, or the first problem, in the order the
+ * fields appear: the name on one line, the address trimmed, the message with plain line breaks.
+ */
+export function checkContact(
+  values: ContactValues,
+): { contact: ContactValues } | { field: ContactField; problem: string } {
+  const name = values.name.trim().replace(/\s+/g, " ");
+  if (!name) return { field: "name", problem: CONTACT_MESSAGES.nameMissing };
+  if (name.length > NAME_MAX_LENGTH)
+    return { field: "name", problem: CONTACT_MESSAGES.nameTooLong };
+  const email = values.email.trim();
+  if (email.length > EMAIL_MAX_LENGTH || !EMAIL.test(email)) {
+    return { field: "email", problem: CONTACT_MESSAGES.emailInvalid };
+  }
+  const message = values.message.replace(/\r\n?/g, "\n").trim();
+  if (!message) return { field: "message", problem: CONTACT_MESSAGES.messageMissing };
+  if (message.length > MESSAGE_MAX_LENGTH) {
+    return { field: "message", problem: CONTACT_MESSAGES.messageTooLong };
+  }
+  return { contact: { name, email, message } };
+}
+
+/** The form that writes to a poster, after each try: what was typed comes back unless it went. */
 export type ContactState =
   | { status: "idle" }
   | { status: "sent"; message: string }
-  | { status: "error"; field: "message" | null; message: string; value: string };
+  | { status: "error"; field: ContactField | null; message: string; values: ContactValues };
 
 /** What the sender reads once their message has gone. */
 export function sentMessage(poster: string | null, senderEmail: string): string {
-  return `Message sent. ${poster ?? "The poster"} will see your email address, ${senderEmail}, and can reply to you there.`;
+  return `Message sent. ${poster ?? "The poster"} can reply to you at ${senderEmail}.`;
 }

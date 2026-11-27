@@ -42,3 +42,22 @@ export function formatAmount(cents: number): string {
 export function siteLink(siteUrl: string, path: string): string {
   return new URL(path, siteUrl).toString();
 }
+
+/**
+ * U+2060 WORD JOINER, written as a code point so nothing invisible sits in the source. It shows as
+ * nothing, and the plain-text version keeps it as it is (html-to-text turns a zero-width space
+ * into a visible one).
+ */
+const WORD_JOINER = String.fromCodePoint(0x2060);
+
+/**
+ * Someone's own words with no web or email address an email client would turn into a link
+ * (decision 0009: links in a message to a poster aren't clickable). An invisible character goes
+ * after every "://", and before every "." or "@" that sits inside a word, so "example.com" and
+ * "name@example.com" read the same but no longer look like addresses. Line breaks stay.
+ */
+export function unlinkText(text: string): string {
+  return text
+    .replace(/:\/\//g, `:${WORD_JOINER}//`)
+    .replace(/(?<=\S)([.@])(?=\S)/g, `${WORD_JOINER}$1`);
+}

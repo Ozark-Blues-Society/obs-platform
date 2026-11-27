@@ -1,19 +1,18 @@
--- Messages to classifieds posters (backlog K-3): listing_messages and record_listing_message(), in
--- supabase/migrations/20261127195203_listing_messages.sql. Server code sends the messages with the
--- service role, so the behaviour tests run as it.
+-- Messages to classifieds posters (backlog K-3, decision 0009): listing_messages and
+-- record_listing_message(), in supabase/migrations/20261127195203_listing_messages.sql. Server code
+-- sends the messages with the service role, so the behaviour tests run as it.
 --
 -- The test users are created here, inside the transaction. Their ids start
 -- 00000000-0000-4000-8980- and the listings' 00000000-0000-4000-8990-; the last two digits name
--- them below.
+-- them below. The senders are hashes: repeat('a', 64) is one email address, repeat('1', 64) one
+-- network address, and so on.
 begin;
-select plan(23);
+select plan(27);
 
 insert into auth.users (id, email)
 values
   ('00000000-0000-4000-8980-000000000001', 'test.messages-poster@example.com'),
-  ('00000000-0000-4000-8980-000000000002', 'test.messages-sender@example.com'),
-  ('00000000-0000-4000-8980-000000000003', 'test.messages-other-sender@example.com'),
-  ('00000000-0000-4000-8980-000000000004', 'test.messages-earlier-sender@example.com');
+  ('00000000-0000-4000-8980-000000000002', 'test.messages-member@example.com');
 
 update public.profiles
 set level = 'band', expires_at = now() + interval '200 days'
@@ -29,7 +28,9 @@ values
     'L02 pending', 'Harmonica set.', 'pending', null, null),
   ('00000000-0000-4000-8990-000000000003', '00000000-0000-4000-8980-000000000001', 'merch',
     'L03 past its date', 'Band T-shirts.', 'live', now() - interval '61 days',
-    now() - interval '1 day');
+    now() - interval '1 day'),
+  ('00000000-0000-4000-8990-000000000004', '00000000-0000-4000-8980-000000000001', 'merch',
+    'L04 live too', 'Posters.', 'live', now() - interval '1 day', now() + interval '59 days');
 
 -- Who can reach the table and the function. The behaviour tests below cover what they do.
 
@@ -50,37 +51,42 @@ select table_privs_are(
 );
 
 select function_privs_are(
-  'public', 'record_listing_message', array['uuid', 'uuid', 'integer'], 'anon', array[]::text[],
+  'public', 'record_listing_message', array['uuid', 'text', 'text', 'integer', 'integer'], 'anon',
+  array[]::text[],
   'visitors can''t call record_listing_message'
 );
 
 select function_privs_are(
-  'public', 'record_listing_message', array['uuid', 'uuid', 'integer'], 'authenticated',
-  array[]::text[],
+  'public', 'record_listing_message', array['uuid', 'text', 'text', 'integer', 'integer'],
+  'authenticated', array[]::text[],
   'members can''t call record_listing_message'
 );
 
 select function_privs_are(
-  'public', 'record_listing_message', array['uuid', 'uuid', 'integer'], 'service_role',
-  array['EXECUTE'],
+  'public', 'record_listing_message', array['uuid', 'text', 'text', 'integer', 'integer'],
+  'service_role', array['EXECUTE'],
   'the service role can call record_listing_message'
 );
 
--- A member can't record messages for themselves, or see who wrote to whom.
+-- Visitors and members can't record messages past the limits, or see who wrote to whom.
 
-set local role authenticated;
-set local request.jwt.claims to
-  '{"sub": "00000000-0000-4000-8980-000000000002", "role": "authenticated"}';
+set local role anon;
+set local request.jwt.claims to '{"role": "anon"}';
 
 select throws_ok(
   $$
     select public.record_listing_message(
-      '00000000-0000-4000-8980-000000000002', '00000000-0000-4000-8990-000000000001', 1000
+      '00000000-0000-4000-8990-000000000001', repeat('a', 64), repeat('1', 64), 1000, 1000
     )
   $$,
   '42501', null,
-  'a member can''t call the function that records messages'
+  'a visitor can''t call the function that records messages'
 );
+
+reset role;
+set local role authenticated;
+set local request.jwt.claims to
+  '{"sub": "00000000-0000-4000-8980-000000000002", "role": "authenticated"}';
 
 select throws_ok(
   $$ select 1 from public.listing_messages $$,
@@ -91,11 +97,11 @@ select throws_ok(
 reset role;
 set local role service_role;
 
--- Up to the limit (3 here), each message is recorded; then nothing is, until a day has passed.
+-- The limits: 2 messages a day from a sender (by email or network address), 4 to a listing.
 
 select isnt(
   public.record_listing_message(
-    '00000000-0000-4000-8980-000000000002', '00000000-0000-4000-8990-000000000001', 3
+    '00000000-0000-4000-8990-000000000001', repeat('a', 64), repeat('1', 64), 2, 4
   ),
   null,
   'a first message is recorded, and its id comes back'
@@ -103,68 +109,99 @@ select isnt(
 
 select results_eq(
   $$
-    select listing_id, sender_id, sent_at = now()
+    select listing_id, sender_email_hash, sender_ip_hash, sent_at = now()
     from public.listing_messages
-    where sender_id = '00000000-0000-4000-8980-000000000002'
   $$,
   $$
     values (
-      '00000000-0000-4000-8990-000000000001'::uuid, '00000000-0000-4000-8980-000000000002'::uuid,
-      true
+      '00000000-0000-4000-8990-000000000001'::uuid, repeat('a', 64), repeat('1', 64), true
     )
   $$,
-  'the record holds the listing, the sender and the time: nothing of the message'
-);
-
-select results_eq(
-  $$
-    select public.record_listing_message(
-      '00000000-0000-4000-8980-000000000002', '00000000-0000-4000-8990-000000000001', 3
-    ) is not null
-    from generate_series(1, 2)
-  $$,
-  $$ values (true), (true) $$,
-  'the second and third messages are recorded'
-);
-
-select is(
-  public.record_listing_message(
-    '00000000-0000-4000-8980-000000000002', '00000000-0000-4000-8990-000000000001', 3
-  ),
-  null,
-  'at the limit, a message isn''t recorded: null comes back'
-);
-
-select is(
-  (
-    select count(*)::integer from public.listing_messages
-    where sender_id = '00000000-0000-4000-8980-000000000002'
-  ),
-  3,
-  'at the limit, no row is added'
+  'the record holds the listing, the time and the sender''s hashes: nothing of the message'
 );
 
 select isnt(
   public.record_listing_message(
-    '00000000-0000-4000-8980-000000000003', '00000000-0000-4000-8990-000000000001', 3
+    '00000000-0000-4000-8990-000000000001', repeat('a', 64), repeat('1', 64), 2, 4
   ),
   null,
-  'one sender''s messages don''t count against another'
+  'a second message from the same sender is recorded'
+);
+
+select throws_ok(
+  $$
+    select public.record_listing_message(
+      '00000000-0000-4000-8990-000000000004', repeat('a', 64), repeat('2', 64), 2, 4
+    )
+  $$,
+  'OB201', null,
+  'past the limit, the same email address can''t send more, from another network or to another '
+    || 'listing'
+);
+
+select throws_ok(
+  $$
+    select public.record_listing_message(
+      '00000000-0000-4000-8990-000000000004', repeat('b', 64), repeat('1', 64), 2, 4
+    )
+  $$,
+  'OB201', null,
+  'past the limit, the same network address can''t send more under another email address'
+);
+
+select is(
+  (select count(*)::integer from public.listing_messages),
+  2,
+  'a refused message adds no row'
+);
+
+select isnt(
+  public.record_listing_message(
+    '00000000-0000-4000-8990-000000000001', repeat('c', 64), repeat('3', 64), 2, 4
+  ),
+  null,
+  'another sender''s messages don''t count against this one'
+);
+
+select isnt(
+  public.record_listing_message(
+    '00000000-0000-4000-8990-000000000001', repeat('d', 64), repeat('4', 64), 2, 4
+  ),
+  null,
+  'a listing takes messages up to its own limit'
+);
+
+select throws_ok(
+  $$
+    select public.record_listing_message(
+      '00000000-0000-4000-8990-000000000001', repeat('e', 64), repeat('5', 64), 2, 4
+    )
+  $$,
+  'OB202', null,
+  'past its limit, a listing takes no more messages, even from a new sender'
+);
+
+select isnt(
+  public.record_listing_message(
+    '00000000-0000-4000-8990-000000000004', repeat('e', 64), repeat('5', 64), 2, 4
+  ),
+  null,
+  'one listing''s messages don''t count against another'
 );
 
 -- Messages from more than a day ago don't count, and go.
 
-insert into public.listing_messages (listing_id, sender_id, sent_at)
-select '00000000-0000-4000-8990-000000000001', '00000000-0000-4000-8980-000000000004',
+insert into public.listing_messages (listing_id, sender_email_hash, sender_ip_hash, sent_at)
+select '00000000-0000-4000-8990-000000000004', repeat('f', 64), repeat('6', 64),
   now() - interval '1 day' - make_interval(mins => minute)
-from generate_series(1, 3) as minute;
+from generate_series(1, 4) as minute;
 
 select isnt(
   public.record_listing_message(
-    '00000000-0000-4000-8980-000000000004', '00000000-0000-4000-8990-000000000001', 3
+    '00000000-0000-4000-8990-000000000004', repeat('f', 64), repeat('6', 64), 2, 4
   ),
   null,
-  'messages from more than a day ago don''t count'
+  'messages from more than a day ago count against neither the sender nor the listing'
 );
 
 select is(
@@ -178,11 +215,11 @@ select is(
 
 select is(
   (select count(*)::integer from public.listing_messages),
-  5,
+  6,
   'the last day''s rows stay'
 );
 
--- One sender at a time: recording holds a lock on the sender until the transaction ends.
+-- One message at a time: recording holds a lock until the transaction ends.
 
 select ok(
   exists (
@@ -192,10 +229,9 @@ select ok(
       and pid = pg_backend_pid()
       and granted
       and objsubid = 1
-      and (classid::bigint << 32) | objid::bigint
-        = hashtextextended('listing_messages:00000000-0000-4000-8980-000000000002', 0)
+      and (classid::bigint << 32) | objid::bigint = hashtextextended('listing_messages', 0)
   ),
-  'recording a message locks its sender until the transaction ends'
+  'recording a message takes the messages'' lock until the transaction ends'
 );
 
 -- Only live listings take messages.
@@ -203,7 +239,7 @@ select ok(
 select throws_ok(
   $$
     select public.record_listing_message(
-      '00000000-0000-4000-8980-000000000002', '00000000-0000-4000-8990-000000000002', 3
+      '00000000-0000-4000-8990-000000000002', repeat('g', 64), repeat('7', 64), 2, 4
     )
   $$,
   'P0002', null,
@@ -213,7 +249,7 @@ select throws_ok(
 select throws_ok(
   $$
     select public.record_listing_message(
-      '00000000-0000-4000-8980-000000000003', '00000000-0000-4000-8990-000000000003', 3
+      '00000000-0000-4000-8990-000000000003', repeat('g', 64), repeat('7', 64), 2, 4
     )
   $$,
   'P0002', null,
@@ -223,32 +259,33 @@ select throws_ok(
 select throws_ok(
   $$
     select public.record_listing_message(
-      '00000000-0000-4000-8980-000000000003', '00000000-0000-4000-8990-000000000099', 3
+      '00000000-0000-4000-8990-000000000099', repeat('g', 64), repeat('7', 64), 2, 4
     )
   $$,
   'P0002', null,
   'a listing that doesn''t exist takes no messages'
 );
 
--- A listing's rows and a member's rows go with them.
+select throws_ok(
+  $$
+    insert into public.listing_messages (listing_id, sender_email_hash, sender_ip_hash)
+    values ('00000000-0000-4000-8990-000000000001', 'jo.ames@example.com', repeat('1', 64))
+  $$,
+  '23514', null,
+  'only a hash goes in, never an address'
+);
+
+-- A listing's rows go with it.
 
 reset role;
-
-delete from auth.users where id = '00000000-0000-4000-8980-000000000003';
-
-select is(
-  (
-    select count(*)::integer from public.listing_messages
-    where sender_id = '00000000-0000-4000-8980-000000000003'
-  ),
-  0,
-  'deleting a member deletes the record of their messages'
-);
 
 delete from public.listings where id = '00000000-0000-4000-8990-000000000001';
 
 select is(
-  (select count(*)::integer from public.listing_messages),
+  (
+    select count(*)::integer from public.listing_messages
+    where listing_id = '00000000-0000-4000-8990-000000000001'
+  ),
   0,
   'deleting a listing deletes the record of the messages about it'
 );

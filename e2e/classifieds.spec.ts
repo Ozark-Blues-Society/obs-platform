@@ -6,7 +6,8 @@ import { secretKey, SUPABASE_URL } from "./support/supabase-auth";
 
 // The public classifieds (backlog K-3) against the local Supabase stack and Mailpit: the live
 // listings by category, a listing's page, and writing to its poster, whose address stays private.
-// Viewing is public; posting needs an active membership (board-decisions §7).
+// Viewing is public; posting needs an active membership (board-decisions §7); anyone can write to a
+// poster (decision 0009).
 //
 // The list's checks use the seeded fixture listings (scripts/fixtures/listings.mts). Every other
 // test makes the members and the live listing it needs, and deletes them afterwards (with their
@@ -16,6 +17,8 @@ import { secretKey, SUPABASE_URL } from "./support/supabase-auth";
 const ADDRESS_PREFIX = "classifieds.";
 const PASSWORD = "classifieds-e2e-only";
 const POSTER_PHONE = "(479) 555-0142";
+/** How long after the page appears a message may go (MIN_SECONDS_TO_SEND), plus a margin. */
+const WRITING_TIME_MS = 3_300;
 
 type TestMember = { id: string; email: string };
 type TestListing = { id: string; title: string; path: string };
@@ -213,8 +216,14 @@ test("an address with no live listing is a page not found", async ({ page, reque
   }
 });
 
+/** Waits until a message may go: a few seconds after the page appeared at `shownAt`. */
+async function waitToSend(page: Page, shownAt: number) {
+  const wait = WRITING_TIME_MS - (Date.now() - shownAt);
+  if (wait > 0) await page.waitForTimeout(wait);
+}
+
 test.describe("a listing's page", () => {
-  test("shows the listing, and a visitor signs in to contact the poster", async ({
+  test("shows a visitor the listing and the form, but never the poster's address", async ({
     page,
     request,
   }, testInfo) => {
@@ -233,11 +242,8 @@ test.describe("a listing's page", () => {
       await expect(page).toHaveTitle(`${listing.title} · Classifieds · Ozark Blues Society`);
 
       const contact = main.getByRole("region", { name: "Contact the poster" });
-      await expect(contact.getByRole("link", { name: "Sign in to contact" })).toHaveAttribute(
-        "href",
-        `/sign-in?next=${encodeURIComponent(listing.path)}`,
-      );
-      await expect(contact.getByRole("textbox")).toHaveCount(0);
+      await expect(contact.getByRole("textbox", { name: "Your name" })).toHaveValue("");
+      await expect(contact.getByRole("textbox", { name: "Your message to Lou T." })).toBeVisible();
 
       const sent = await everythingSent(request, listing.path);
       expect(sent).toContain(listing.title);
@@ -246,10 +252,10 @@ test.describe("a listing's page", () => {
     });
   });
 
-  test("a member writes to the poster, who gets it by email and replies to the member", async ({
+  test("a visitor writes to the poster, who gets it by email and replies to the visitor", async ({
     page,
   }, testInfo) => {
-    await withMembers(testInfo, "message", async ({ admin, poster, sender }) => {
+    await withMembers(testInfo, "message", async ({ admin, poster }) => {
       const listing = await addLiveListing(admin, poster, {
         category: "musicians_wanted",
         title: "E2E bass player wanted",
@@ -265,21 +271,25 @@ test.describe("a listing's page", () => {
         }
       });
 
-      await signIn(page, sender.email, listing.path);
+      await page.goto(listing.path);
+      const shownAt = Date.now();
       const contact = page.getByRole("region", { name: "Contact the poster" });
-      const message = contact.getByRole("textbox", { name: "Your message to Lou T." });
-      await expect(message).toHaveAccessibleDescription(
-        `We'll email it to them with your name and your email address, ${sender.email}, so they can reply to you. Their address stays private.`,
+      const send = contact.getByRole("button", { name: "Send message" });
+      await send.click();
+      await expect(contact.getByRole("textbox", { name: "Your name" })).toHaveAccessibleDescription(
+        "Give your name, so the poster knows who wrote.",
       );
 
-      await contact.getByRole("button", { name: "Send message" }).click();
-      await expect(message).toHaveAccessibleDescription(/Write your message\.$/);
-
+      const visitor = `${ADDRESS_PREFIX}${testInfo.project.name}.visitor.${randomBytes(4).toString("hex")}@example.com`;
       const words = `Still looking? I play upright and electric. (${randomBytes(3).toString("hex")})`;
-      await message.fill(`${words}\nCall me after six.`);
-      await contact.getByRole("button", { name: "Send message" }).click();
+      await contact.getByRole("textbox", { name: "Your name" }).fill("Jo Ames");
+      await contact.getByRole("textbox", { name: "Your email address" }).fill(visitor);
+      const message = contact.getByRole("textbox", { name: "Your message to Lou T." });
+      await message.fill(`${words}\nMy demos: https://music.example.com/jo`);
+      await waitToSend(page, shownAt);
+      await send.click();
       await expect(contact.getByRole("status")).toHaveText(
-        `Message sent. Lou T. will see your email address, ${sender.email}, and can reply to you there.`,
+        `Message sent. Lou T. can reply to you at ${visitor}.`,
       );
       await expect(message).toHaveValue("");
 
@@ -297,21 +307,71 @@ test.describe("a listing's page", () => {
         From: { Name: string };
         ReplyTo: { Address: string }[];
         Text: string;
+        HTML: string;
       };
       expect(email.From.Name).toBe("Ozark Blues Society");
-      expect(email.ReplyTo.map((each) => each.Address)).toEqual([sender.email]);
+      expect(email.ReplyTo.map((each) => each.Address)).toEqual([visitor]);
       expect(email.Text).toContain(words);
-      expect(email.Text).toContain("Call me after six.");
-      expect(email.Text).toContain(`Jo Ames at ${sender.email}`);
+      expect(email.Text).toContain("We haven't checked that this address belongs to Jo Ames");
+      // The link in the message is text, not a link.
+      expect(email.HTML).not.toContain('href="https://music.example.com');
+      expect(email.Text.replaceAll(String.fromCodePoint(0x2060), "")).toContain(
+        "My demos: https://music.example.com/jo",
+      );
 
       expect(answers).toHaveLength(2);
       expect((await Promise.all(answers)).join("\n")).not.toContain(poster.email);
-      // Nor does the page, as the signed-in member gets it.
-      expect(await everythingSent(page.request, listing.path)).not.toContain(poster.email);
     });
   });
 
-  test("a poster who asked for calls shows members the number, and visitors nothing", async ({
+  test("fills in a signed-in member's name and address", async ({ page }, testInfo) => {
+    await withMembers(testInfo, "member", async ({ admin, poster, sender }) => {
+      const listing = await addLiveListing(admin, poster, {
+        category: "merch",
+        title: "E2E tour posters",
+        body: "Signed.",
+      });
+      await signIn(page, sender.email, listing.path);
+      const contact = page.getByRole("region", { name: "Contact the poster" });
+      await expect(contact.getByRole("textbox", { name: "Your name" })).toHaveValue("Jo Ames");
+      await expect(contact.getByRole("textbox", { name: "Your email address" })).toHaveValue(
+        sender.email,
+      );
+    });
+  });
+
+  test("sends nothing for what fills in the hidden field, though it says the message went", async ({
+    page,
+  }, testInfo) => {
+    await withMembers(testInfo, "trap", async ({ admin, poster }) => {
+      const listing = await addLiveListing(admin, poster, {
+        category: "gear",
+        title: "E2E cajon",
+        body: "Barely used.",
+      });
+      await clearInbox(page.request, poster.email);
+      await page.goto(listing.path);
+      const shownAt = Date.now();
+      const contact = page.getByRole("region", { name: "Contact the poster" });
+      await contact.getByRole("textbox", { name: "Your name" }).fill("Spam Bot");
+      await contact.getByRole("textbox", { name: "Your email address" }).fill("bot@example.com");
+      await contact.getByRole("textbox", { name: /^Your message/ }).fill("Cheap sunglasses!");
+      await page.locator('input[name="website"]').fill("https://spam.example", { force: true });
+      await waitToSend(page, shownAt);
+      await contact.getByRole("button", { name: "Send message" }).click();
+      await expect(contact.getByRole("status")).toHaveText(/^Message sent\./);
+
+      const { data, error } = await admin
+        .from("listing_messages")
+        .select("id")
+        .eq("listing_id", listing.id);
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+      expect(await emailsTo(page.request, poster.email)).toEqual([]);
+    });
+  });
+
+  test("a poster who asked for calls shows members the number, and visitors the form", async ({
     page,
     request,
   }, testInfo) => {
@@ -323,9 +383,14 @@ test.describe("a listing's page", () => {
         contact_pref: "phone",
       });
       expect(await everythingSent(request, listing.path)).not.toContain(POSTER_PHONE);
+      await page.goto(listing.path);
+      const contact = page.getByRole("region", { name: "Contact the poster" });
+      await expect(contact).toContainText(
+        "Lou T. prefers phone calls. Sign in to see their number, or write to them here.",
+      );
+      await expect(contact.getByRole("textbox", { name: "Your message to Lou T." })).toBeVisible();
 
       await signIn(page, sender.email, listing.path);
-      const contact = page.getByRole("region", { name: "Contact the poster" });
       await expect(contact).toContainText("Lou T. asked to be contacted by phone:");
       await expect(contact.getByRole("link", { name: POSTER_PHONE })).toHaveAttribute(
         "href",
