@@ -38,11 +38,11 @@ export const EVENTS = {
   concert: { slug: "e2e-open-concert", title: "E2E open concert", start: startIn(6) },
   /** For members only, at a venue only members may see. */
   social: { slug: "e2e-members-social", title: "E2E members social", start: startIn(9) },
-  /** Weekly since two weeks ago, for six weeks more. */
+  /** Weekly since 16 days ago, for six weeks more: next in 5 days, before the concert. */
   jam: {
     slug: "e2e-weekly-jam",
     title: "E2E weekly jam",
-    start: startIn(-15),
+    start: startIn(-16),
     until: startIn(45).slice(0, 10),
   },
   /** Over: three weeks ago. */

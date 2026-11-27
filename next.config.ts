@@ -7,6 +7,7 @@ import { checkEnv } from "./lib/env/schema.ts";
 checkEnv(process.env);
 
 const nextConfig: NextConfig = {
+  // Both stay on, on Netlify too (docs/decisions/0008-cache-components.md).
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

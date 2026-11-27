@@ -34,12 +34,14 @@ describe("eventCardProps", () => {
     });
   });
 
-  it("leaves out what a locked event doesn't have", () => {
+  it("says a locked event's place is for members", () => {
     const social = { ...jam, membersOnly: true, locked: true, venue: null, repeats: null };
     expect(eventCardProps(social)).toMatchObject({
       membersOnly: true,
-      venue: undefined,
+      venue: "Location visible to members",
       repeats: undefined,
     });
+    // A one-off event without a venue (a private gathering) just has none.
+    expect(eventCardProps({ ...jam, venue: null }).venue).toBeUndefined();
   });
 });
