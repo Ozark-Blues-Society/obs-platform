@@ -459,6 +459,33 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
   it with `<MemberFiles>` (`components/members/member-files.tsx`), which links each one to
   `/files/<id>` with plain `<a>` tags: `next/link` would prefetch them and mint download links.
 
+## My Account
+
+`/account` (`app/(site)/account/page.tsx`, backlog M-8) is the signed-in member's own page:
+
+- **Membership:** level, status, renewal date and auto-renew, from the member's own profile row
+  (`getMyAccount()` in `lib/account/my-account.ts`). The status is worked out from `expires_at` as
+  the page renders (`lib/members/membership.ts`), by the database's rule: ended once `expires_at`
+  has passed, and "Expiring soon" within 30 days on the Society's calendar, except for members on
+  yearly auto-renew, whom Stripe renews. A lapsed member gets a Renew button, and someone who never
+  paid a Join button (both go to `/join`, M-4).
+- **Member perks:** the benefits of the member's level and the perk codes for it, from Site
+  settings: the benefits table, and the codes in the Studio's **Member perks** tab
+  ([`docs/volunteer-guide/site-settings.md`](docs/volunteer-guide/site-settings.md)). The codes are
+  members-only (board decisions §1, §5 and §6). `getMemberPerks()` in
+  `sanity/content/member-perks.ts` asks Sanity only for an active membership, and only for that
+  level's rows, then checks each row's levels again. Every other query of Site settings lists the
+  fields it reads, so none sends a code. `e2e/account.spec.ts` checks that a lapsed member, an
+  Individual member (for the Sponsor code) and visitors never get them.
+- **Your details:** first name, last name and phone. `saveProfile` (`lib/account/profile-actions.ts`)
+  saves them as the member, so row level security and the column privileges apply: members never
+  change their level, status or `expires_at` (`supabase/tests/profiles_test.sql`). A new name goes
+  to MailerLite after the answer is sent (see [MailerLite member groups](#mailerlite-member-groups)).
+- Links to set a password and to post a classifieds listing, and Sign out.
+
+Still to come: email preferences (waiting on Parker's answer to Q-20261127-174756-24341), the
+Stripe Customer Portal link (M-6) and "My listings" (K-4).
+
 ## Classifieds listings
 
 Active members, at any level, post listings in the five categories at `/account/listings/new`
