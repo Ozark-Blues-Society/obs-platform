@@ -75,8 +75,8 @@ https://develop--obs-platform.netlify.app
   alert that `/sign-in` doesn't.
 - `proxy.ts` runs as an edge function on every page (the `debug-x-nf-edge-functions` header, shown
   with the request header `x-nf-debug-logging: 1`).
-- In Chromium, `/design-preview` prefetched 22 App Shells (all 200, `text/x-component`), and a
-  click to a template navigated without a page load or another request.
+- In Chromium, `/design-preview` made 22 App Shell prefetch requests (all 200,
+  `text/x-component`), and a click to a template navigated without a page load or another request.
 - Not checked on Netlify yet, because the deploys have no Sanity settings: Sanity Live's
   revalidation and draft mode (see Consequences).
 
@@ -95,14 +95,16 @@ https://develop--obs-platform.netlify.app
 - With Cache Components on, the route segment configs `dynamic`, `dynamicParams`, `revalidate` and
   `fetchCache` don't exist, and `runtime` must go, even `runtime = 'nodejs'` (Route Handlers run on
   Node.js anyway). Recipes from other docs that export them need adapting: `"use cache"` with
-  `cacheLife` instead of `revalidate`, and nothing instead of `dynamic = 'force-static'` or
-  `runtime`.
-- Log from Route Handlers, Server Functions, inside a `"use cache"` function, or after a request
-  read (`await connection()`, `cookies()`), never from the static part of a render. Netlify's
-  functions run on AWS Lambda, which stamps each console line with the time, and Cache Components
-  fails a static render that reads the clock
-  ([opennextjs-netlify#3117](https://github.com/opennextjs/opennextjs-netlify/issues/3117), open).
-  Today's logging already follows this.
+  `cacheLife` instead of `revalidate` or `dynamic = 'force-static'` (a page that reads no data,
+  like the Studio's, needs nothing), and nothing instead of `runtime`.
+- Logging needs no special care. Netlify's functions run on AWS Lambda, which stamps each console
+  line with the time, and Cache Components fails a prerender that reads the clock. But Lambda
+  patches the console before Next.js loads, and Next.js 16 runs console methods patched that early
+  outside its clock check ([vercel/next.js#83843](https://github.com/vercel/next.js/pull/83843)).
+  So [opennextjs-netlify#3117](https://github.com/opennextjs/opennextjs-netlify/issues/3117), still
+  open, no longer applies: a local probe with a Lambda-style console patch confirmed it (PR #65's
+  review). Reading the time yourself (`new Date()`, `Date.now()`) in the static part of a render
+  still fails it (the Next.js caching docs, "Random values and timestamps").
 - Sanity Live's revalidation and draft mode haven't run on Netlify yet: the deploys have no Sanity
   settings. When a deploy first gets them, publish a change and reload the page twice: the first
   load may show the old version, the second must show the new one. Then open a draft in the
