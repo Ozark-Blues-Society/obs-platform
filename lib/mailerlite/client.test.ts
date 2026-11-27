@@ -2,6 +2,7 @@
 // The requests the client sends MailerLite and how it reads the answers, with a stand-in for
 // fetch. lib/mailerlite/sync.test.ts runs the client against a stand-in for the whole API.
 import { describe, expect, it, vi } from "vitest";
+import { parseServerEnv } from "@/lib/env/schema";
 import { createMailerLiteClient, getMailerLiteClient, MailerLiteError } from "./client";
 
 /** A client whose fetch answers every request with `status` and `body` (none for 204). */
@@ -151,15 +152,20 @@ describe("createMailerLiteClient", () => {
 });
 
 describe("getMailerLiteClient", () => {
+  /** The variable as the app passes it: checked (and trimmed) by lib/env first. */
+  const mailerLiteEnv = (value: string | undefined) =>
+    parseServerEnv({ MAILERLITE_API_KEY: value }, ["MAILERLITE_API_KEY"]);
+
   it("is off without MAILERLITE_API_KEY", () => {
     expect(getMailerLiteClient({})).toBeNull();
-    expect(getMailerLiteClient({ MAILERLITE_API_KEY: "  " })).toBeNull();
+    expect(getMailerLiteClient(mailerLiteEnv(undefined))).toBeNull();
+    expect(getMailerLiteClient(mailerLiteEnv("  "))).toBeNull();
   });
 
   it("uses MAILERLITE_API_KEY when it's set", async () => {
     const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ data: [] }));
     try {
-      await getMailerLiteClient({ MAILERLITE_API_KEY: " test-api-key " })!.listGroups("Website: ");
+      await getMailerLiteClient(mailerLiteEnv(" test-api-key "))!.listGroups("Website: ");
       expect(new Headers(fetch.mock.calls[0][1]?.headers).get("authorization")).toBe(
         "Bearer test-api-key",
       );

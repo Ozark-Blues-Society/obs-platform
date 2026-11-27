@@ -8,7 +8,10 @@ type PageTemplateProps = {
   title: string;
   /** A sentence under the title. */
   intro?: string;
-  /** Adds a "Members only" tag above the title: the page is limited to members or some levels. */
+  /**
+   * Adds a "Members only" tag above the title: the page is limited to members or some levels. A
+   * hero that opens the page takes the tag itself (HeroBlock's `tag`).
+   */
   membersOnly?: boolean;
   /**
    * The page's first block, when it's a hero (as on Band Spotlight and Promo Feature pages). Its
@@ -35,22 +38,21 @@ export function PageTemplate({
   return (
     <>
       {hero ?? (
-        <PageHeader
-          title={title}
-          intro={intro}
-          eyebrow={
-            membersOnly && (
-              <Tag tone="accent">
-                <LockIcon className="size-3" />
-                Members only
-              </Tag>
-            )
-          }
-        />
+        <PageHeader title={title} intro={intro} eyebrow={membersOnly && <MembersOnlyTag />} />
       )}
       <div className="mx-auto flex w-full max-w-site flex-col gap-10 px-gutter py-10 md:pb-section">
         {children}
       </div>
     </>
+  );
+}
+
+/** The tag that marks a page limited to members or some levels, in its header or its hero. */
+export function MembersOnlyTag() {
+  return (
+    <Tag tone="accent">
+      <LockIcon className="size-3" />
+      Members only
+    </Tag>
   );
 }

@@ -1,35 +1,40 @@
-import { describe, expect, it } from "vitest";
-import { PLACEHOLDER_PROJECT_ID, readSanityEnv } from "./env";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-describe("readSanityEnv", () => {
-  it("uses the project ID and dataset it's given", () => {
-    expect(readSanityEnv({ projectId: "abc123xy", dataset: "staging" })).toEqual({
-      projectId: "abc123xy",
-      dataset: "staging",
-      isConfigured: true,
+/** sanity/env.ts as it loads with these variables set. */
+async function loadWith(vars: Record<string, string | undefined>) {
+  for (const [key, value] of Object.entries(vars)) vi.stubEnv(key, value);
+  vi.resetModules();
+  return import("./env");
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe("sanity/env", () => {
+  it("uses the project ID and dataset it's given", async () => {
+    const env = await loadWith({
+      NEXT_PUBLIC_SANITY_PROJECT_ID: "abc123xy",
+      NEXT_PUBLIC_SANITY_DATASET: "staging",
     });
+    expect(env).toMatchObject({ projectId: "abc123xy", dataset: "staging", isConfigured: true });
   });
 
-  it("falls back to placeholders until the Sanity project exists", () => {
-    expect(readSanityEnv({ projectId: undefined, dataset: undefined })).toEqual({
-      projectId: PLACEHOLDER_PROJECT_ID,
+  it("falls back to placeholders until the Sanity project exists", async () => {
+    const env = await loadWith({
+      NEXT_PUBLIC_SANITY_PROJECT_ID: undefined,
+      NEXT_PUBLIC_SANITY_DATASET: " ",
+    });
+    expect(env).toMatchObject({
+      projectId: env.PLACEHOLDER_PROJECT_ID,
       dataset: "development",
       isConfigured: false,
     });
   });
 
-  it("treats blank values as unset", () => {
-    expect(readSanityEnv({ projectId: "  ", dataset: "" })).toEqual({
-      projectId: PLACEHOLDER_PROJECT_ID,
-      dataset: "development",
-      isConfigured: false,
-    });
-  });
-
-  it("trims stray whitespace from pasted values", () => {
-    expect(readSanityEnv({ projectId: " abc123xy\n", dataset: " development " })).toMatchObject({
-      projectId: "abc123xy",
-      dataset: "development",
-    });
+  it("refuses a project ID that Sanity wouldn't take, naming the variable", async () => {
+    await expect(loadWith({ NEXT_PUBLIC_SANITY_PROJECT_ID: "not a project" })).rejects.toThrow(
+      "NEXT_PUBLIC_SANITY_PROJECT_ID must be a Sanity project ID",
+    );
   });
 });

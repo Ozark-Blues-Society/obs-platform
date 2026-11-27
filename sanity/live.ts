@@ -3,29 +3,22 @@
 import { cookies, draftMode } from "next/headers";
 import { createClient } from "next-sanity";
 import { defineLive, resolvePerspectiveFromCookies, type LivePerspective } from "next-sanity/live";
+import { serverEnv } from "@/lib/env/server";
 import { apiVersion, dataset, projectId, studioBasePath } from "./env";
 
+const env = serverEnv("SANITY_API_READ_TOKEN", "SANITY_API_HOST_STAND_IN");
+
 // A Viewer token for the dataset. Decision 0001 makes the datasets private, so every read needs
-// it, published content included. No NEXT_PUBLIC_ prefix: Next.js never sends it to the browser.
-const readToken = process.env.SANITY_API_READ_TOKEN?.trim() || undefined;
+// it, published content included. A server-only variable: Next.js never sends it to the browser.
+const readToken = env.SANITY_API_READ_TOKEN;
 
 export const hasReadToken = readToken !== undefined;
 
-/**
- * End-to-end tests only: the address of a local stand-in for Sanity's API
- * (e2e/support/sanity-stand-in.mts), so pages can show content in CI without a Sanity project.
- * Only a loopback address is accepted, so a mistake can't send the read token anywhere else. Leave
- * SANITY_API_HOST_STAND_IN unset everywhere else.
- */
-export function readStandInHost(value: string | undefined): string | undefined {
-  const host = value?.trim();
-  if (!host) return undefined;
-  if (/^http:\/\/(127\.0\.0\.1|localhost):\d{2,5}$/.test(host)) return host;
-  console.error("SANITY_API_HOST_STAND_IN must be http://127.0.0.1:<port>; ignoring it.");
-  return undefined;
-}
-
-const standInHost = readStandInHost(process.env.SANITY_API_HOST_STAND_IN);
+// End-to-end tests only: the address of a local stand-in for Sanity's API
+// (e2e/support/sanity-stand-in.mts), so pages can show content in CI without a Sanity project.
+// lib/env accepts only a loopback address, so a mistake can't send the read token anywhere else.
+// SANITY_API_HOST_STAND_IN stays unset everywhere else.
+const standInHost = env.SANITY_API_HOST_STAND_IN;
 
 export const client = createClient({
   projectId,
