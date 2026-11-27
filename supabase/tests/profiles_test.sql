@@ -7,7 +7,7 @@
 -- Data API does for a request. postgres, which runs the setup and the checks between, bypasses row
 -- level security.
 begin;
-select plan(38);
+select plan(39);
 
 -- Anyone with the publishable key can sign up and put whatever they like in the sign-up's user
 -- metadata (options.data). So test.alice's metadata also asks for a paid, active membership, the
@@ -18,9 +18,8 @@ insert into auth.users (id, email, raw_user_meta_data)
 values
   ('00000000-0000-4000-8900-000000000001', 'test.alice@example.com',
     '{"first_name": "Alice", "last_name": "Archer", "level": "sponsor", "status": "active",
-      "expires_at": "2099-01-01T00:00:00Z", "auto_renew": true, "stripe_customer_id": "cus_fake",
-      "joined_at": "2020-01-01T00:00:00Z", "notes": "Comped by the board", "role": "admin",
-      "email": "test.mallory@example.com"}'),
+      "expires_at": "2099-01-01T00:00:00Z", "auto_renew": true, "joined_at": "2020-01-01T00:00:00Z",
+      "notes": "Comped by the board", "role": "admin", "email": "test.mallory@example.com"}'),
   ('00000000-0000-4000-8900-000000000002', 'test.bob@example.com',
     '{"first_name": "Bob", "last_name": "Baker"}'),
   ('00000000-0000-4000-8900-000000000003', 'test.moderator@example.com', '{}'),
@@ -33,16 +32,14 @@ values
 select results_eq(
   $$
     select
-      email, first_name, last_name, level, status, expires_at, auto_renew, stripe_customer_id,
-      joined_at, notes
+      email, first_name, last_name, level, status, expires_at, auto_renew, joined_at, notes
     from public.profiles
     where id = '00000000-0000-4000-8900-000000000001'
   $$,
   $$
     values (
       'test.alice@example.com', 'Alice', 'Archer', null::public.membership_level,
-      null::public.membership_status, null::timestamptz, false, null::text, null::timestamptz,
-      null::text
+      null::public.membership_status, null::timestamptz, false, null::timestamptz, null::text
     )
   $$,
   'signing up creates a profile with the address from Supabase Auth and the names from the '
@@ -90,6 +87,14 @@ values
   ('00000000-0000-4000-8900-000000000004', 'editor'),
   ('00000000-0000-4000-8900-000000000005', 'admin'),
   ('00000000-0000-4000-8900-000000000006', 'membership_manager');
+
+-- Zeffy takes the payments (decision 0007) and matches them to members by the buyer's email, so
+-- the Stripe customer id is gone.
+
+select hasnt_column(
+  'public', 'profiles', 'stripe_customer_id',
+  'profiles has no Stripe customer id: Zeffy payments are matched by email (decision 0007)'
+);
 
 -- Policies and privileges. Each policy is covered by the behaviour tests below, or for granting and
 -- revoking roles in user_roles_test.sql; a new one needs tests of its own.
