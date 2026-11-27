@@ -6,9 +6,15 @@ import type { DailyJobsSummary } from "@/lib/jobs/daily";
 const jobs = vi.hoisted(() => ({ runDailyJobs: vi.fn() }));
 vi.mock("@/lib/jobs/daily", () => jobs);
 
-const store = vi.hoisted(() => ({ store: { kind: "membership store" } }));
+const store = vi.hoisted(() => ({
+  store: { kind: "membership store" },
+  listings: { kind: "listing store" },
+}));
 vi.mock("@/lib/jobs/membership-store", () => ({
   createMembershipStore: vi.fn(() => store.store),
+}));
+vi.mock("@/lib/jobs/listing-store", () => ({
+  createListingStore: vi.fn(() => store.listings),
 }));
 
 const admin = vi.hoisted(() => ({ client: { kind: "service role client" } }));
@@ -29,6 +35,7 @@ vi.mock("@/lib/mailerlite/store", () => ({
 
 const { POST } = await import("./route");
 const { createMembershipStore } = await import("@/lib/jobs/membership-store");
+const { createListingStore } = await import("@/lib/jobs/listing-store");
 const { createMailerLiteStore } = await import("@/lib/mailerlite/store");
 
 const SECRET = "a-long-random-cron-secret";
@@ -42,6 +49,7 @@ const SUMMARY: DailyJobsSummary = {
     claimedElsewhere: 0,
     deferred: 0,
   },
+  listings: { expired: 2, reminders: { sent: 1, failed: 0, claimedElsewhere: 0, deferred: 0 } },
   mailerLite: "off",
   errors: [],
 };
@@ -78,10 +86,12 @@ describe("POST /api/cron/daily", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(SUMMARY);
     expect(createMembershipStore).toHaveBeenCalledExactlyOnceWith(admin.client);
+    expect(createListingStore).toHaveBeenCalledExactlyOnceWith(admin.client);
     expect(jobs.runDailyJobs).toHaveBeenCalledOnce();
     const [options] = jobs.runDailyJobs.mock.calls[0];
     expect(options).toMatchObject({
       store: store.store,
+      listings: store.listings,
       send: email.send,
       siteUrl: "https://ozarkblues.example",
     });
