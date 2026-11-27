@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { TableBlock } from "@/components/blocks/list-blocks";
 import { Prose } from "@/components/blocks/prose";
+import { BookingContactsNotice } from "@/components/members/booking-contacts-notice";
 import { PageTemplate } from "@/components/templates/page-template";
-import { LockIcon } from "@/components/ui/lock-icon";
 import { LockOverlay } from "@/components/ui/lock-overlay";
 import { JOIN_PATH, SIGN_IN_PATH } from "@/lib/site/navigation";
 import { PreviewBar } from "../preview-bar";
@@ -40,22 +40,7 @@ export function DirectoryPreview({ view }: { view: DirectoryView }) {
               columns={columns}
               rows={rows}
               searchLabel="Search the directory"
-              notice={
-                !withContacts && (
-                  <p className="mb-4 flex items-start gap-2 rounded-card bg-accent-soft p-3 text-small text-ink">
-                    <LockIcon className="mt-0.5 size-3.5 flex-none" />
-                    <span>
-                      Booking contacts are for Band, Business and Sponsor members.{" "}
-                      <Link
-                        href={JOIN_PATH}
-                        className="text-ink focus-visible:outline-primary-dark"
-                      >
-                        Compare membership levels
-                      </Link>
-                    </span>
-                  </p>
-                )
-              }
+              notice={!withContacts && <BookingContactsNotice />}
             />
             <Prose>
               <p>

@@ -38,12 +38,24 @@ directory entry, which only members see.
 The venue directory is a members-only list of venues that book blues, with who to contact. Each
 row is a **Directory entry**:
 
-- **Venue**: pick the venue, or create it there. The row shows the venue's name and address.
-- **Capacity**, **How it pays** and **Notes**: details every signed-in member sees.
+- **Venue**: pick the venue, or create it there. The row shows the venue's name, and the rows are
+  in order of venue name. An entry with no venue picked doesn't show.
+- **Capacity**, **How it pays** and **Notes**: details every member sees while their membership
+  is active.
 - **Booking contact** (name, email and phone): only **Band, Business and Sponsor** members see
   these. Individual members and visitors never do.
 
 To show the directory on the website, add a **Table** block to a page (usually one built from the
 Directory template) and set **What the table shows** to **The venue directory**. The rows fill
-themselves from the directory entries. Only signed-in members see them, even if the page itself
-is open to everyone, and booking contacts appear only for Band, Business and Sponsor members.
+themselves from the directory entries, with a search box above them. Who sees what, even if the
+page itself is open to everyone:
+
+| Who                                              | What they see                                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Band, Business and Sponsor members               | Every row: venue, booking contact, capacity, how it pays and notes                                        |
+| Individual members                               | Every row without the booking contact column, and a note that contacts are for Band, Business and Sponsor |
+| Visitors, and members whose membership has ended | The block's heading and a lock asking them to sign in or join, or to renew                                |
+
+The website leaves out what someone may not see before it sends the page, so it can't be found in
+the page's code either. A preview link doesn't change this: it shows the directory only to
+members, as above.

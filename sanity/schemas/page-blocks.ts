@@ -211,7 +211,7 @@ export const tableBlock = defineType({
       title: "What the table shows",
       type: "string",
       description:
-        "The venue directory fills itself from Directory entries. Only signed-in members see its rows, and only Band, Business and Sponsor members see booking contacts, whoever can see the page.",
+        "The venue directory fills itself from Directory entries. Only members whose membership is active see its rows, and only Band, Business and Sponsor members see booking contacts, whoever can see the page.",
       options: {
         list: [
           { value: "custom", title: "Rows I type here" },
