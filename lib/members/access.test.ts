@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { activeLevel, checkAccess, isMembershipLevel, VISITOR, type Viewer } from "./access";
+import {
+  activeLevel,
+  BOOKING_CONTACT_LEVELS,
+  checkAccess,
+  isMembershipLevel,
+  seesBookingContacts,
+  VISITOR,
+  type Viewer,
+} from "./access";
 
 const NOW = new Date("2026-11-26T12:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
@@ -110,6 +118,23 @@ describe("checkAccess", () => {
     expect(checkAccess({ audience: "everyone", levels: ["sponsor"] }, VISITOR, NOW)).toEqual({
       allowed: true,
     });
+  });
+});
+
+describe("seesBookingContacts", () => {
+  it("is true for Band, Business and Sponsor, as in the board's benefits table", () => {
+    expect(BOOKING_CONTACT_LEVELS).toEqual(["band", "business", "sponsor"]);
+    for (const level of ["band", "business", "sponsor"] as const) {
+      expect(seesBookingContacts(level)).toBe(true);
+    }
+  });
+
+  it("is false for Individual members and anyone without an active membership", () => {
+    expect(seesBookingContacts("individual")).toBe(false);
+    expect(seesBookingContacts(null)).toBe(false);
+    // A lapsed Band member has no active level, so no contacts either.
+    expect(seesBookingContacts(activeLevel(lapsed, NOW))).toBe(false);
+    expect(seesBookingContacts(activeLevel(band, NOW))).toBe(true);
   });
 });
 

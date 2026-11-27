@@ -1,7 +1,7 @@
 /**
  * Checks that a Sanity dataset is private (decision 0001): that someone without a token can read
- * none of it, members-only pages, posts and events included. `pnpm check:dataset` runs it
- * (./check-private-dataset.mts).
+ * none of it, members-only pages, posts and events and the venue directory's booking contacts
+ * included. `pnpm check:dataset` runs it (./check-private-dataset.mts).
  *
  * Sanity answers an anonymous query on a private dataset with 200 and an empty result, as if the
  * dataset were empty, never with an error. So the check reads the result, not the status, and uses
@@ -12,12 +12,18 @@
  * (backlog Q-5) runs it against production.
  */
 
-/** Members-only pages, posts and events: an anonymous query must find none. */
+/**
+ * Members-only documents: pages, posts and events that aren't for everyone, and every Directory
+ * entry (the venue directory is for members only, backlog M-9). An anonymous query must find none.
+ */
 export const MEMBERS_ONLY_QUERY =
-  '*[_type in ["page", "post", "event"] && visibility.audience != "everyone"]{ _id, _type }';
+  '*[(_type in ["page", "post", "event"] && visibility.audience != "everyone") || _type == "directoryEntry"]{ _id, _type }';
+
+/** Directory entries with a booking contact, which only Band, Business and Sponsor members see. */
+export const BOOKING_CONTACTS_QUERY = '*[_type == "directoryEntry" && defined(bookingContact)]';
 
 /** What an anonymous query can see: nothing at all, if the dataset is private. */
-export const ANONYMOUS_QUERY = `{ "total": count(*), "membersOnly": ${MEMBERS_ONLY_QUERY}[0...10] }`;
+export const ANONYMOUS_QUERY = `{ "total": count(*), "membersOnly": ${MEMBERS_ONLY_QUERY}[0...10], "bookingContacts": count(${BOOKING_CONTACTS_QUERY}) }`;
 
 /** Published documents, counted with the read token. */
 export const PUBLISHED_COUNT_QUERY = "count(*)";
@@ -80,9 +86,11 @@ export async function checkPrivateDataset(options: CheckOptions): Promise<CheckR
     const anonymous = (await query(options, ANONYMOUS_QUERY)) as {
       total?: unknown;
       membersOnly?: unknown;
+      bookingContacts?: unknown;
     } | null;
     const total = typeof anonymous?.total === "number" ? anonymous.total : Number.NaN;
     const membersOnly = Array.isArray(anonymous?.membersOnly) ? anonymous.membersOnly : [];
+    const contacts = typeof anonymous?.bookingContacts === "number" ? anonymous.bookingContacts : 0;
     if (!Number.isFinite(total)) {
       return {
         status: "unknown",
@@ -98,6 +106,7 @@ export async function checkPrivateDataset(options: CheckOptions): Promise<CheckR
         message:
           `FAIL: anyone can read the ${where} without a token: ${total} documents` +
           (examples ? `, members-only ones among them (${examples})` : "") +
+          (contacts > 0 ? `, and ${contacts} venue booking contacts` : "") +
           ". Make the dataset private at once (sanity.io/manage, or `sanity dataset visibility set " +
           `${options.dataset} private\`), then check the project's plan: a lapsed trial or a ` +
           "downgrade turns private datasets public (decision 0001).",

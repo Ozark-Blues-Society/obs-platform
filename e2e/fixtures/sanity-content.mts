@@ -1,9 +1,10 @@
 /**
  * Synthetic Sanity documents that the e2e stand-in for Sanity serves (../support/sanity-stand-in.mts):
  * blog posts for each audience, one scheduled post and one draft, pages in each template and for
- * each audience, sponsors for the sponsor logos blocks, and the secret for shared preview links. Each members-only field holds a marker,
- * so a test can check that no response reaches a viewer who may not see it. All but the post for
- * Band and up are marked for the monthly email digest.
+ * each audience, sponsors for the sponsor logos blocks, venues and their Directory entries for the
+ * venue directory, and the secret for shared preview links. Each members-only field holds a
+ * marker, so a test can check that no response reaches a viewer who may not see it. All but the
+ * post for Band and up are marked for the monthly email digest.
  *
  * Nothing here is in a menu and there are no Site settings, so the header and footer stay the
  * built-in ones that other tests expect.
@@ -21,6 +22,10 @@ export const PAGE_FILE_CODE = "00000000-0000-4000-8930-000000000002";
 export const UNKNOWN_BLOCK_MARKER = "E2E-UNKNOWN-BLOCK-5e1b";
 /** The secret in the Studio's shared preview links (made-up, like everything here). */
 export const SHARED_PREVIEW_SECRET = "e2e-shared-preview-secret-4d8b";
+/** In the venue directory's details (capacity, pay, notes): for members with an active membership. */
+export const DIRECTORY_MARKER = "E2E-DIRECTORY-ONLY-8d2f";
+/** In the venue directory's booking contacts: for Band, Business and Sponsor members only. */
+export const BOOKING_CONTACT_MARKER = "E2E-BOOKING-CONTACT-3b6e";
 
 const DAY = 24 * 60 * 60 * 1000;
 const daysFromNow = (days: number) => new Date(Date.now() + days * DAY).toISOString();
@@ -82,6 +87,28 @@ export const PAGES = {
   },
   members: { slug: "e2e-members-directory", title: "E2E members directory" },
   bandUp: { slug: "e2e-band-page", title: "E2E page for Band and up", hero: "E2E band hero" },
+  // Open to everyone, with the venue directory, whose rows are for members whatever the page.
+  venues: { slug: "e2e-venue-directory", title: "E2E venue directory" },
+} as const;
+
+/** The venue directory: three venues with Directory entries, one entry not finished yet. */
+export const DIRECTORY = {
+  heading: "E2E directory",
+  venues: {
+    jukeJoint: "E2E Juke Joint",
+    riverbend: "E2E Riverbend Hall",
+    courthouse: "E2E Courthouse Stage",
+  },
+  /** The Juke Joint's booking contact. */
+  contact: {
+    name: `E2E booker ${BOOKING_CONTACT_MARKER}`,
+    email: "e2e.booker@example.com",
+    phone: "(479) 555-0142",
+  },
+  /** Riverbend Hall's booking contact: a desk with an email address only. */
+  desk: { name: "E2E events desk", email: "e2e.events@example.com" },
+  /** In the entry that has no venue yet, which must never show. */
+  unfinished: "E2E-UNFINISHED-ENTRY-6a1c",
 } as const;
 
 /** Sponsors: two current ones (one without a logo) and one whose sponsorship has ended. */
@@ -292,6 +319,86 @@ const PAGE_DOCUMENTS = [
   ),
 ];
 
+/** A public venue, as events and the directory point at it. */
+function venue(id: string, name: string, address: string) {
+  return {
+    _id: id,
+    _type: "venue",
+    _createdAt: daysFromNow(-10),
+    _updatedAt: daysFromNow(-1),
+    _rev: "e2e",
+    name,
+    address,
+    mapUrl: "https://maps.example.com/e2e",
+  };
+}
+
+/** A row of the venue directory: members-only details, and the booking contact for Band and up. */
+function directoryEntry(id: string, venueId: string | null, fields: object) {
+  return {
+    _id: id,
+    _type: "directoryEntry",
+    _createdAt: daysFromNow(-10),
+    _updatedAt: daysFromNow(-1),
+    _rev: "e2e",
+    ...(venueId && { venue: { _type: "reference", _ref: venueId } }),
+    ...fields,
+  };
+}
+
+const DIRECTORY_DOCUMENTS = [
+  venue("venue-e2e-juke-joint", DIRECTORY.venues.jukeJoint, "1 E2E Street, Springdale"),
+  venue("venue-e2e-riverbend", DIRECTORY.venues.riverbend, "2 E2E Avenue, Rogers"),
+  venue("venue-e2e-courthouse", DIRECTORY.venues.courthouse, "3 E2E Square, Bentonville"),
+  directoryEntry("directory-entry-e2e-juke-joint", "venue-e2e-juke-joint", {
+    capacity: "150",
+    pay: `E2E door split ${DIRECTORY_MARKER}`,
+    notes: "E2E backline drum kit",
+    bookingContact: { _type: "object", ...DIRECTORY.contact },
+  }),
+  directoryEntry("directory-entry-e2e-riverbend", "venue-e2e-riverbend", {
+    capacity: "300",
+    notes: `E2E patio stage ${DIRECTORY_MARKER}`,
+    bookingContact: { _type: "object", ...DIRECTORY.desk },
+  }),
+  // No booking contact yet.
+  directoryEntry("directory-entry-e2e-courthouse", "venue-e2e-courthouse", {
+    capacity: "Open air",
+    pay: "E2E grant-funded",
+  }),
+  // An editor hasn't picked the venue yet.
+  directoryEntry("directory-entry-e2e-unfinished", null, {
+    notes: DIRECTORY.unfinished,
+    bookingContact: { _type: "object", name: `${DIRECTORY.unfinished} ${BOOKING_CONTACT_MARKER}` },
+  }),
+  // Everyone: a Directory page with the venue directory, and a draft of it for previews.
+  page(
+    PAGES.venues.slug,
+    PAGES.venues.title,
+    { _type: "visibility", audience: "everyone" },
+    "directory",
+    [
+      {
+        _type: "textBlock",
+        _key: "text",
+        body: body("E2E text for everyone, above the directory."),
+      },
+      { _type: "tableBlock", _key: "directory", heading: DIRECTORY.heading, source: "directory" },
+    ],
+    { intro: "E2E intro for the venue directory." },
+  ),
+  {
+    ...page(
+      PAGES.venues.slug,
+      `${PAGES.venues.title} (draft)`,
+      { _type: "visibility", audience: "everyone" },
+      "directory",
+      [{ _type: "tableBlock", _key: "directory", heading: DIRECTORY.heading, source: "directory" }],
+    ),
+    _id: `drafts.page-${PAGES.venues.slug}`,
+  },
+];
+
 /** A sponsor in the fixtures' one tier. */
 function sponsor(id: string, name: string, extra: object = {}) {
   return {
@@ -363,6 +470,7 @@ export const DOCUMENTS = [
   },
   ...PAGE_DOCUMENTS,
   ...SPONSOR_DOCUMENTS,
+  ...DIRECTORY_DOCUMENTS,
   // Preview sharing turned on in the Studio, as @sanity/preview-url-secret stores it. A shared link
   // turns on draft mode only if its secret matches this one.
   {

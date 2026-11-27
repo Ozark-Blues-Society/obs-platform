@@ -438,8 +438,21 @@ const post = await getGatedItem("post", slug, "{ excerpt, body }");
   (`sanity/site-chrome.ts`: public page titles and links) and the draft-mode route are the only
   exceptions. Put new reads in `sanity/content/`.
 
+**The venue directory** (backlog M-9) is read with `listDirectory()` in `sanity/content/directory.ts`,
+whatever page shows it (`components/blocks/venue-directory.tsx`):
+
+- Its rows, the Directory entries, go only to members whose membership is active. For anyone else
+  the loader doesn't ask Sanity, and the query itself returns no entries when `$memberLevel` is null.
+- The query selects an entry's booking contact only when `$memberLevel` is in
+  `BOOKING_CONTACT_LEVELS` (`lib/members/access.ts`: Band, Business and Sponsor, board-decisions §1),
+  and the loader drops contacts again for every other level.
+- A venue holds only public fields (name, address, map link), so an event that dereferences
+  `venue->` can't reach a contact. Read Directory entries only through `listDirectory()`: never with
+  `...`, and never from another document's query.
+
 **Checking the dataset is private.** `pnpm check:dataset` asks Sanity, without a token, for
-anything in the dataset named in `.env.local`, and fails (exit 1) if it gets any of it back. Sanity
+anything in the dataset named in `.env.local`, and fails (exit 1) if it gets any of it back, naming
+members-only pages, posts, events and Directory entries and counting booking contacts. Sanity
 answers an anonymous query on a private dataset with 200 and an empty result, so the check reads the
 result, not the status. With `SANITY_API_READ_TOKEN` set, it also confirms there is published
 content to find; it exits 2 when it can't tell. Run it when a dataset is created or the plan

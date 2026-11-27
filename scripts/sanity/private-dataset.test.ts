@@ -68,6 +68,21 @@ describe("checkPrivateDataset", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("fails, counting venue booking contacts, when anyone can read the directory", async () => {
+    const { fetchFn } = fakeSanity({
+      anonymous: {
+        total: 4,
+        membersOnly: [{ _id: "entry-1", _type: "directoryEntry" }],
+        bookingContacts: 1,
+      },
+    });
+    const result = await checkPrivateDataset({ ...OPTIONS, token: "sk-test", fetch: fetchFn });
+    expect(result.status).toBe("public");
+    expect(result.message).toContain(
+      "4 documents, members-only ones among them (directoryEntry entry-1), and 1 venue booking contacts.",
+    );
+  });
+
   it("fails when anyone can read the dataset even if nothing in it is members-only", async () => {
     const { fetchFn } = fakeSanity({ anonymous: { total: 3, membersOnly: [] } });
     const result = await checkPrivateDataset({ ...OPTIONS, fetch: fetchFn });
@@ -113,22 +128,32 @@ describe("checkPrivateDataset", () => {
 });
 
 describe("ANONYMOUS_QUERY", () => {
-  it("counts every document and lists the members-only ones", async () => {
+  it("counts every document, lists the members-only ones and counts booking contacts", async () => {
     const dataset = [
       { _id: "p1", _type: "post", visibility: { audience: "everyone" } },
       { _id: "p2", _type: "post", visibility: { audience: "members" } },
       { _id: "e1", _type: "event", visibility: { audience: "levels", levels: ["band"] } },
       { _id: "g1", _type: "page" },
       { _id: "v1", _type: "venue", name: "The Blue Door" },
+      {
+        _id: "d1",
+        _type: "directoryEntry",
+        venue: { _ref: "v1" },
+        bookingContact: { name: "Sam Ortega" },
+      },
+      { _id: "d2", _type: "directoryEntry", venue: { _ref: "v1" }, capacity: "80" },
     ];
     const result = await (await evaluate(parse(ANONYMOUS_QUERY), { dataset })).get();
     expect(result).toEqual({
-      total: 5,
+      total: 7,
       membersOnly: [
         { _id: "p2", _type: "post" },
         { _id: "e1", _type: "event" },
         { _id: "g1", _type: "page" },
+        { _id: "d1", _type: "directoryEntry" },
+        { _id: "d2", _type: "directoryEntry" },
       ],
+      bookingContacts: 1,
     });
   });
 });

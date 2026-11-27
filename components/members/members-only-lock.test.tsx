@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { Visibility } from "@/lib/members/access";
-import { MembersOnlyLock } from "./members-only-lock";
+import { levelTitles, MembersOnlyLock } from "./members-only-lock";
 
 const MEMBERS: Visibility = { audience: "members", levels: [] };
 const BAND_UP: Visibility = { audience: "levels", levels: ["band", "business", "sponsor"] };
@@ -65,5 +65,39 @@ describe("MembersOnlyLock", () => {
     );
     expect(screen.getByRole("heading", { name: "This event is for members" })).toBeVisible();
     expect(screen.getByText("Sign in or join to see it.")).toBeVisible();
+  });
+
+  it("locks the venue directory as a block, under its heading", () => {
+    render(
+      <MembersOnlyLock
+        reason="sign-in"
+        visibility={MEMBERS}
+        thing="directory"
+        returnTo="/venues"
+        headingLevel={3}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { level: 3, name: "This directory is for members" }),
+    ).toBeVisible();
+    expect(screen.getByText("Sign in or join to see it.")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/sign-in?next=%2Fvenues",
+    );
+  });
+});
+
+describe("levelTitles", () => {
+  it("names the levels in the board's order, joined for a sentence", () => {
+    expect(levelTitles(["sponsor", "band", "business"])).toBe("Band, Business and Sponsor");
+    expect(levelTitles(["business", "band"])).toBe("Band and Business");
+    expect(levelTitles(["individual"])).toBe("Individual");
+  });
+
+  it("is empty for no level, and skips values that aren't levels", () => {
+    expect(levelTitles([])).toBe("");
+    expect(levelTitles(["family"])).toBe("");
+    expect(levelTitles(["family", "band"])).toBe("Band");
   });
 });

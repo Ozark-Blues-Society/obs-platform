@@ -44,6 +44,21 @@ export function activeLevel(viewer: Viewer, now: Date): MembershipLevel | null {
   return Number.isFinite(expires) && expires > now.getTime() ? viewer.level : null;
 }
 
+/**
+ * The levels whose members see the venue directory's booking contacts (board-decisions §1):
+ * Band, Business and Sponsor. Every active member sees the venues and their details.
+ */
+export const BOOKING_CONTACT_LEVELS = [
+  "band",
+  "business",
+  "sponsor",
+] as const satisfies readonly MembershipLevel[];
+
+/** Whether an active member at `level` (activeLevel's answer) sees booking contacts. */
+export function seesBookingContacts(level: MembershipLevel | null): boolean {
+  return BOOKING_CONTACT_LEVELS.some((allowed) => allowed === level);
+}
+
 /** Why the viewer can't see an item, which decides what the lock says. */
 export type LockReason =
   /** A visitor: sign in, or join. */
