@@ -1,9 +1,9 @@
 /**
  * Synthetic events and venues, shaped after the event and venue fields in
- * docs/spec/architecture.md. Events live in Sanity, so these are for Sanity's development dataset.
- * Loading them waits for a Sanity project (bead op-4nd.1, Q-20261126-042834-8727). In C-1's schemas
+ * docs/spec/architecture.md. Events live in Sanity, so these are for Sanity's development dataset:
+ * `pnpm fixtures:sanity` loads them (./sanity-fixtures.mts). In C-1's schemas
  * (sanity/schemas/documents/) each fixture venue becomes a public venue (name, address, mapUrl)
- * plus a members-only directoryEntry (capacity, notes, booking contact). Names follow the
+ * plus a members-only directoryEntry (capacity, pay, notes, booking contact). Names follow the
  * placeholders in the approved design concept (docs/design/prototype.html); none of them is a real
  * venue or band.
  */
@@ -22,6 +22,8 @@ export interface FixtureVenue {
   address: string;
   mapUrl: string;
   capacity: string;
+  /** How the venue usually pays bands, as the directory's Pay column shows it. */
+  pay: string | null;
   /** Venue directory booking contact: visible to Band, Business and Sponsor members only. */
   booking: { contact: string; email: string | null; phone: string | null };
   notes: string | null;
@@ -52,8 +54,9 @@ export const VENUES: readonly FixtureVenue[] = [
     address: "410 Mill Street, Riverbend",
     mapUrl: "https://example.com/map/old-mill-music-hall",
     capacity: "350",
+    pay: "Door split or guarantee",
     booking: { contact: "Sam Ortega", email: "booking.oldmill@example.com", phone: null },
-    notes: "Sound tech provided. Door split or guarantee.",
+    notes: "Sound tech provided.",
   },
   {
     id: "fixture-venue-riverside-tap",
@@ -61,8 +64,9 @@ export const VENUES: readonly FixtureVenue[] = [
     address: "22 Front Street, Riverbend",
     mapUrl: "https://example.com/map/the-riverside-tap",
     capacity: "120",
+    pay: "Guarantee plus tips",
     booking: { contact: "Darnell Hughes", email: null, phone: "(479) 555-0161" },
-    notes: "Backline drum kit. Guarantee plus tips.",
+    notes: "Backline drum kit.",
   },
   {
     id: "fixture-venue-riverbend-brewing",
@@ -70,8 +74,9 @@ export const VENUES: readonly FixtureVenue[] = [
     address: "1800 Riverbend Parkway, Riverbend",
     mapUrl: "https://example.com/map/riverbend-brewing-co",
     capacity: "180",
+    pay: "Flat fee",
     booking: { contact: "Events desk", email: "events.riverbend@example.com", phone: null },
-    notes: "Patio stage from April to October. Flat fee.",
+    notes: "Patio stage from April to October.",
   },
   {
     id: "fixture-venue-courthouse-square",
@@ -79,8 +84,9 @@ export const VENUES: readonly FixtureVenue[] = [
     address: "Courthouse Square, Riverbend",
     mapUrl: "https://example.com/map/courthouse-square-stage",
     capacity: "Open air",
+    pay: "Grant-funded",
     booking: { contact: "City Parks Department", email: "parks@example.com", phone: null },
-    notes: "Summer series only. Grant-funded.",
+    notes: "Summer series only.",
   },
   {
     id: "fixture-venue-bluebird",
@@ -88,8 +94,9 @@ export const VENUES: readonly FixtureVenue[] = [
     address: "305 Elm Street, Riverbend",
     mapUrl: "https://example.com/map/the-bluebird-lounge",
     capacity: "80",
+    pay: "Tips plus bar tab",
     booking: { contact: "Ana Ruiz", email: null, phone: "(479) 555-0162" },
-    notes: "Acoustic and duo acts only. Tips plus bar tab.",
+    notes: "Acoustic and duo acts only.",
   },
   {
     id: "fixture-venue-library",
@@ -97,6 +104,7 @@ export const VENUES: readonly FixtureVenue[] = [
     address: "100 Library Lane, Riverbend",
     mapUrl: "https://example.com/map/riverbend-public-library",
     capacity: "60",
+    pay: null,
     booking: { contact: "Community room desk", email: null, phone: "(479) 555-0163" },
     notes: null,
   },
