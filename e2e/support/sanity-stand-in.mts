@@ -2,8 +2,8 @@
  * A stand-in for Sanity's API for end-to-end tests: CI has no Sanity project, so Playwright starts
  * this server (playwright.config.ts) and the app reads content from it instead
  * (SANITY_API_HOST_STAND_IN, see sanity/live.ts). It answers GROQ queries with groq-js, Sanity's
- * own query engine, over the documents in ../fixtures/sanity-content.mts, so the app's real queries
- * run, members-only gating included.
+ * own query engine, over the documents in ../fixtures/sanity-content.mts and
+ * ../fixtures/sanity-events.mts, so the app's real queries run, members-only gating included.
  *
  * It behaves like a private dataset (decision 0001): a query without the read token gets an empty
  * dataset, with status 200, as Sanity does. Draft perspectives show drafts in place of the
@@ -13,12 +13,15 @@
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { evaluate, parse } from "groq-js";
-import { DOCUMENTS } from "../fixtures/sanity-content.mts";
+import { DOCUMENTS as CONTENT } from "../fixtures/sanity-content.mts";
+import { EVENT_DOCUMENTS } from "../fixtures/sanity-events.mts";
 
 const PORT = Number(process.env.SANITY_STAND_IN_PORT ?? 3400);
 const TOKEN = process.env.SANITY_API_READ_TOKEN ?? "e2e-stand-in-token";
 
 type Doc = { _id: string; [key: string]: unknown };
+
+const DOCUMENTS: Doc[] = [...CONTENT, ...EVENT_DOCUMENTS];
 
 /** The documents a query can see, for this perspective and token. */
 function datasetFor(perspective: string, authorized: boolean): Doc[] {
