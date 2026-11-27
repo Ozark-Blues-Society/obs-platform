@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { calendarHref, isCategoryFilter, readCalendarParams } from "./calendar-params";
+import {
+  calendarHref,
+  isCategoryFilter,
+  readCalendarChoices,
+  readCalendarParams,
+} from "./calendar-params";
 
 // 9 AM on November 27, 2026 in Central Time.
 const NOW = new Date("2026-11-27T15:00:00Z");
@@ -22,6 +27,17 @@ describe("readCalendarParams", () => {
     );
     // 11 PM on November 30 in Central Time is already December in UTC.
     expect(readCalendarParams({}, new Date("2026-12-01T05:00:00Z")).month).toBe("2026-11");
+  });
+});
+
+describe("readCalendarChoices", () => {
+  it("reads the view and category from the browser's address as readCalendarParams does", () => {
+    const search = new URLSearchParams("month=2027-03&view=list&category=jam&category=society");
+    expect(readCalendarChoices(search)).toEqual({ view: "list", category: "jam" });
+    expect(readCalendarChoices(new URLSearchParams("view=agenda&category=Jam"))).toEqual({
+      view: "month",
+      category: "all",
+    });
   });
 });
 

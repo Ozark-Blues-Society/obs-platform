@@ -63,6 +63,14 @@ test("the calendar opens on this month and moves to the months before and after"
   await page.getByRole("link", { name: `Previous month, ${monthName(thisMonth)}` }).click();
   await expect(page).toHaveURL(`/events?month=${thisMonth}`);
   await expect(grid(page, thisMonth)).toBeVisible();
+
+  // From the keyboard, focus stays on the arrow, and the status line names the new month.
+  await page.getByRole("link", { name: `Next month, ${monthName(next)}` }).press("Enter");
+  await expect(page).toHaveURL(`/events?month=${next}`);
+  await expect(
+    page.getByRole("link", { name: `Next month, ${monthName(addMonths(next, 1))}` }),
+  ).toBeFocused();
+  await expect(page.getByRole("main").getByRole("status")).toContainText(` in ${monthName(next)}`);
 });
 
 test("the month grid puts each date on its day, a repeating event on every one", async ({
@@ -149,6 +157,43 @@ test("the category filters narrow the grid and Coming up, and the address keeps 
     .click();
   await expect(page).toHaveURL(`/events?month=${month}`);
   await expect(grid(page, month).getByRole("link", { name: EVENTS.concert.title })).toBeVisible();
+});
+
+test("Back and Forward bring back the view and category the address names", async ({ page }) => {
+  const month = monthOf(EVENTS.concert.start);
+  const before = addMonths(month, -1);
+  const next = addMonths(month, 1);
+  const categories = page.getByRole("group", { name: "Event category" });
+  const views = page.getByRole("group", { name: "Show the calendar as" });
+  await page.goto(`/events?month=${month}`);
+  await categories.getByRole("button", { name: "Jam" }).click();
+  await page.getByRole("link", { name: `Next month, ${monthName(next)}` }).click();
+  await expect(page).toHaveURL(`/events?month=${next}&category=jam`);
+
+  // Back: the address says Jam, and so does the calendar.
+  await page.goBack();
+  await expect(page).toHaveURL(`/events?month=${month}&category=jam`);
+  await expect(categories.getByRole("button", { name: "Jam" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(
+    grid(page, month).getByRole("link", { name: EVENTS.jam.title }).first(),
+  ).toBeVisible();
+  await expect(grid(page, month).getByRole("link", { name: EVENTS.concert.title })).toHaveCount(0);
+
+  // The list from there, a month back and Back again: still the list, still jams.
+  await views.getByRole("button", { name: "List" }).click();
+  await page.getByRole("link", { name: `Previous month, ${monthName(before)}` }).click();
+  await expect(page).toHaveURL(`/events?month=${before}&view=list&category=jam`);
+  await page.goBack();
+  await expect(page).toHaveURL(`/events?month=${month}&category=jam&view=list`);
+  await expect(views.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(categories.getByRole("button", { name: "Jam" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });
 
 test("the list view shows the month's dates as cards, and moves between months", async ({

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EventOccurrence } from "@/lib/events/load";
-import { EventsCalendar } from "./events-calendar";
+import { EventsCalendarView } from "./events-calendar";
 
 function date(
   id: string,
@@ -45,19 +45,24 @@ const FEED = {
   webcal: "webcal://ozarkblues.example/events/feed.ics",
 };
 
-function renderCalendar(props: Partial<Parameters<typeof EventsCalendar>[0]> = {}) {
-  return render(
-    <EventsCalendar
+/**
+ * Renders the calendar at `address`. `follow()` gives it the address again after something changed
+ * it, as Next.js does through useSearchParams: after a pill's change, or Back and Forward.
+ */
+function renderCalendar(address = "/events?month=2026-12") {
+  window.history.replaceState(null, "", address);
+  const calendar = () => (
+    <EventsCalendarView
       month="2026-12"
       today="2026-12-08"
-      view="month"
-      category="all"
       dates={[JAM_1, JAM_8, REVUE, SOCIAL]}
       upcoming={[JAM_8, REVUE, SOCIAL]}
       feed={FEED}
-      {...props}
-    />,
+      search={new URLSearchParams(window.location.search)}
+    />
   );
+  const view = render(calendar());
+  return { follow: () => view.rerender(calendar()) };
 }
 
 const table = () => screen.getByRole("table", { name: "December 2026" });
@@ -101,7 +106,7 @@ describe("EventsCalendar", () => {
   });
 
   it("links to the months before and after, keeping the view and category", () => {
-    renderCalendar({ view: "list", category: "jam" });
+    renderCalendar("/events?month=2026-12&view=list&category=jam");
     expect(screen.getByRole("link", { name: "Previous month, November 2026" })).toHaveAttribute(
       "href",
       "/events?month=2026-11&view=list&category=jam",
@@ -113,10 +118,12 @@ describe("EventsCalendar", () => {
   });
 
   it("filters the grid and Coming up by category, and puts it in the address", () => {
-    renderCalendar();
+    const { follow } = renderCalendar();
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("4 dates in December 2026");
     fireEvent.click(screen.getByRole("button", { name: "Jam" }));
+    expect(window.location.search).toBe("?month=2026-12&category=jam");
+    follow();
 
     expect(screen.getByRole("button", { name: "Jam" })).toHaveAttribute("aria-pressed", "true");
     expect(
@@ -133,6 +140,7 @@ describe("EventsCalendar", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Workshop" }));
+    follow();
     expect(
       screen.getByText("Nothing on the calendar in December 2026 under Workshop."),
     ).toBeVisible();
@@ -142,11 +150,26 @@ describe("EventsCalendar", () => {
     expect(window.location.search).toBe("?month=2026-12");
   });
 
-  it("shows the month as a list of event cards", () => {
-    renderCalendar();
-    fireEvent.click(screen.getByRole("button", { name: "List" }));
+  it("shows what the address says when it changes, as after Back", () => {
+    const { follow } = renderCalendar("/events?month=2026-12&category=jam");
+    expect(screen.getByRole("button", { name: "Jam" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("2 dates (Jam) in December 2026");
+
+    // Back to an entry whose address has the list and every category.
+    window.history.replaceState(null, "", "/events?month=2026-12&view=list");
+    follow();
+    expect(screen.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("4 dates in December 2026");
+  });
+
+  it("shows the month as a list of event cards", () => {
+    const { follow } = renderCalendar();
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
     expect(window.location.search).toBe("?month=2026-12&view=list");
+    follow();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
     const month = screen.getByRole("region", { name: "December 2026" });
     expect(
       within(month)

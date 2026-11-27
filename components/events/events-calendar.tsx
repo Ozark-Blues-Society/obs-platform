@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useId } from "react";
 import { Card } from "@/components/ui/card";
 import { EventCard } from "@/components/ui/event-card";
 import { PillFilters, type PillOption } from "@/components/ui/pill-filters";
@@ -9,6 +10,7 @@ import { cx } from "@/lib/cx";
 import {
   CATEGORY_FILTERS,
   calendarHref,
+  readCalendarChoices,
   type CalendarView,
   type CategoryFilter,
 } from "@/lib/events/calendar-params";
@@ -31,8 +33,6 @@ type EventsCalendarProps = {
   month: string;
   /** Today on the Society's calendar (YYYY-MM-DD). */
   today: string;
-  view: CalendarView;
-  category: CategoryFilter;
   /** Every event date in the month, earliest first. */
   dates: readonly EventOccurrence[];
   /** Each event's next date, earliest first, for "Coming up". */
@@ -43,20 +43,24 @@ type EventsCalendarProps = {
 /**
  * The events calendar (backlog P-2, the approved concept's Events page): category filters, the
  * month as a grid or a list with links to the months before and after, "Coming up" and the
- * calendar feed. The category and the view change here, in the browser, and the address follows
- * them, so a link to the page keeps them; moving to another month loads that month's events.
+ * calendar feed. The category and the view live in the address: the pills change it in the
+ * browser, without loading the page again, so a link to the page keeps them, and Back and Forward
+ * bring back what the address said. Moving to another month loads that month's events.
  */
-export function EventsCalendar({
+export function EventsCalendar(props: EventsCalendarProps) {
+  return <EventsCalendarView {...props} search={useSearchParams()} />;
+}
+
+/** The calendar for the address's search parameters (`search`): see EventsCalendar. */
+export function EventsCalendarView({
   month,
   today,
-  view: firstView,
-  category: firstCategory,
   dates,
   upcoming,
   feed,
-}: EventsCalendarProps) {
-  const [view, setView] = useState(firstView);
-  const [category, setCategory] = useState(firstCategory);
+  search,
+}: EventsCalendarProps & { search: { get(key: string): string | null } }) {
+  const { view, category } = readCalendarChoices(search);
   const titleId = useId();
   const inCategory = (date: EventOccurrence) => category === "all" || date.category === category;
   const shown = dates.filter(inCategory);
@@ -71,19 +75,13 @@ export function EventsCalendar({
           label="Event category"
           options={CATEGORY_FILTERS}
           value={category}
-          onChange={(value) => {
-            setCategory(value);
-            followInAddress("category", value === "all" ? null : value);
-          }}
+          onChange={(value) => followInAddress("category", value === "all" ? null : value)}
         />
         <PillFilters
           label="Show the calendar as"
           options={VIEWS}
           value={view}
-          onChange={(value) => {
-            setView(value);
-            followInAddress("view", value === "month" ? null : value);
-          }}
+          onChange={(value) => followInAddress("view", value === "month" ? null : value)}
         />
       </div>
       <p role="status" className="sr-only">
@@ -182,7 +180,10 @@ function MonthLink({
   );
 }
 
-/** Puts a choice in the address bar without loading the page again, so a link to it keeps it. */
+/**
+ * Puts a choice in the address bar without loading the page again, so a link to it keeps it.
+ * Next.js passes the new address to useSearchParams, which shows the choice.
+ */
 function followInAddress(key: string, value: string | null) {
   const url = new URL(window.location.href);
   if (value === null) url.searchParams.delete(key);

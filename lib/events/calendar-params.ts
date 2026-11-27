@@ -28,10 +28,23 @@ export function readCalendarParams(params: SearchParams, now: Date) {
     return Array.isArray(value) ? value[0] : value;
   };
   const month = first("month");
-  const category = first("category");
   return {
     month: isMonth(month) ? month : societyMonth(now),
-    view: (first("view") === "list" ? "list" : "month") as CalendarView,
+    ...choices(first("view"), first("category")),
+  };
+}
+
+/**
+ * The view and category in the browser's address (useSearchParams), read as readCalendarParams
+ * reads them: the first value of each, the default if it's missing or wrong.
+ */
+export function readCalendarChoices(search: { get(key: string): string | null }) {
+  return choices(search.get("view") ?? undefined, search.get("category") ?? undefined);
+}
+
+function choices(view: string | undefined, category: string | undefined) {
+  return {
+    view: (view === "list" ? "list" : "month") as CalendarView,
     category: isCategoryFilter(category) ? category : ("all" as CategoryFilter),
   };
 }
