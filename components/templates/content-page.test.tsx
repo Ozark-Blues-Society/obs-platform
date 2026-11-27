@@ -32,6 +32,16 @@ vi.mock("@/components/blocks/current-sponsors", () => ({
   ),
 }));
 
+// So does the venue directory, which works out what the viewer may see itself
+// (components/blocks/venue-directory.tsx, tested there).
+vi.mock("@/components/blocks/venue-directory", () => ({
+  VenueDirectory: ({ heading, returnTo }: { heading: string; returnTo: string }) => (
+    <p>
+      Venue directory: {heading} (back to {returnTo})
+    </p>
+  ),
+}));
+
 const ASSET = "image-Tb9Ew8CXIwaY6R1kjMvI0uRR-2000x1125-jpg";
 const photo = (alt: string) => ({ _type: "image", asset: { _ref: ASSET }, alt });
 const paragraph = (key: string, text: string, markDefs: unknown[] = [], marks: string[] = []) => ({
@@ -328,6 +338,26 @@ describe("ContentPage", () => {
     expect(screen.getByText("Sponsor logos: Presented by [sp-2, sp-1]")).toBeInTheDocument();
   });
 
+  it("fills the venue directory with its own loader, whoever can see the page", () => {
+    render(
+      <ContentPage
+        page={page({
+          slug: "venues",
+          template: "directory",
+          content: {
+            blocks: [
+              { _type: "tableBlock", _key: "d", heading: "Venues", source: "directory" },
+              // A directory needs no columns or rows typed in.
+              { _type: "tableBlock", _key: "t", heading: "Typed", source: "custom" },
+            ],
+          },
+        })}
+      />,
+    );
+    expect(screen.getByText("Venue directory: Venues (back to /venues)")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
   it("shows nothing yet for the blocks whose loaders other backlog items build", () => {
     const { container } = render(
       <ContentPage
@@ -335,14 +365,13 @@ describe("ContentPage", () => {
           content: {
             blocks: [
               { _type: "upcomingEventsBlock", _key: "e", heading: "Upcoming shows", count: 3 },
-              { _type: "tableBlock", _key: "d", heading: "Venue directory", source: "directory" },
               { _type: "formBlock", _key: "f", form: "volunteer", heading: "Sign up" },
             ],
           },
         })}
       />,
     );
-    for (const heading of ["Upcoming shows", "Venue directory", "Sign up"]) {
+    for (const heading of ["Upcoming shows", "Sign up"]) {
       expect(screen.queryByText(heading)).not.toBeInTheDocument();
     }
     expect(container.querySelectorAll("h1")).toHaveLength(1);

@@ -6,6 +6,7 @@ import { ImageBlock, QuoteBlock, VideoBlock } from "@/components/blocks/media-bl
 import { Prose } from "@/components/blocks/prose";
 import { RichText } from "@/components/blocks/rich-text";
 import { SanityImage } from "@/components/blocks/sanity-image";
+import { VenueDirectory } from "@/components/blocks/venue-directory";
 import { VideoPlayer } from "@/components/blocks/video-player";
 import { MemberFiles } from "@/components/members/member-files";
 import { MembersOnlyLock } from "@/components/members/members-only-lock";
@@ -34,7 +35,9 @@ export type ContentPageItem = GatedItem<"page", PageContent>;
  *
  * Otherwise each block becomes its component (lib/pages/blocks.ts says which are left out). A
  * hero that opens the page takes the page header's place, so its headline is the page's heading;
- * a Band Spotlight's says so above it. On a Directory page, tables get a search box.
+ * a Band Spotlight's says so above it. On a Directory page, tables get a search box. The venue
+ * directory's rows are for members only, whoever can see the page (components/blocks/
+ * venue-directory.tsx).
  */
 export function ContentPage({ page }: { page: ContentPageItem }) {
   const template = pageTemplate(page.template);
@@ -69,7 +72,7 @@ export function ContentPage({ page }: { page: ContentPageItem }) {
       }
     >
       {(opening ? blocks.slice(1) : blocks).map((block) => (
-        <Block key={block.key} block={block} template={template} />
+        <Block key={block.key} block={block} template={template} path={pagePath(page.slug)} />
       ))}
       <MemberFiles files={page.content?.memberFiles} className="" />
     </PageTemplate>
@@ -115,7 +118,16 @@ function Hero({
   );
 }
 
-function Block({ block, template }: { block: PageBlock; template: PageTemplateName }) {
+function Block({
+  block,
+  template,
+  path,
+}: {
+  block: PageBlock;
+  template: PageTemplateName;
+  /** The page's path, for coming back after signing in. */
+  path: string;
+}) {
   switch (block.kind) {
     case "hero":
       return <Hero block={block} template={template} />;
@@ -168,10 +180,11 @@ function Block({ block, template }: { block: PageBlock; template: PageTemplateNa
     // page's query.
     case "sponsorStrip":
       return <CurrentSponsors heading={block.heading} sponsorIds={block.sponsorIds} />;
-    // Upcoming events wait for P-2's events loader, the venue directory for M-9's and the
-    // volunteer form for P-5. Until then they show nothing.
-    case "upcomingEvents":
     case "directory":
+      return <VenueDirectory heading={block.heading} returnTo={path} />;
+    // Upcoming events wait for P-2's events loader and the volunteer form for P-5. Until then
+    // they show nothing.
+    case "upcomingEvents":
     case "form":
       return null;
   }
