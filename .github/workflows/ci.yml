@@ -188,9 +188,9 @@ jobs:
         run: pnpm test --maxWorkers=2
 
       # The build inlines the stack's API URL and publishable key, and it runs before the stack is
-      # up, so they come from .env.example: the well-known local values. F-4 (typed env config,
-      # .env.example) owns these variable names. Later steps get them too, and "End-to-end tests"
-      # first checks that the running stack reports the same ones.
+      # up, so they come from .env.example: the well-known local values (lib/env/schema.ts checks
+      # them). Later steps get them too, and "End-to-end tests" first checks that the running stack
+      # reports the same ones.
       - name: Use the local Supabase URL and key from .env.example
         id: supabase-env
         if: ${{ !cancelled() && steps.scope.outputs.run == 'true' }}

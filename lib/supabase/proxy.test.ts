@@ -126,10 +126,19 @@ describe("updateSession", () => {
 
   it("skips session handling, with one warning, when Supabase isn't configured", async () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "");
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     expect(passesThrough(await updateSession(request("/")))).toBe(true);
     expect(passesThrough(await updateSession(request("/account")))).toBe(true);
     expect(warn).toHaveBeenCalledOnce();
+  });
+
+  it("refuses half a configuration, naming the missing variable", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+
+    await expect(updateSession(request("/"))).rejects.toThrow(
+      "NEXT_PUBLIC_SUPABASE_URL isn't set, but NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is",
+    );
   });
 });

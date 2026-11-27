@@ -1,21 +1,26 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import { publicEnv } from "@/lib/env/public";
+import { requireEnv } from "@/lib/env/schema";
+import { serverEnv } from "@/lib/env/server";
 
 /**
  * A Supabase client with the service role, for server code that acts for the Society rather than
  * for a signed-in member: the daily jobs (lib/jobs/daily.ts), and later the Stripe webhook and
  * the importer. It bypasses row level security, so never use it for a member's own request, and
- * never let its key reach the browser: SUPABASE_SECRET_KEY has no NEXT_PUBLIC_ name.
+ * never let its key reach the browser: SUPABASE_SECRET_KEY is a server-only variable (lib/env).
  */
 export function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
-  if (!url || !secretKey) {
-    throw new Error(
-      "The service role isn't configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY " +
-        "(locally: the SECRET_KEY that `supabase status` prints).",
-    );
-  }
+  const url = requireEnv(
+    publicEnv("NEXT_PUBLIC_SUPABASE_URL"),
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "the service role needs Supabase's address (locally, copy .env.example to .env.local).",
+  );
+  const secretKey = requireEnv(
+    serverEnv("SUPABASE_SECRET_KEY"),
+    "SUPABASE_SECRET_KEY",
+    "the service role needs it (locally, the SECRET_KEY that `supabase status` prints).",
+  );
   return createClient(url, secretKey, {
     // No member session: don't store, refresh or look for one.
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
