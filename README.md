@@ -374,6 +374,20 @@ so the Studio can sign in from there. Every address that serves the site needs t
   - An address with no page streams the not-found page with status 200 (the shell is already
     sent), and Next.js adds `noindex` so search engines skip it. `e2e/pages.spec.ts` checks this
     along with each template, the blocks and members-only pages.
+- **The blog** (backlog P-3) is at `/blog`. `app/(site)/blog/page.tsx` lists posts with
+  `listGatedItems("post", POST_LIST_CONTENT, { order: POST_LIST_ORDER })`, and `selectBlogPage`
+  (`lib/blog/posts.ts`) keeps the posts that are out, in the category from `?category=`, 12 to a
+  page (`?page=`). A later `publishedAt` schedules a post: the list leaves it out and its page is
+  not found until then, except in a preview. That check runs on every request rather than in the
+  cached GROQ answer, so a scheduled post shows the minute it's due without anyone publishing
+  again. The category pills are links (`PillLinks`), so each filter has its own address and the
+  tab title names it.
+  - The post page (`app/(site)/blog/[slug]/page.tsx`, drawn by `components/blog/post-view.tsx`)
+    shows the cover photo, the post's text (`RichText`), its files and its author from People
+    (`POST_CONTENT`). A locked post shows only its headline, category, date and cover photo, as its
+    card does, then `<MembersOnlyLock>`.
+  - `e2e/blog.spec.ts` covers the list, the category filter, a post, scheduled posts and the locks
+    (`e2e/members-only-items.spec.ts` has the post page's locks in depth).
 - **Pages that show Sanity content** go under `app/(site)/`, the route group that holds the
   draft-mode tools; the Studio stays outside it. They read pages, posts and events through
   `sanity/content` (see [Members-only content](#members-only-content)). Inside `sanity/`, call
@@ -988,9 +1002,9 @@ header, `<main>` and footer from `app/(site)/layout.tsx` (backlog D-2). The Stud
 - **Account links**: Sign in and Join, or My Account, from `getCurrentUser()` inside `<Suspense>`,
   so the rest of the header is prerendered. Without Supabase settings, everyone is a visitor.
 - **The footer** shows Site settings' footer fields and the editors' footer links.
-- **Links ahead of their pages:** the header and footer link to `/events`, `/blog`, `/sponsors`,
-  `/donate` and `/join` (Membership Benefits & Join), which 404 until P-2, P-3, P-4, P-6 and M-4
-  build them. Classifieds joins the menu with K-* (Launch 2).
+- **Links ahead of their pages:** the header and footer link to `/events`, `/sponsors`, `/donate`
+  and `/join` (Membership Benefits & Join), which 404 until P-2, P-4, P-6 and M-4 build them.
+  Classifieds joins the menu with K-* (Launch 2).
 
 ## Next.js 16 notes
 
