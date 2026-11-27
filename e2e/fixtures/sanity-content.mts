@@ -3,9 +3,7 @@
  * blog posts for each audience, one scheduled post and one draft, pages in each template and for
  * each audience, sponsors for the sponsor logos blocks, and the secret for shared preview links. Each members-only field holds a marker,
  * so a test can check that no response reaches a viewer who may not see it. All but the post for
- * Band and up are marked for the monthly email digest. Two more posts for the blog's own tests
- * (a recap with a cover photo, an author and formatted text, and an older education post) aren't,
- * so the digest's tests don't see them.
+ * Band and up are marked for the monthly email digest.
  *
  * Nothing here is in a menu and there are no Site settings, so the header and footer stay the
  * built-in ones that other tests expect.
@@ -348,6 +346,11 @@ function block(key: string, text: string, extra: object = {}) {
   };
 }
 
+/**
+ * Two more posts for the blog's own tests (e2e/blog.spec.ts), and the author of one: a recap with a
+ * cover photo, an author and formatted text, and an older education post. Neither is marked for the
+ * monthly email digest, so the digest's tests don't see them.
+ */
 const BLOG_DOCUMENTS = [
   {
     _id: AUTHOR.id,
