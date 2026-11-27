@@ -112,10 +112,51 @@ function offsetAt(instant: number): number {
 /** Midnight Central Time at the start of the month's first day. */
 function startOfMonth(month: string): Date {
   const { year, index } = monthParts(month);
-  const midnight = Date.UTC(year, index, 1);
-  // Midnight UTC comes 5 or 6 hours before the Society's. Guess with the offset then, and correct
-  // with the offset at the guess, in case the clocks changed in between (in Central Time they
-  // change at 2 AM, so they never do).
-  const guess = midnight - offsetAt(midnight);
-  return new Date(midnight - offsetAt(guess));
+  return societyInstant({ year, month: index + 1, day: 1, hour: 0, minute: 0 });
+}
+
+/** A date and time as the Society's clocks show it. `month` counts from 1 (January). */
+export type WallClock = { year: number; month: number; day: number; hour: number; minute: number };
+
+/** The date and time on the Society's clocks at `instant`, and the weekday (0 is Sunday). */
+export function societyWallClock(instant: Date): WallClock & { weekday: number } {
+  const parts = Object.fromEntries(
+    wallClockFormat.formatToParts(instant).map((part) => [part.type, Number(part.value)]),
+  );
+  const { year, month, day, hour, minute } = parts;
+  return {
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    weekday: new Date(Date.UTC(year, month - 1, day)).getUTCDay(),
+  };
+}
+
+/** "2026-11-27" for that day. */
+export function isoDate({ year, month, day }: Pick<WallClock, "year" | "month" | "day">): string {
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/**
+ * When the Society's clocks show this date and time. Out-of-range fields roll over, as in
+ * Date.UTC (day 32 of January is February 1). The clocks change at 2 AM, so twice a year a time
+ * is missing or happens twice. A time the spring change skips (2:30 AM on the second Sunday in
+ * March) moves an hour later, as the clocks do; a time the autumn change repeats (1:30 AM on the
+ * first Sunday in November) is the first of the two.
+ */
+export function societyInstant({ year, month, day, hour, minute }: WallClock): Date {
+  // The clock reading as if it were UTC, which is 5 or 6 hours before the real instant. The
+  // offset there is the one in force before any change of the clocks near the reading.
+  const reading = Date.UTC(year, month - 1, day, hour, minute);
+  const before = offsetAt(reading);
+  const guess = reading - before;
+  const after = offsetAt(guess);
+  if (after === before) return new Date(guess);
+  // The clocks changed between the two. If the reading exists with the newer offset, use that.
+  const corrected = reading - after;
+  if (offsetAt(corrected) === after) return new Date(corrected);
+  // A reading the clocks skipped: the older offset gives the later instant.
+  return new Date(Math.max(guess, corrected));
 }

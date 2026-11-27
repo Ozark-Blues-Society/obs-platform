@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PageTemplate } from "@/components/templates/page-template";
 import { HeroBlock } from "./hero-block";
 import { SponsorStripBlock, TableBlock, UpcomingEventsBlock } from "./list-blocks";
@@ -116,6 +116,24 @@ describe("UpcomingEventsBlock and SponsorStripBlock", () => {
       "/events/delta-night",
     );
     expect(screen.getByRole("link", { name: /Full calendar/ })).toHaveAttribute("href", "/events");
+  });
+
+  it("lists two dates of a repeating event, which share its page", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const jam = { title: "Weekly Open Jam", href: "/events/open-jam" };
+    render(
+      <UpcomingEventsBlock
+        heading="Upcoming shows"
+        events={[
+          { ...jam, startsAt: "2026-12-02T01:00:00Z" },
+          { ...jam, startsAt: "2026-12-09T01:00:00Z" },
+        ]}
+      />,
+    );
+    expect(screen.getAllByRole("link", { name: "Weekly Open Jam" })).toHaveLength(2);
+    // React warns about two children with the same key.
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("says so when the calendar is empty", () => {

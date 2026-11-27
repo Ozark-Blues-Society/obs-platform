@@ -64,7 +64,8 @@ export function UpcomingEventsBlock({
       {events.length > 0 ? (
         <CardGrid>
           {events.map((event) => (
-            <li key={event.href}>
+            // A repeating event's dates share its page, so the key needs the date too.
+            <li key={`${event.href} ${String(event.startsAt)}`}>
               <EventCard {...event} />
             </li>
           ))}

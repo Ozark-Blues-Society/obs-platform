@@ -12,7 +12,9 @@ Open **Events** and select **+** (Create).
 - **Repeats**: choose **Every week** or **Every month** for a regular event such as a jam, then
   set its **Last date**. Weekly events repeat on the same weekday. Monthly events keep the first
   date's weekday and its place in the month: if the first date is the first Friday, it repeats on
-  every first Friday. The last date has to be after the first date.
+  every first Friday. A first date on the 29th, 30th or 31st repeats on the last such weekday of
+  each month (the last Friday, say), since most months have no fifth one. The calendar shows every
+  date up to and including the last date, which has to be after the first date.
 - **Venue**: pick the venue from the list. If it isn't there yet, create it right there and fill
   in its name, address and map link. Leave the venue empty for a private gathering whose address
   goes out by email.

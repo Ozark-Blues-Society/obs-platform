@@ -61,7 +61,7 @@ export const event = defineType({
           title: "How often",
           type: "string",
           description:
-            "Monthly keeps the first date's weekday and its place in the month: a first Friday repeats on first Fridays.",
+            "Monthly keeps the first date's weekday and its place in the month: a first Friday repeats on first Fridays. A first date on the 29th, 30th or 31st repeats on the month's last such weekday.",
           options: { list: optionList(RECURRENCE_FREQUENCIES), layout: "radio" },
           initialValue: "none",
           validation: (rule) => rule.required(),
