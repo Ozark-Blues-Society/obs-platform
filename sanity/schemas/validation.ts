@@ -2,6 +2,7 @@
 // message for the editor that says what to change. Unit tests: validation.test.ts.
 import { getPublishedId, type SlugValue, type ValidationContext } from "sanity";
 import { isFileId } from "@/lib/members/files";
+import { videoEmbed, type VideoProvider } from "@/lib/pages/video";
 import { apiVersion } from "@/sanity/env";
 import { SOCIETY_TIME_ZONE } from "./options";
 
@@ -146,28 +147,14 @@ export function tableRowsRule(rows: TableValue["rows"], context: ValidationConte
   return `Row ${index + 1} has ${cells} ${cells === 1 ? "cell" : "cells"}, but the table has ${columns} ${columns === 1 ? "column" : "columns"}. Give every row one cell per column.`;
 }
 
-export type VideoProvider = "youtube" | "vimeo" | "bandcamp";
+export type { VideoProvider } from "@/lib/pages/video";
 
-/** Which player a video link plays in, or null if the site can't embed it. */
+/**
+ * Which player a video link plays in, or null if the site can't embed it. The site embeds the same
+ * links (lib/pages/video.ts), so a link the Studio accepts always plays.
+ */
 export function videoProvider(link: string): VideoProvider | null {
-  let url: URL;
-  try {
-    url = new URL(link.trim());
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "https:") return null;
-  const host = url.hostname.replace(/^(www|m)\./, "");
-  const path = url.pathname;
-  if (host === "youtu.be") return /^\/[\w-]{6,}$/.test(path) ? "youtube" : null;
-  if (host === "youtube.com" || host === "youtube-nocookie.com") {
-    if (path === "/watch" && url.searchParams.get("v")) return "youtube";
-    return /^\/(embed|shorts|live)\/[\w-]{6,}$/.test(path) ? "youtube" : null;
-  }
-  if (host === "vimeo.com") return /^\/\d+(\/\w+)?$/.test(path) ? "vimeo" : null;
-  if (host === "player.vimeo.com") return /^\/video\/\d+$/.test(path) ? "vimeo" : null;
-  if (host === "bandcamp.com") return path.startsWith("/EmbeddedPlayer/") ? "bandcamp" : null;
-  return null;
+  return videoEmbed(link)?.provider ?? null;
 }
 
 export function videoUrlRule(link: string | undefined): RuleResult {

@@ -10,7 +10,8 @@ const ITEMS = buildMainNav([
   { label: "Board", href: "/board", placement: "about" },
   { label: "History", href: "/history", placement: "about" },
 ]);
-const ACCOUNT = <a href="/sign-in">Sign in</a>;
+// A same-page link: ESLint wants next/link for links to the site's pages.
+const ACCOUNT = <a href="#sign-in">Sign in</a>;
 
 function renderNav(pathname: string | null = "/") {
   const view = render(<HeaderNavView items={ITEMS} account={ACCOUNT} pathname={pathname} />);

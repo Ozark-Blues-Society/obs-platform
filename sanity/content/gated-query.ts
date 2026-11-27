@@ -35,14 +35,14 @@ export type GatedType = (typeof GATED_TYPES)[number];
 /**
  * What anyone may see of a page, post or event, even one they can't open, after the approved
  * concept (docs/design/prototype.html):
- * - page: its title and template (the page header stays visible above the lock);
+ * - page: its title, intro and template (the page header stays visible above the lock);
  * - post: headline, category, date and cover photo, but not the summary or the post;
  * - event: title, date and time, repeats, category, prices and photo, but not the venue or
  *   description.
  * Adding a field here makes it public on every locked item: check the concept first.
  */
 export const PUBLIC_FIELDS: Record<GatedType, readonly string[]> = {
-  page: ["title", "template"],
+  page: ["title", "intro", "template"],
   post: ["title", "category", "publishedAt", "coverImage"],
   event: ["title", "start", "recurrence", "category", "priceText", "memberPrice", "image"],
 };

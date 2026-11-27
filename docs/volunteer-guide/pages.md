@@ -7,16 +7,25 @@ and select **+** (Create) to add one.
 ## The basics
 
 - **Page title**: the main heading. Browser tabs and search results show it too.
+- **Intro** (optional): a sentence under the title, in the blue band at the top of the page.
+  Everyone sees it, like the title, even on a members-only page, so keep anything private out of
+  it. A page that starts with a **Hero photo and headline** block opens with the hero instead, so
+  the intro doesn't show there.
 - **Web address**: press **Generate** to make it from the title. The page lives at
   `/<web address>`, for example `/about-and-volunteer`. Use lowercase letters, numbers and
   hyphens. A few addresses belong to other parts of the site (such as `events`, `blog` or
   `studio`), and the Studio tells you if you pick one. Changing the address later breaks links
   people have saved, so settle it before you share the page.
-- **Template**: the page's layout.
-  - **Standard page** suits most pages.
-  - **Directory** is for lists, such as the venue directory.
-  - **Band Spotlight** is for band and musician profiles.
-  - **Promo Feature** is for campaigns, such as a call for bands.
+- **Template**: the page's layout. Each one suits a different set of blocks (see
+  [Page blocks](#page-blocks)):
+  - **Standard page** suits most pages: text, photos and perhaps a button.
+  - **Directory** is for lists, such as the venue directory: some text, then a table. Tables on a
+    Directory page get a search box that filters the rows as people type.
+  - **Band Spotlight** is for band and musician profiles. Start it with a **Hero photo and
+    headline** block holding the band's name: the site shows "Band Spotlight" above it. Then the
+    story or Q&A as text, a pull quote, a video or Bandcamp player, and upcoming events.
+  - **Promo Feature** is for campaigns, such as a call for bands: a hero with the headline and a
+    button, the details as text, another button and the sponsor logos.
 - **Who can see this page?**: see [Who can see it](content-studio.md#who-can-see-it).
 - **Show in menu**: where a link to the page appears. **Main menu** puts it in the top menu.
   **Under Events**, **Under About** and **Under Member Resources** put it inside that part of the
@@ -34,7 +43,7 @@ computer they open a short list when clicked, and on a phone the **Menu** button
 Putting a page under **Events** adds it to a list that also links to the events calendar.
 
 Members-only pages show in the menu for everyone, as in the approved design: a visitor who opens
-one sees its title and a prompt to sign in or join, not its content.
+one sees its title, its intro and a prompt to sign in or join, not its content.
 
 Links to things that aren't pages in the Studio, such as another website, are added in [Site
 settings](site-settings.md). In each menu they come after the pages.
@@ -44,6 +53,13 @@ settings](site-settings.md). In each menu they come after the pages.
 A page is a list of blocks, top to bottom. Select **Add item** to add one, drag the handle to move
 it, and use its menu to remove it. Each block keeps the Society's design, so you fill in words and
 photos and the layout looks after itself.
+
+The first block decides how the page opens. A **Hero photo and headline** block there takes the
+place of the blue band, and its headline becomes the page's main heading. With any other block
+first, the page opens with the blue band holding the title and intro.
+
+A block that isn't finished, such as a photo block without its photo, doesn't show on the website
+until it is, and neither does a button whose page, post or event isn't published.
 
 | Block                          | What it shows                                                                                                              |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |

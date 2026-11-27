@@ -39,9 +39,9 @@ Pages, events and blog posts each have a **Who can see this?** setting:
 - **Only some membership levels**: tick the levels that can see it (Individual, Band, Business,
   Sponsor).
 
-Visitors who can't see something get a prompt to sign in or join instead. Members-only content is
-kept in a part of the Studio that the public can't read, so locking an item really does keep it
-private.
+Visitors who can't see something get a prompt to sign in or join instead. They still see a page's
+title and intro, a post's headline and an event's title and date. Members-only content is kept in
+a part of the Studio that the public can't read, so locking an item really does keep it private.
 
 Photos are the exception: anyone who has a photo's web address can open it, even from a
 members-only post. Don't put anything private in a photo.
