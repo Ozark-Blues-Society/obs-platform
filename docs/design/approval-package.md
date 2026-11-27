@@ -92,8 +92,9 @@ These are in the package for the Society to approve or change.
 - **The featured sponsor's spotlight is on the home page** (the scope puts it on home and the
   Sponsors page; the concept's home page showed only the logos).
 - **Membership starts at $30 a year** (the board's Individual price; the concept said $25).
-- **Pages have an intro sentence** under the title, as the concept's do. The page schema has no
-  intro field yet: C-2 adds one or drops the intro.
+- **Pages have an intro sentence** under the title, as the concept's do: the page's Intro field
+  (C-2). Like the title, it's public, so a visitor sees it above the lock on a members-only page,
+  as in the concept's Directory page.
 - **Hero blocks darken the photo under their text**, so any photo keeps the text readable.
 - **"Upcoming shows" on a Band Spotlight lists the next events on the calendar**, not only that
   band's: the upcoming events block has no band filter (C-1).

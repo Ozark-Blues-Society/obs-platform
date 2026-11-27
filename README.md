@@ -347,6 +347,33 @@ so the Studio can sign in from there. Every address that serves the site needs t
   membership: members-only content must stay locked for a draft-mode visitor (M-7).
 - **Published changes.** `<SanityLive>` in `app/(site)/layout.tsx` listens for them and refreshes
   cached content. It needs no token, only the site's address in the CORS origins.
+- **Pages built in the Studio** (backlog C-2) live at `/<slug>`: `app/(site)/[slug]/page.tsx`
+  reads one with `getGatedItem("page", slug, PAGE_CONTENT)` and `ContentPage`
+  (`components/templates/content-page.tsx`) draws it in its template. `lib/pages/blocks.ts`
+  checks each block and turns it into the props of its component in `components/blocks/` (the
+  map is in [`docs/design/approval-package.md`](docs/design/approval-package.md)). A block of an
+  unknown type, or one that isn't complete yet, such as a draft's photo block with no photo, is
+  left out. A hero as the first block opens the page instead of the page header. A viewer who may
+  not see the page gets its header (title and intro, which are public) and `<MembersOnlyLock>`.
+  - Photos come from Sanity's image CDN through next-sanity's `<Image>`, which applies the
+    editor's crop and focal point (`components/blocks/sanity-image.tsx`). Videos play in
+    YouTube's privacy-enhanced player, Vimeo's with tracking off, or Bandcamp's player, from an
+    address built from the video's id (`lib/pages/video.ts`, which the Studio's link check uses
+    too).
+  - The blocks that fill themselves load their content with their own calls, never through the
+    page's query. Sponsor logos: `listCurrentSponsors` (`sanity/content/sponsors.ts`; sponsors
+    are public) gives the editor's picks or every current sponsor, never one past its last day
+    (`endsAt`, a Central Time date), cached per day like the menus, and
+    `components/blocks/current-sponsors.tsx` draws them. Upcoming events wait for P-2's events
+    loader, the venue directory for M-9's and the volunteer form for P-5. Until then they show
+    nothing.
+  - `[slug]` matches every address without a page of its own, so ESLint's
+    `@next/next/no-html-link-for-pages` now flags any `<a href="/…">` written as a literal. Use
+    `next/link`, or pass the address as an expression where a plain `<a>` is deliberate, as
+    `<MemberFiles>` does.
+  - An address with no page streams the not-found page with status 200 (the shell is already
+    sent), and Next.js adds `noindex` so search engines skip it. `e2e/pages.spec.ts` checks this
+    along with each template, the blocks and members-only pages.
 - **Pages that show Sanity content** go under `app/(site)/`, the route group that holds the
   draft-mode tools; the Studio stays outside it. They read pages, posts and events through
   `sanity/content` (see [Members-only content](#members-only-content)). Inside `sanity/`, call
@@ -380,7 +407,8 @@ const post = await getGatedItem("post", slug, "{ excerpt, body }");
   The loader then checks again with `checkAccess`.
 - Each type's public fields are fixed in `PUBLIC_FIELDS`, after the approved concept. A locked post
   shows its headline, category, date and cover photo, a locked event its title, date, time, prices
-  and photo (not the venue), and a locked page its title. Everything else goes in `content`.
+  and photo (not the venue), and a locked page its title and intro. Everything else goes in
+  `content`.
 - `listGatedItems(type, content, { filter, params, order, limit })` does the same for lists, feeds
   and sitemaps. `listPublicItems` takes the same arguments but always asks as a visitor, for
   published content only, whoever is signed in and even in a preview: for what goes out to

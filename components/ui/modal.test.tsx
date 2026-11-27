@@ -164,7 +164,7 @@ describe("tabbableElements", () => {
   it("skips disabled, hidden, inert and tabindex=-1 elements", () => {
     const { container } = render(
       <div>
-        <a href="/events">Events</a>
+        <a href="#events">Events</a>
         <a>No href</a>
         <button type="button" disabled>
           Disabled
