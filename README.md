@@ -1,8 +1,8 @@
 # Ozark Blues Society platform
 
 The Ozark Blues Society's new website, membership and email platform: Next.js (App Router) with
-TypeScript and Tailwind, plus Sanity, Supabase, Stripe, Resend and MailerLite as the backlog adds
-them.
+TypeScript and Tailwind, plus Sanity, Supabase, Zeffy (decision 0007), Resend and MailerLite as the
+backlog adds them.
 
 - What we're building: [`docs/spec/scope.md`](docs/spec/scope.md),
   [`docs/spec/architecture.md`](docs/spec/architecture.md), [`docs/backlog.md`](docs/backlog.md)
@@ -1057,10 +1057,11 @@ When the end-to-end tests fail, the run keeps the Playwright HTML report for 7 d
 `gh run download <run-id> -n playwright-report -D playwright-report`, then open it with
 `pnpm exec playwright show-report`.
 
-CI is a single job because the repository is private on GitHub's free plan: 2,000 Actions minutes
-a month, with each job billed rounded up to the minute. A team that pushes around the clock uses
-that up in days, and paying for more minutes is a human decision (`docs/HUMAN_GATES.md`, "Money and
-accounts"). So CI keeps runs short:
+CI is a single job, so dependencies install once. That was chosen while the repository was private
+on GitHub's free plan (2,000 Actions minutes a month, each job billed rounded up to the minute). The
+repository is public now ([decision 0011](docs/decisions/0011-public-repository.md)), so Actions
+minutes on GitHub's standard runners are free. A short run still answers sooner, so CI keeps runs
+short:
 
 - Starting local Supabase takes about two minutes, mostly pulling its Docker images, so everything
   up to the database tests runs while it starts.
