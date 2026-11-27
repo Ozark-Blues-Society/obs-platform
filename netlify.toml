@@ -1,0 +1,13 @@
+# How Netlify builds this site ("Hosting (Netlify)" in the README). Settings here override the
+# ones in Netlify's UI.
+[build]
+  command = "pnpm run build"
+  publish = ".next"
+
+# Netlify's Next.js adapter (OpenNext). It turns the build into a server function, `proxy.ts` into
+# an edge function, and connects the Next.js cache to Netlify's CDN. Without it Netlify publishes
+# the raw `.next` folder and every page is a 404. Netlify adds it by itself only when a repository
+# is linked to a new site in its dashboard, so it is named here. It is deliberately not in
+# package.json: unpinned, Netlify installs the latest version on every build, as its docs recommend.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

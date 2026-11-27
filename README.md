@@ -1059,6 +1059,23 @@ accounts"). So CI keeps runs short:
   `develop` that hasn't moved since the pull request's last run. A run of a new tree runs every
   check.
 
+## Hosting (Netlify)
+
+Netlify builds the site as [`netlify.toml`](netlify.toml) says: `pnpm run build`, then Netlify's
+Next.js adapter (OpenNext, `@netlify/plugin-nextjs`) turns the build into a server function and
+`proxy.ts` into an edge function, and connects the Next.js cache to Netlify's CDN. Netlify adds the
+adapter by itself only to a site created by linking a repository in its dashboard, so
+`netlify.toml` names it. It isn't in `package.json`: Netlify then installs the latest version on
+every build, as its docs recommend. Without the adapter, Netlify publishes the raw `.next` folder,
+every page is a 404, and the build's manifest files are public.
+
+- Every push to `develop` deploys to https://develop--obs-platform.netlify.app (a branch deploy).
+  `main` is production. Pull requests get no deploy preview.
+- A working deploy answers 200 for `/design-preview` and 404 for `/routes-manifest.json`.
+- To try a Netlify build without an account, use the Netlify CLI (not a project dependency):
+  `NETLIFY_TELEMETRY_DISABLED=1 npx netlify-cli build --offline`. `netlify serve` then serves it
+  locally, without Netlify's CDN.
+
 ## Project layout
 
 ```
@@ -1067,6 +1084,7 @@ app/            Next.js App Router: pages, layouts, route handlers
 components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
 lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs, the MailerLite sync
 netlify/        Netlify Functions: the daily jobs' schedule (netlify/functions/)
+netlify.toml    How Netlify builds the site (see Hosting (Netlify))
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
 emails/         Email templates (React Email)
