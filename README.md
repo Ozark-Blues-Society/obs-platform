@@ -434,12 +434,35 @@ so the Studio can sign in from there. Every address that serves the site needs t
   - An address with no page streams the not-found page with status 200 (the shell is already
     sent), and Next.js adds `noindex` so search engines skip it. `e2e/pages.spec.ts` checks this
     along with each template, the blocks and members-only pages.
+- **The blog** (backlog P-3) is at `/blog`. `app/(site)/blog/page.tsx` lists posts with
+  `listGatedItems("post", POST_LIST_CONTENT, { order: POST_LIST_ORDER })`, and `selectBlogPage`
+  (`lib/blog/posts.ts`) keeps the posts that are out, in the category from `?category=`, 12 to a
+  page (`?page=`). A later `publishedAt` schedules a post: the list leaves it out and its page is
+  not found until then, except in a preview. That check runs on every request rather than in the
+  cached GROQ answer, so a scheduled post shows the minute it's due without anyone publishing
+  again. The category pills are links (`PillLinks`), so each filter has its own address and the
+  tab title names it.
+  - The post page (`app/(site)/blog/[slug]/page.tsx`, drawn by `components/blog/post-view.tsx`)
+    shows the cover photo, the post's text (`RichText`), its files and its author from People
+    (`POST_CONTENT`). A locked post shows only its headline, category, date and cover photo, as its
+    card does, then `<MembersOnlyLock>`.
+  - `e2e/blog.spec.ts` covers the list, the category filter, a post, scheduled posts and the locks
+    (`e2e/members-only-items.spec.ts` has the post page's locks in depth).
 - **Pages that show Sanity content** go under `app/(site)/`, the route group that holds the
   draft-mode tools; the Studio stays outside it. They read pages, posts and events through
   `sanity/content` (see [Members-only content](#members-only-content)). Inside `sanity/`, call
   `sanityFetch` inside a `"use cache"` function and resolve `getDynamicFetchOptions()` outside it,
   as in Sanity's guide
   [Sanity Live with Next.js Cache Components](https://www.sanity.io/docs/nextjs/cache-components).
+- **Sponsors** (backlog P-4): `/sponsors` (`app/(site)/sponsors/page.tsx`) shows the featured
+  sponsor's spotlight, then every current sponsor grouped by tier (`components/sponsors/`). The
+  home page's sponsor band (`components/home/home-sponsors.tsx`) shows the same spotlight and
+  every current sponsor's logo. Both read `listCurrentSponsors([])`, so a sponsor leaves both the
+  day after its `endsAt`. Tiers are data in the Studio (board decisions §8): `groupSponsorsByTier`
+  orders them by their order field, then name, and a tier's logo placement applies on the Sponsors
+  page only. The Studio allows one featured sponsor at a time, but its check can be stale when a
+  sponsor is published, so `pickFeaturedSponsor` takes the one changed most recently
+  (`_updatedAt`), then the lowest id.
 
 ## Members-only content
 
@@ -559,6 +582,33 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
   code (its id). Put `memberFiles[]{ title, fileId }` in the item's members-only `content` and render
   it with `<MemberFiles>` (`components/members/member-files.tsx`), which links each one to
   `/files/<id>` with plain `<a>` tags: `next/link` would prefetch them and mint download links.
+
+## My Account
+
+`/account` (`app/(site)/account/page.tsx`, backlog M-8) is the signed-in member's own page:
+
+- **Membership:** level, status, renewal date and auto-renew, from the member's own profile row
+  (`getMyAccount()` in `lib/account/my-account.ts`). The status is worked out from `expires_at` as
+  the page renders (`lib/members/membership.ts`), by the database's rule: ended once `expires_at`
+  has passed, and "Expiring soon" within 30 days on the Society's calendar, except for members on
+  yearly auto-renew, which renews by itself. A lapsed member gets a Renew button, and someone who never
+  paid a Join button (both go to `/join`, M-4).
+- **Member perks:** the benefits of the member's level and the perk codes for it, from Site
+  settings: the benefits table, and the codes in the Studio's **Member perks** tab
+  ([`docs/volunteer-guide/site-settings.md`](docs/volunteer-guide/site-settings.md)). The codes are
+  members-only (board decisions §1, §5 and §6). `getMemberPerks()` in
+  `sanity/content/member-perks.ts` asks Sanity only for an active membership, and only for that
+  level's rows, then checks each row's levels again. Every other query of Site settings lists the
+  fields it reads, so none sends a code. `e2e/account.spec.ts` checks that a lapsed member, an
+  Individual member (for the Sponsor code) and visitors never get them.
+- **Your details:** first name, last name and phone. `saveProfile` (`lib/account/profile-actions.ts`)
+  saves them as the member, so row level security and the column privileges apply: members never
+  change their level, status or `expires_at` (`supabase/tests/profiles_test.sql`). A new name goes
+  to MailerLite after the answer is sent (see [MailerLite member groups](#mailerlite-member-groups)).
+- Links to set a password and to post a classifieds listing, and Sign out.
+
+Still to come: email preferences (waiting on Parker's answer to Q-20261127-174756-24341), the
+"Manage payment or auto-renew" link (M-6) and "My listings" (K-4).
 
 ## Classifieds listings
 
@@ -934,7 +984,10 @@ stand-in API, for the members it creates only.
   one. Add documents there for your own tests, kept out of menus so the layout tests still see the
   built-in ones. For draft mode, a test opens a shared preview link (`openSharedPreviewLink()` in
   `e2e/support/sanity.ts`): the stand-in holds the link's secret, and the server sets its own
-  draft-mode cookie, so this works against both `pnpm dev` and the production build.
+  draft-mode cookie, so this works against both `pnpm dev` and the production build. Photos and
+  logos point at Sanity's image CDN, so a spec that opens a page showing them, the home page
+  included (its sponsor band), stops those requests leaving the machine: `blockSanity()`, or a
+  `context.route` that aborts everything but loopback.
 - **Emails in end-to-end tests** go to the local stack's Mailpit, never through Resend: Playwright
   gives the app server `EMAIL_FROM`, `MAILPIT_URL` and an empty `RESEND_API_KEY`, which wins over
   `.env.local`. It also gives it the local service role key (`SUPABASE_SECRET_KEY`, or what
@@ -1006,6 +1059,23 @@ accounts"). So CI keeps runs short:
   `develop` that hasn't moved since the pull request's last run. A run of a new tree runs every
   check.
 
+## Hosting (Netlify)
+
+Netlify builds the site as [`netlify.toml`](netlify.toml) says: `pnpm run build`, then Netlify's
+Next.js adapter (OpenNext, `@netlify/plugin-nextjs`) turns the build into a server function and
+`proxy.ts` into an edge function, and connects the Next.js cache to Netlify's CDN. Netlify adds the
+adapter by itself only to a site created by linking a repository in its dashboard, so
+`netlify.toml` names it. It isn't in `package.json`: Netlify then installs the latest version on
+every build, as its docs recommend. Without the adapter, Netlify publishes the raw `.next` folder,
+every page is a 404, and the build's manifest files are public.
+
+- Every push to `develop` deploys to https://develop--obs-platform.netlify.app (a branch deploy).
+  `main` is production. Pull requests get no deploy preview.
+- A working deploy answers 200 for `/design-preview` and 404 for `/routes-manifest.json`.
+- To try a Netlify build without an account, use the Netlify CLI (not a project dependency):
+  `NETLIFY_TELEMETRY_DISABLED=1 npx netlify-cli build --offline`. `netlify serve` then serves it
+  locally, without Netlify's CDN.
+
 ## Project layout
 
 ```
@@ -1014,6 +1084,7 @@ app/            Next.js App Router: pages, layouts, route handlers
 components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
 lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs, the MailerLite sync
 netlify/        Netlify Functions: the daily jobs' schedule (netlify/functions/)
+netlify.toml    How Netlify builds the site (see Hosting (Netlify))
 proxy.ts        Runs before every request: refreshes Supabase sessions
 e2e/            Playwright end-to-end tests
 emails/         Email templates (React Email)
@@ -1070,9 +1141,9 @@ header, `<main>` and footer from `app/(site)/layout.tsx` (backlog D-2). The Stud
 - **Account links**: Sign in and Join, or My Account, from `getCurrentUser()` inside `<Suspense>`,
   so the rest of the header is prerendered. Without Supabase settings, everyone is a visitor.
 - **The footer** shows Site settings' footer fields and the editors' footer links.
-- **Links ahead of their pages:** the header and footer link to `/events`, `/blog`, `/sponsors`,
-  `/donate` and `/join` (Membership Benefits & Join), which 404 until P-2, P-3, P-4, P-6 and M-4
-  build them. Classifieds joins the menu with K-* (Launch 2).
+- **Links ahead of their pages:** the header and footer link to `/events`, `/sponsors`, `/donate`
+  and `/join` (Membership Benefits & Join), which 404 until P-2, P-4, P-6 and M-4 build them.
+  Classifieds joins the menu with K-* (Launch 2).
 
 ## Next.js 16 notes
 

@@ -169,6 +169,16 @@ const VALID: Record<string, Record<string, unknown>> = {
       { _type: "socialLink", _key: "fb", platform: "facebook", url: "https://example.com/obs" },
     ],
     membershipBenefits: BOARD_BENEFITS,
+    perkCodes: [
+      {
+        _type: "perkCode",
+        _key: "p1",
+        label: "Member discount code",
+        code: "BLUES-MBR-26",
+        details: "15% off Society merchandise at the merch table (not bulk orders).",
+        levels: ["individual", "band", "business", "sponsor"],
+      },
+    ],
     menuLinks: [
       {
         _type: "menuLink",
@@ -461,6 +471,32 @@ describe("Studio validation", () => {
         ]),
       ),
     ).toEqual([expect.stringMatching(/^blocks\.b\.link\.href: Use a web address/)]);
+  });
+
+  it("requires each perk code's name, code and levels, and keeps the code short", async () => {
+    const settings = (perkCode: object) => ({
+      _id: "drafts.siteSettings",
+      _type: "siteSettings",
+      perkCodes: [{ _type: "perkCode", _key: "p1", ...perkCode }],
+    });
+    expect(await errors(settings({}))).toEqual([
+      "perkCodes.p1.label: Required",
+      "perkCodes.p1.code: Required",
+      "perkCodes.p1.levels: Required",
+    ]);
+    expect(
+      await errors(
+        settings({
+          label: "Sponsor discount code",
+          code: "S".repeat(41),
+          levels: ["sponsor", "sponsor"],
+        }),
+      ),
+    ).toEqual([
+      "perkCodes.p1.code: Must be at most 40 characters long",
+      "perkCodes.p1.levels.0: Can't be a duplicate",
+      "perkCodes.p1.levels.1: Can't be a duplicate",
+    ]);
   });
 
   it("starts Site settings with the board's benefits table", async () => {

@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { blockSanity } from "./support/sanity";
 
 // The layout shell (backlog D-2): landmarks, the skip link, the header's menu at both widths, and
 // the account links. The menu has only its built-in links here: CI has no Sanity project.
@@ -17,6 +18,12 @@ async function horizontalOverflow(page: Page) {
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
 }
+
+// The home page's sponsor band shows logos from Sanity's image CDN (backlog P-4): keep those
+// requests on the machine.
+test.beforeEach(async ({ page }) => {
+  await blockSanity(page);
+});
 
 test("every page has a header, a main area and a footer", async ({ page }) => {
   for (const path of ["/", "/sign-in"]) {

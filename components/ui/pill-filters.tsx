@@ -1,6 +1,7 @@
 "use client";
 
 import { cx } from "@/lib/cx";
+import { pillClasses } from "./pill-classes";
 
 export type PillOption<Value extends string> = { value: Value; label: string };
 
@@ -35,16 +36,7 @@ export function PillFilters<Value extends string>({
             type="button"
             aria-pressed={selected}
             onClick={() => onChange(option.value)}
-            className={cx(
-              "rounded-full border px-3 py-1.25 text-small",
-              selected
-                ? // Forced-colors mode (Windows High Contrast) drops background colors, so the
-                  // selected pill uses the system's highlight colors there.
-                  "border-primary bg-primary text-white forced-colors:border-[Highlight] " +
-                    "forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] " +
-                    "forced-colors:forced-color-adjust-none"
-                : "border-line bg-white text-ink hover:border-line-strong",
-            )}
+            className={pillClasses(selected)}
           >
             {option.label}
           </button>
