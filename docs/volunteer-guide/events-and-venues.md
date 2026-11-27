@@ -25,6 +25,19 @@ Open **Events** and select **+** (Create).
   who can't see a members-only event still see its title and date, but not the place or details.
 - **Photo** and **Description**: optional, but they make the event page much better.
 
+## The calendar
+
+The **Events** page (`/events`) shows a month at a time, as a grid or as a list, with arrows to the
+months before and after. Visitors can filter it by category; the address keeps their choices, so a
+link to "jams in March" works. Repeating events appear on every date, up to their last date.
+**Coming up** beside it lists each event once, at its next date.
+
+Everyone can subscribe to the calendar in Google Calendar, Apple Calendar or Outlook, with the
+links under Coming up: new and changed events then show up in their own calendar app by
+themselves, usually within a few hours. The subscription has every event from the last 30 days and
+the next two years. Members-only events are in it with their title, date and prices only, never
+the venue or the description, even for members.
+
 ## The event page
 
 Every event has its own page at `/events/<web address>`. It shows the date and time, the venue
