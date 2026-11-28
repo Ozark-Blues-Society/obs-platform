@@ -639,10 +639,13 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
   saves them as the member, so row level security and the column privileges apply: members never
   change their level, status or `expires_at` (`supabase/tests/profiles_test.sql`). A new name goes
   to MailerLite after the answer is sent (see [MailerLite member groups](#mailerlite-member-groups)).
+- **My listings:** the member's classifieds listings and where each one stands, with a link to My
+  listings, where they renew and remove them (see [My listings](#my-listings)). It has its own
+  loading boundary, so the rest of the page doesn't wait for the listings or fail with them.
 - Links to set a password and to post a classifieds listing, and Sign out.
 
-Still to come: email preferences (waiting on Parker's answer to Q-20261127-174756-24341), the
-"Manage payment or auto-renew" link (M-6) and "My listings" (K-4).
+Still to come: email preferences (waiting on Parker's answer to Q-20261127-174756-24341) and the
+"Manage payment or auto-renew" link (M-6).
 
 ## Classifieds listings
 
@@ -693,6 +696,37 @@ do what, and `e2e/listings.spec.ts` tests the form.
   `awk '/^-- Classifieds listings\./,0' supabase/seed.sql | docker exec -i supabase_db_obs-platform psql -U postgres -v ON_ERROR_STOP=1`.
   Loading them again changes nothing.
 - Still to come: the public listings (K-3), and expiry with "My listings" (K-4).
+
+### My listings
+
+`/account/listings` (backlog K-4: `app/(site)/account/listings/`, with its Server Functions in
+`lib/listings/my-listings-actions.ts`) lists the member's own listings, newest first, whatever their
+status: awaiting review, live until when, not approved (with the moderator's reason) or expired
+(since when). The daily job takes listings down after their 60 days (see [Daily jobs](#daily-jobs)),
+and the page counts a live listing past its `expires_at` as come down even before the job runs.
+
+- **Renew** appears on a live listing from 5 days before it comes down (on the Society's calendar,
+  the day the reminder email goes out) and on a listing that has come down, for a member whose
+  membership is current (as for posting). The listing stays up, as it is, for 60 days from the
+  renewal: `status` `live`, `approved_at` now and `expires_at` 60 days later, as approving does.
+  A renewal gets no new review, since the listing is exactly what a moderator approved; any change
+  a poster makes still goes back to the moderators. That's option A of Parker's question
+  Q-20261127-221243-29891, built while the answer is pending. Never a pending or rejected listing,
+  nor one a moderator took down.
+- **Members can't write the status or the dates**, so `renewListing` calls `renew_listing()`
+  (`supabase/migrations/20261127223233_listing_renewal.sql`) with the service role, passing the
+  member's id from their session. The function checks whose listing it is, the membership and the
+  window itself, and changes nothing when a check fails; the page then says why. The page's rule
+  (`lib/listings/my-listings-state.ts`) is the same one, so what it offers, the database allows.
+- **Remove** deletes the listing as the member (row level security lets posters delete their own),
+  after a confirmation, then its photo from Storage.
+- **The reminder email links to `/account/listings?renew=<listing id>`**: that listing comes first,
+  marked. The query string survives the sign-in redirect; a fragment wouldn't.
+- My Account shows the same listings in a short list, with a link here.
+- `supabase/tests/listing_renewal_test.sql` tests the renewal rules (who, when, what it changes),
+  `lib/listings/my-listings*.test.ts` the page's rules and the Server Functions,
+  `app/(site)/account/listings/my-listings.test.tsx` the list, and `e2e/my-listings.spec.ts` the
+  page against the local stack.
 
 ### Moderation
 

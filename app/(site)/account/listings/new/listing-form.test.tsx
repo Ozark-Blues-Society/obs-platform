@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { LISTING_MESSAGES, type SubmitListingResult } from "@/lib/listings/listing-state";
 import { ListingForm } from "./listing-form";
@@ -66,8 +66,13 @@ describe("ListingForm", () => {
     });
     expect(props.prepare).not.toHaveBeenCalled();
     expect(props.upload).not.toHaveBeenCalled();
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Thanks! “Tweed-style amp” is waiting for a moderator. We’ll email you once it’s been reviewed.",
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent(
+      "Thanks! “Tweed-style amp” is waiting for a moderator. We’ll email you once it’s been reviewed, and My listings shows where it stands.",
+    );
+    expect(within(status).getByRole("link", { name: "My listings" })).toHaveAttribute(
+      "href",
+      "/account/listings",
     );
     // Ready for another listing.
     expect(screen.getByLabelText("Title")).toHaveValue("");
