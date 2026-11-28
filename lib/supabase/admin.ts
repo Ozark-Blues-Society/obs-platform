@@ -6,9 +6,12 @@ import { serverEnv } from "@/lib/env/server";
 
 /**
  * A Supabase client with the service role, for server code that acts for the Society rather than
- * for a signed-in member: the daily jobs (lib/jobs/daily.ts), and later the Stripe webhook and
- * the importer. It bypasses row level security, so never use it for a member's own request, and
- * never let its key reach the browser: SUPABASE_SECRET_KEY is a server-only variable (lib/env).
+ * for a signed-in member: the daily jobs (lib/jobs/daily.ts), the MailerLite sync after a change
+ * (lib/mailerlite/on-change.ts), the classifieds' poster names and emails (lib/listings/), and
+ * later the payment webhook and the importer. It bypasses row level security, so use it in
+ * someone's request only after that request's own checks (the session, the role), never instead
+ * of them, and never let its key reach the browser: SUPABASE_SECRET_KEY is a server-only variable
+ * (lib/env).
  */
 export function createAdminClient() {
   const url = requireEnv(
