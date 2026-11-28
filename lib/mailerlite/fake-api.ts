@@ -1,16 +1,23 @@
 // A stand-in for MailerLite's API, for tests only: an account kept in memory behind a `fetch`, to
 // give createMailerLiteClient(). Nothing here talks to MailerLite. It answers the requests the
-// sync makes the way MailerLite's documentation says it does (developers.mailerlite.com, read
-// 2026-11-26):
+// site makes the way MailerLite's documentation says it does (developers.mailerlite.com, read
+// 2026-11-26 and 2026-11-28):
 //   - an upsert (POST /subscribers) adds groups and never removes any; it fails with 422 for a
 //     subscriber who unsubscribed, bounced or marked a campaign as spam unless the request has a
-//     status or resubscribe, and a status of "active" doesn't bring such a subscriber back;
-//   - a new subscriber is active, or unconfirmed when the account uses double opt-in;
+//     status or resubscribe. resubscribe brings such a subscriber back; a status of "active"
+//     doesn't, and any other status is applied. Other subscribers take the status sent;
+//   - a new subscriber is active, or unconfirmed when the account uses double opt-in, and then
+//     MailerLite emails them a link to confirm (`confirmationEmails` lists those addresses);
+//   - fetching a subscriber shows their groups, as group objects. The documentation's examples show
+//     the objects (and an empty list for a subscriber in no group); check it on the live API;
 //   - an address can change once a month, and not to one another subscriber has;
 //   - group names are unique; removing a subscriber from a group they aren't in answers 404.
-// lib/mailerlite/sync.test.ts and e2e/mailerlite-sync.spec.ts use it.
+// The unit tests in lib/mailerlite/ and the end-to-end tests use it, the latter through
+// e2e/support/mailerlite-stand-in.mts.
 
-export type SubscriberStatus = "active" | "unsubscribed" | "unconfirmed" | "bounced" | "junk";
+import type { SubscriberStatus } from "./client";
+
+export type { SubscriberStatus };
 
 export interface FakeSubscriber {
   id: string;
@@ -45,14 +52,26 @@ export function fakeMailerLite(options: { doubleOptIn?: boolean } = {}) {
   const subscribers = new Map<string, FakeSubscriber>();
   const requests: FakeRequest[] = [];
   const failures: Failure[] = [];
+  /** The addresses MailerLite would have emailed a link to confirm their subscription. */
+  const confirmationEmails: string[] = [];
   let nextId = 1000;
 
   const json = (status: number, body?: unknown) =>
     body === undefined ? new Response(null, { status }) : Response.json(body, { status });
   const invalid = (field: string) =>
     json(422, { message: "The given data was invalid.", errors: { [field]: ["Invalid."] } });
-  const subscriberData = (s: FakeSubscriber) => ({
-    data: { id: s.id, email: s.email, status: s.status, fields: s.fields, groups: [] },
+  // Group objects when fetching a subscriber; an empty list in other answers, as in MailerLite's
+  // examples.
+  const subscriberData = (s: FakeSubscriber, withGroups = false) => ({
+    data: {
+      id: s.id,
+      email: s.email,
+      status: s.status,
+      fields: s.fields,
+      groups: withGroups
+        ? [...s.groups].map((id) => ({ id, name: groups.get(id), active_count: 0 }))
+        : [],
+    },
   });
   const byEmail = (email: string) =>
     [...subscribers.values()].find((s) => s.email.toLowerCase() === email.toLowerCase());
@@ -97,11 +116,10 @@ export function fakeMailerLite(options: { doubleOptIn?: boolean } = {}) {
       }
       const existing = byEmail(email);
       if (existing) {
-        if (BLOCKED.includes(existing.status) && !resubscribe && status === undefined) {
-          return invalid("status");
-        }
-        if (resubscribe) existing.status = "active";
-        else if (typeof status === "string" && status !== "active") {
+        const blocked = BLOCKED.includes(existing.status);
+        if (blocked && !resubscribe && status === undefined) return invalid("status");
+        if (blocked && resubscribe) existing.status = "active";
+        else if (typeof status === "string" && !(blocked && status === "active")) {
           existing.status = status as SubscriberStatus;
         }
         setFields(existing, fields);
@@ -118,12 +136,15 @@ export function fakeMailerLite(options: { doubleOptIn?: boolean } = {}) {
       };
       setFields(subscriber, fields);
       subscribers.set(subscriber.id, subscriber);
+      if (status === undefined && options.doubleOptIn) confirmationEmails.push(email);
       return json(201, subscriberData(subscriber));
     }
 
     if (parts[0] === "subscribers" && parts.length === 2) {
       const subscriber = find(parts[1]);
-      if (method === "GET") return subscriber ? json(200, subscriberData(subscriber)) : json(404);
+      if (method === "GET") {
+        return subscriber ? json(200, subscriberData(subscriber, true)) : json(404);
+      }
       if (method === "PUT") {
         if (!subscriber) return json(404, { message: "" });
         const { email, fields } = body;
@@ -185,6 +206,7 @@ export function fakeMailerLite(options: { doubleOptIn?: boolean } = {}) {
     groups,
     subscribers,
     requests,
+    confirmationEmails,
     /** The id of the group with this name. */
     groupId(name: string): string | undefined {
       return [...groups].find(([, groupName]) => groupName === name)?.[0];

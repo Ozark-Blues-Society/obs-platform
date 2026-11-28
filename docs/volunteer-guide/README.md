@@ -19,7 +19,7 @@ recorded training sessions walk through it.
 | [Roles](roles.md): giving and removing volunteers' roles on the website | Administrators | Draft |
 | [Members-only files](members-only-files.md): uploading files only members can download, and adding them to pages | Editors | Draft |
 | [Membership statuses and automatic emails](membership-emails.md): what each status means, and the renewal emails members get | Membership manager, administrators | Draft |
-| [Member groups in MailerLite](mailerlite-groups.md): the groups the website keeps up to date, for campaigns to members | Newsletter writer, membership manager, administrators | Draft |
+| [Member groups in MailerLite](mailerlite-groups.md): the groups the website keeps up to date, the two lists people choose, and which group each campaign goes to | Newsletter writer, membership manager, administrators | Draft |
 | [Moderating classified listings](classifieds-moderation.md): approving and rejecting members' listings, and the emails posters get | Moderators, administrators | Draft |
 
 The pages are drafts: the Studio forms and admin screens they describe are built, and screenshots

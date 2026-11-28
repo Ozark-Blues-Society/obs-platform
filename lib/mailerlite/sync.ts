@@ -7,6 +7,11 @@
 // subscriber's other groups, and their status, are MailerLite's: someone who unsubscribed stays
 // unsubscribed.
 //
+// The one exception is a member's first time: the sync also puts them in the two lists people
+// choose for themselves, Newsletter and Event announcements (lib/mailerlite/topics.ts), unless
+// their membership has already lapsed. After that the lists are the member's: they switch them on
+// My Account, and the sync never puts them back.
+//
 // It runs every night, after the daily jobs update the statuses (lib/jobs/daily.ts), and whenever
 // server code changes a membership (lib/mailerlite/on-change.ts). Each run compares the profiles
 // with what MailerLite was last given (supabase/migrations/20261126193121_mailerlite_subscribers.sql)
@@ -18,6 +23,7 @@
 import type { MembershipStatus } from "@/lib/jobs/daily";
 import type { MembershipLevel } from "@/sanity/schemas/options";
 import { MailerLiteError, type MailerLiteClient, type SubscriberFields } from "./client";
+import { findTopicGroups, TOPICS } from "./topics";
 
 /**
  * The member groups, by the status or level they're for. The sync finds them by these names, and
@@ -219,23 +225,38 @@ export async function syncMailerLite(
     );
   }
 
-  /** Adds the member to MailerLite under their address, in the groups they belong in. */
-  async function addSubscriber(member: Member, wanted: string[]): Promise<SyncedMember> {
+  /** The lists' group ids, found (or made) the first time this run adds a member. */
+  let listIds: string[] | undefined;
+
+  /**
+   * Adds the member to MailerLite under their address, in the groups they belong in. On their
+   * `first` time, the two lists' groups too, unless their membership has lapsed.
+   */
+  async function addSubscriber(
+    member: Member,
+    wanted: string[],
+    first = false,
+  ): Promise<SyncedMember> {
+    let lists: string[] = [];
+    if (first && member.status !== "lapsed") {
+      listIds ??= Object.values(await call((c) => findTopicGroups(c, TOPICS)));
+      lists = listIds;
+    }
     let subscriberId: string;
     try {
       ({ id: subscriberId } = await call((c) =>
         c.upsertSubscriber({
           email: member.email,
           fields: fieldsOf(member, false),
-          groups: wanted,
+          groups: [...wanted, ...lists],
         }),
       ));
     } catch (error) {
       if (!(error instanceof MailerLiteError && error.status === 422)) throw error;
       // MailerLite refuses this for a subscriber who unsubscribed, bounced or marked a campaign as
-      // spam. They still belong in the groups (a campaign skips them), so add them one group at a
-      // time, which leaves them unsubscribed. If there's no such subscriber, the address itself
-      // was refused.
+      // spam. They still belong in the member groups (a campaign skips them), so add them one group
+      // at a time, which leaves them unsubscribed. Not to the lists: they chose to get nothing. If
+      // there's no such subscriber, the address itself was refused.
       const found = await call((c) => c.findSubscriber(member.email));
       if (!found) throw error;
       subscriberId = found.id;
@@ -268,7 +289,7 @@ export async function syncMailerLite(
       }
       return null;
     }
-    if (!synced) return addSubscriber(member, wanted);
+    if (!synced) return addSubscriber(member, wanted, true);
     if (!needsSync(member, synced)) return "unchanged";
 
     const { subscriberId } = synced;

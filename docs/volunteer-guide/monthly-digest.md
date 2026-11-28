@@ -3,7 +3,21 @@
 For the newsletter writer, who needs the **Editor** or **Administrator** role (see
 [Roles](roles.md)). Each month the website gathers the blog posts marked **Include in the monthly
 email digest** into a newsletter in the Society's colors. You copy it from the website and paste it
-into MailerLite, which sends it to the Society's mailing list.
+into MailerLite, which sends it to the **Newsletter** group: everyone who wants the newsletter.
+
+## Each campaign goes to its own group
+
+People choose what they get from the Society, and MailerLite keeps their choices in two groups
+(see [Member groups in MailerLite](mailerlite-groups.md)):
+
+| You're sending                | Send it to the group  |
+| ----------------------------- | --------------------- |
+| The monthly newsletter        | Newsletter            |
+| An announcement of a show     | Event announcements   |
+
+Send each campaign to its group, and only that group. Members switch each one off or on in My
+Account, and visitors sign up for the newsletter at the end of the blog page, so a campaign sent to
+other groups would reach people who said no to it.
 
 ## Before the first digest
 
@@ -49,11 +63,9 @@ The page also suggests a subject, such as "November 2026 at the Ozark Blues Soci
    and type your own words in its place. Change only the words, not the code around them.
 4. Select **Done editing**. On the next page, give the campaign a name, the subject and the sender,
    and leave **Preheader** empty: the newsletter brings its own, the line inboxes show after the
-   subject. Then choose who gets it under **Select recipients**: the Society's mailing list, plus
-   the [member groups](mailerlite-groups.md) **Website: Active members** and **Website: Expiring
-   members**, so every current member gets it. Leave out **Website: Lapsed members**: the
-   newsletter's footer tells readers they get it because they're members or signed up for the
-   Society's emails.
+   subject. Then choose who gets it under **Select recipients**: the **Newsletter** group only.
+   Members are in it unless they switched the newsletter off, and so is everyone who signed up for
+   it. Don't add the "Website:" member groups: they'd bring back members who said no.
 5. Send a test to yourself first (**Send a test**), check it, then choose **Send now** or **Send
    later**.
 

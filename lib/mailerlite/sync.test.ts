@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMailerLiteClient } from "./client";
 import { FAKE_API_KEY, fakeMailerLite, type FakeMailerLite } from "./fake-api";
+import { TOPIC_GROUPS } from "./topics";
 import {
   MEMBER_GROUPS,
   syncMailerLite,
@@ -22,6 +23,10 @@ const INDIVIDUAL = MEMBER_GROUPS.individual;
 const BAND = MEMBER_GROUPS.band;
 const BUSINESS = MEMBER_GROUPS.business;
 const SPONSOR = MEMBER_GROUPS.sponsor;
+const NEWSLETTER = TOPIC_GROUPS.newsletter;
+const EVENTS = TOPIC_GROUPS.events;
+/** A group that's neither the site's nor a list, such as one a volunteer made. */
+const VOLUNTEERS = "Volunteers";
 
 const ADA = "profile-ada";
 const BO = "profile-bo";
@@ -130,7 +135,9 @@ describe("syncMailerLite", () => {
 
     expect(await sync(api, store)).toEqual({ ...NOTHING, synced: 3 });
 
-    expect([...api.groups.values()].sort()).toEqual(Object.values(MEMBER_GROUPS).sort());
+    expect([...api.groups.values()].sort()).toEqual(
+      [...Object.values(MEMBER_GROUPS), NEWSLETTER, EVENTS].sort(),
+    );
     expect(api.membersOf(ACTIVE)).toEqual(["ada.quinn@example.com"]);
     expect(api.membersOf(EXPIRING)).toEqual(["bo.reyes@example.com"]);
     expect(api.membersOf(LAPSED)).toEqual(["cy.okafor@example.com"]);
@@ -175,13 +182,54 @@ describe("syncMailerLite", () => {
   it("makes the member groups that are missing and uses the ones that exist", async () => {
     const api = fakeMailerLite();
     const band = api.addGroup(BAND);
-    api.addGroup("Newsletter");
+    const newsletter = api.addGroup(NEWSLETTER);
+    api.addGroup(VOLUNTEERS);
 
     await sync(api, memoryStore(profiles()));
 
     expect(api.groupId(BAND)).toBe(band);
-    expect(api.requests.filter((r) => r.method === "POST" && r.path === "groups")).toHaveLength(6);
-    expect(api.groups.size).toBe(8);
+    expect(api.groupId(NEWSLETTER)).toBe(newsletter);
+    // Six member groups and the Event announcements list.
+    expect(api.requests.filter((r) => r.method === "POST" && r.path === "groups")).toHaveLength(7);
+    expect(api.groups.size).toBe(10);
+    expect(api.membersOf(VOLUNTEERS)).toEqual([]);
+  });
+
+  it("puts a member in both lists the first time, unless their membership lapsed, and never again", async () => {
+    const api = fakeMailerLite();
+    const store = memoryStore(profiles());
+
+    await sync(api, store);
+
+    // Ada is active and Bo's membership is expiring; Cy's has lapsed, and Di has never paid.
+    expect(api.membersOf(NEWSLETTER)).toEqual(["ada.quinn@example.com", "bo.reyes@example.com"]);
+    expect(api.membersOf(EVENTS)).toEqual(["ada.quinn@example.com", "bo.reyes@example.com"]);
+    // One upsert each, with the lists in it, and the lists aren't the sync's to keep.
+    const ada = api.subscriber("ada.quinn@example.com")!;
+    const adaUpserts = api.requests.filter(
+      (r) => r.path === "subscribers" && r.body?.email === ada.email,
+    );
+    expect(adaUpserts).toHaveLength(1);
+    expect(adaUpserts[0].body?.groups).toEqual([
+      api.groupId(ACTIVE),
+      api.groupId(BAND),
+      api.groupId(NEWSLETTER),
+      api.groupId(EVENTS),
+    ]);
+    expect(store.rows.get(ADA)?.synced?.groupIds).toEqual([api.groupId(ACTIVE), api.groupId(BAND)]);
+
+    // Ada switches Event announcements off on My Account; Bo unsubscribes from the newsletter in
+    // MailerLite's preference center. Then their memberships change, and Cy renews.
+    ada.groups.delete(api.groupId(EVENTS)!);
+    api.subscriber("bo.reyes@example.com")!.groups.delete(api.groupId(NEWSLETTER)!);
+    store.members[ADA].status = "expiring";
+    store.members[BO].status = "lapsed";
+    store.members[CY].status = "active";
+
+    expect(await sync(api, store)).toEqual({ ...NOTHING, synced: 3 });
+
+    expect(api.membersOf(NEWSLETTER)).toEqual(["ada.quinn@example.com"]);
+    expect(api.membersOf(EVENTS)).toEqual(["bo.reyes@example.com"]);
   });
 
   it("moves members between groups when their status or level changes", async () => {
@@ -209,7 +257,7 @@ describe("syncMailerLite", () => {
 
   it("takes people out of every member group once they aren't members, and leaves the rest", async () => {
     const api = fakeMailerLite();
-    api.addSubscriber("ada.quinn@example.com", "active", ["Newsletter"]);
+    api.addSubscriber("ada.quinn@example.com", "active", [VOLUNTEERS]);
     const store = memoryStore(profiles());
     await sync(api, store);
     // Ada's payment is refunded and Bo's account deleted.
@@ -222,8 +270,11 @@ describe("syncMailerLite", () => {
       expect(api.membersOf(name)).not.toContain("ada.quinn@example.com");
       expect(api.membersOf(name)).not.toContain("bo.reyes@example.com");
     }
-    // They stay in MailerLite, as they were, in the groups that aren't the website's.
-    expect(api.membersOf("Newsletter")).toEqual(["ada.quinn@example.com"]);
+    // They stay in MailerLite, as they were, in the groups that aren't the website's, the lists
+    // included.
+    expect(api.membersOf(VOLUNTEERS)).toEqual(["ada.quinn@example.com"]);
+    expect(api.membersOf(NEWSLETTER)).toEqual(["ada.quinn@example.com", "bo.reyes@example.com"]);
+    expect(api.membersOf(EVENTS)).toEqual(["ada.quinn@example.com", "bo.reyes@example.com"]);
     expect(api.subscriber("ada.quinn@example.com")?.status).toBe("active");
     expect(api.subscriber("bo.reyes@example.com")).toBeDefined();
     expect([...store.rows.keys()]).toEqual([CY]);
@@ -231,7 +282,7 @@ describe("syncMailerLite", () => {
 
   it("never sends a status: unsubscribed people stay so, and new ones get the account's default", async () => {
     const api = fakeMailerLite({ doubleOptIn: true });
-    api.addSubscriber("ada.quinn@example.com", "unsubscribed", ["Newsletter"]);
+    api.addSubscriber("ada.quinn@example.com", "unsubscribed", [VOLUNTEERS]);
     api.addSubscriber("cy.okafor@example.com", "bounced");
 
     expect(await sync(api, memoryStore(profiles()))).toEqual({ ...NOTHING, synced: 3 });
@@ -240,12 +291,15 @@ describe("syncMailerLite", () => {
     expect(ada?.status).toBe("unsubscribed");
     expect(api.membersOf(ACTIVE)).toEqual(["ada.quinn@example.com"]);
     expect(api.membersOf(BAND)).toEqual(["ada.quinn@example.com"]);
-    expect(api.membersOf("Newsletter")).toEqual(["ada.quinn@example.com"]);
+    expect(api.membersOf(VOLUNTEERS)).toEqual(["ada.quinn@example.com"]);
+    // Ada chose to get nothing, so the lists leave her out.
+    expect(api.membersOf(NEWSLETTER)).toEqual(["bo.reyes@example.com"]);
     expect(ada?.fields).toEqual({ name: "Ada", last_name: "Quinn" });
     expect(api.subscriber("cy.okafor@example.com")?.status).toBe("bounced");
     expect(api.membersOf(LAPSED)).toEqual(["cy.okafor@example.com"]);
     // With double opt-in, MailerLite asks a new subscriber to confirm, as for its own forms.
     expect(api.subscriber("bo.reyes@example.com")?.status).toBe("unconfirmed");
+    expect(api.confirmationEmails).toEqual(["bo.reyes@example.com"]);
     for (const { body } of api.requests) {
       expect(body ?? {}).not.toHaveProperty("status");
       expect(body ?? {}).not.toHaveProperty("resubscribe");
@@ -284,16 +338,20 @@ describe("syncMailerLite", () => {
     const store = memoryStore(profiles());
     await sync(api, store);
     // The new address is already a subscriber, from MailerLite's own sign-up form.
-    api.addSubscriber("ada.q@example.com", "active", ["Newsletter"]);
+    api.addSubscriber("ada.q@example.com", "active", [VOLUNTEERS]);
     store.members[ADA].email = "ada.q@example.com";
 
     expect(await sync(api, store)).toEqual({ ...NOTHING, synced: 1 });
 
     expect(api.membersOf(ACTIVE)).toEqual(["ada.q@example.com"]);
     expect(api.membersOf(BAND)).toEqual(["ada.q@example.com"]);
-    expect(api.membersOf("Newsletter")).toEqual(["ada.q@example.com"]);
-    // The old subscriber is out of the member groups, and otherwise left alone.
-    expect(api.subscriber("ada.quinn@example.com")?.groups.size).toBe(0);
+    expect(api.membersOf(VOLUNTEERS)).toEqual(["ada.q@example.com"]);
+    // Not Ada's first time: that subscriber's lists stay theirs.
+    expect(api.membersOf(EVENTS)).not.toContain("ada.q@example.com");
+    // The old subscriber is out of the member groups, and otherwise left alone: still on the lists
+    // their first sync gave them.
+    const old = api.subscriber("ada.quinn@example.com")!;
+    expect([...old.groups].map((id) => api.groups.get(id)).sort()).toEqual([EVENTS, NEWSLETTER]);
     expect(store.rows.get(ADA)?.synced?.subscriberId).toBe(api.subscriber("ada.q@example.com")?.id);
   });
 
@@ -365,10 +423,11 @@ describe("syncMailerLite", () => {
   it("starts no request after the deadline and leaves the rest for the next run", async () => {
     const api = fakeMailerLite();
     const store = memoryStore(profiles());
-    // The clock moves one step per request: listing the groups and making them takes 8.
+    // The clock moves one step per request: listing the groups and making them takes 8, then
+    // finding and making the lists' groups 3 more, before Ada's upsert.
     const clock = () => api.requests.length;
 
-    expect(await sync(api, store, { clock, deadline: 9 })).toEqual({
+    expect(await sync(api, store, { clock, deadline: 12 })).toEqual({
       ...NOTHING,
       synced: 1,
       deferred: 2,

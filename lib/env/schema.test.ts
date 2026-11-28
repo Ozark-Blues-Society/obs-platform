@@ -155,6 +155,7 @@ describe("parseServerEnv", () => {
       MAILPIT_URL: undefined,
       CRON_SECRET: undefined,
       MAILERLITE_API_KEY: undefined,
+      MAILERLITE_API_URL_STAND_IN: undefined,
       ZEFFY_API_KEY: undefined,
       ZEFFY_WEBHOOK_SECRET: undefined,
     });
@@ -218,6 +219,22 @@ describe("parseServerEnv", () => {
       "http://127.0.0.1",
     ]) {
       expect(envError(() => standIn(host)).keys, host).toEqual(["SANITY_API_HOST_STAND_IN"]);
+    }
+  });
+
+  it("takes only a loopback address for the MailerLite stand-in, so the API key stays here", () => {
+    const standIn = (value: string) =>
+      parseServerEnv({ MAILERLITE_API_URL_STAND_IN: value }, ["MAILERLITE_API_URL_STAND_IN"]);
+    expect(standIn("http://127.0.0.1:3500")).toEqual({
+      MAILERLITE_API_URL_STAND_IN: "http://127.0.0.1:3500",
+    });
+    for (const host of [
+      "https://connect.mailerlite.com",
+      "http://127.0.0.1.evil.example:3500",
+      "http://127.0.0.1:3500/api",
+      "http://192.168.1.5:3500",
+    ]) {
+      expect(envError(() => standIn(host)).keys, host).toEqual(["MAILERLITE_API_URL_STAND_IN"]);
     }
   });
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { SanityImage } from "@/components/blocks/sanity-image";
 import { CardGrid } from "@/components/ui/card-grid";
 import { PillLinks } from "@/components/ui/pill-links";
@@ -29,6 +30,8 @@ const PLACEHOLDER_TONES: Record<PostCategory, PlaceholderPhotoTone> = {
 type BlogListProps = BlogPage<PostListItem> & {
   /** The category picked, or null for every post. */
   category: PostCategory | null;
+  /** Shown after the posts and the page links: the newsletter signup box. */
+  children?: ReactNode;
 };
 
 /**
@@ -39,7 +42,7 @@ type BlogListProps = BlogPage<PostListItem> & {
  * with a blurred stand-in sentence for the summary: sanity/content left the summary out of
  * Sanity's answer for that viewer, so it never reaches this component.
  */
-export function BlogList({ posts, total, page, pageCount, category }: BlogListProps) {
+export function BlogList({ posts, total, page, pageCount, category, children }: BlogListProps) {
   const categoryTitle = category ? optionTitle(POST_CATEGORIES, category) : "";
   return (
     <div className="mx-auto w-full max-w-site px-gutter pt-7 pb-10 md:pb-section">
@@ -79,6 +82,7 @@ export function BlogList({ posts, total, page, pageCount, category }: BlogListPr
         </CardGrid>
       )}
       {pageCount > 1 && <Pages category={category} page={page} pageCount={pageCount} />}
+      {children}
     </div>
   );
 }

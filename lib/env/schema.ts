@@ -136,8 +136,9 @@ const BARE_ADDRESS = /^[^\s<>@]+@[^\s<>@]+$/;
 const SANITY_DATASET = /^~?[a-z0-9][-\w]{0,63}$/;
 const SANITY_PROJECT_ID = /^[a-z0-9][-a-z0-9]{0,31}$/;
 
-// Only end-to-end tests point the app at a stand-in for Sanity's API, and the stand-in gets the
-// read token, so it must be on this machine. Exactly this form: no path, no trailing slash.
+// Only end-to-end tests point the app at a stand-in for Sanity's or MailerLite's API, and the
+// stand-in gets the read token or the API key, so it must be on this machine. Exactly this form: no
+// path, no trailing slash.
 const STAND_IN_HOST = /^http:\/\/(127\.0\.0\.1|localhost):\d{2,5}$/;
 
 // --- The variables -------------------------------------------------------------------------------
@@ -196,6 +197,11 @@ export const SERVER_VARS = {
   ]),
   CRON_SECRET: optional(),
   MAILERLITE_API_KEY: optional(),
+  MAILERLITE_API_URL_STAND_IN: optional([
+    (value) => STAND_IN_HOST.test(value),
+    "must be http://127.0.0.1:<port>: only end-to-end tests set it, for their stand-in for " +
+      "MailerLite, and the API key must not go anywhere else.",
+  ]),
   // Zeffy (decision 0007) has no test mode, so a human sets these two on Netlify staging and
   // production only, never on the factory server or in CI.
   ZEFFY_API_KEY: optional([

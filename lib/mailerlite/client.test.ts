@@ -84,6 +84,81 @@ describe("createMailerLiteClient", () => {
     expect(Object.keys(request().body).sort()).toEqual(["email", "fields", "groups"]);
   });
 
+  it("lists every group when no name is given", async () => {
+    const { client, request } = clientAnswering(200, { data: [{ id: "1", name: "Newsletter" }] });
+
+    expect(await client.listGroups()).toEqual([{ id: "1", name: "Newsletter" }]);
+    expect(request().url.searchParams.has("filter[name]")).toBe(false);
+    expect(request().url.searchParams.get("limit")).toBe("1000");
+  });
+
+  it("sends a status or a resubscribe only when asked", async () => {
+    const active = clientAnswering(200, SUBSCRIBER);
+    await active.client.upsertSubscriber({
+      email: "ada.quinn@example.com",
+      fields: {},
+      groups: ["7"],
+      status: "active",
+    });
+    expect(active.request().body).toEqual({
+      email: "ada.quinn@example.com",
+      fields: {},
+      groups: ["7"],
+      status: "active",
+    });
+
+    const back = clientAnswering(200, SUBSCRIBER);
+    await back.client.upsertSubscriber({
+      email: "ada.quinn@example.com",
+      fields: {},
+      groups: ["7"],
+      resubscribe: true,
+    });
+    expect(back.request().body).toEqual({
+      email: "ada.quinn@example.com",
+      fields: {},
+      groups: ["7"],
+      resubscribe: true,
+    });
+  });
+
+  it("fetches a subscriber with their status and groups, and says when there's none", async () => {
+    const found = clientAnswering(200, {
+      data: {
+        ...SUBSCRIBER.data,
+        status: "unsubscribed",
+        groups: [
+          { id: "7", name: "Newsletter", active_count: 12 },
+          { id: "8", name: "Event announcements", active_count: 9 },
+        ],
+      },
+    });
+    expect(await found.client.getSubscriber("ada+obs@example.com")).toEqual({
+      id: "31897397363737859",
+      email: "ada.quinn@example.com",
+      status: "unsubscribed",
+      groupIds: ["7", "8"],
+    });
+    const { url, method } = found.request();
+    expect(method).toBe("GET");
+    expect(url.pathname).toBe("/api/subscribers/ada%2Bobs%40example.com");
+    expect(url.searchParams.get("include")).toBe("groups");
+
+    const missing = clientAnswering(404, { message: "Resource not found." });
+    expect(await missing.client.getSubscriber("nobody@example.com")).toBeNull();
+  });
+
+  it.each([
+    ["without the list of groups", { ...SUBSCRIBER.data, status: "active" }],
+    ["with a status it doesn't know", { ...SUBSCRIBER.data, status: "paused", groups: [] }],
+    ["with a group that has no id", { ...SUBSCRIBER.data, status: "active", groups: [{}] }],
+  ])("throws on a subscriber %s, rather than show them in no group", async (_case, data) => {
+    const { client } = clientAnswering(200, { data });
+    await expect(client.getSubscriber("31897397363737859")).rejects.toThrow(
+      "MailerLite's answer to fetching a subscriber wasn't a subscriber with groups",
+    );
+  });
+
   it("finds a subscriber by address, and says when there's none", async () => {
     const found = clientAnswering(200, SUBSCRIBER);
     expect(await found.client.findSubscriber("ada+obs@example.com")).toEqual({
@@ -160,6 +235,20 @@ describe("getMailerLiteClient", () => {
     expect(getMailerLiteClient({})).toBeNull();
     expect(getMailerLiteClient(mailerLiteEnv(undefined))).toBeNull();
     expect(getMailerLiteClient(mailerLiteEnv("  "))).toBeNull();
+  });
+
+  it("talks to the end-to-end tests' stand-in when MAILERLITE_API_URL_STAND_IN is set", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ data: [] }));
+    try {
+      const env = parseServerEnv(
+        { MAILERLITE_API_KEY: "fake-key", MAILERLITE_API_URL_STAND_IN: "http://127.0.0.1:3500" },
+        ["MAILERLITE_API_KEY", "MAILERLITE_API_URL_STAND_IN"],
+      );
+      await getMailerLiteClient(env)!.listGroups();
+      expect(String(fetch.mock.calls[0][0])).toBe("http://127.0.0.1:3500/api/groups?limit=1000");
+    } finally {
+      fetch.mockRestore();
+    }
   });
 
   it("uses MAILERLITE_API_KEY when it's set", async () => {

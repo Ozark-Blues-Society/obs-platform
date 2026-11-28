@@ -9,11 +9,13 @@ import { saveProfile } from "@/lib/account/profile-actions";
 import { profileValues } from "@/lib/account/profile-state";
 import { signOut } from "@/lib/auth/actions";
 import { requireUser } from "@/lib/auth/user";
+import { serverEnv } from "@/lib/env/server";
 import { listMyListings } from "@/lib/listings/my-listings";
 import { listingStanding, type MyListing } from "@/lib/listings/my-listings-state";
 import { membershipStanding } from "@/lib/members/membership";
 import { ACCOUNT_PATH, NEW_LISTING_PATH } from "@/lib/site/navigation";
 import { getMemberPerks } from "@/sanity/content/member-perks";
+import { EmailChoicesCard } from "./email-choices-card";
 import { ListingsCard } from "./listings-card";
 import { MembershipCard } from "./membership-card";
 import { PerksCard } from "./perks-card";
@@ -23,12 +25,13 @@ export const metadata: Metadata = {
   title: "My Account · Ozark Blues Society",
 };
 
-// My Account (backlog M-8): the member's membership, their perks and their details, and a summary
-// of their classifieds listings (K-4; they renew and remove them on My listings). Members-only,
-// like all of /account (the proxy sends visitors to sign in). The heading and intro are part of the
-// static shell; the rest needs the member, so it streams in at request time.
+// My Account (backlog M-8): the member's membership, their perks and their details, their email
+// switches (decision 0016, while MailerLite is connected), and a summary of their classifieds
+// listings (K-4; they renew and remove them on My listings). Members-only, like all of /account (the
+// proxy sends visitors to sign in). The heading and intro are part of the static shell; the rest
+// needs the member, so it streams in at request time.
 //
-// Email preferences wait on Q-20261127-174756-24341; the Customer Portal link is M-6.
+// The "Manage payment or auto-renew" link is M-6.
 export default function AccountPage() {
   return (
     <>
@@ -48,6 +51,7 @@ export default function AccountPage() {
 async function AccountSections() {
   const [account, perks] = await Promise.all([getMyAccount(), getMemberPerks()]);
   const membership = membershipStanding(account, new Date());
+  const emailChoices = Boolean(serverEnv("MAILERLITE_API_KEY").MAILERLITE_API_KEY);
 
   return (
     <>
@@ -67,6 +71,18 @@ async function AccountSections() {
             <Link href="/account/password">Set or change your password</Link>
           </p>
         </Card>
+        {/* Its own boundary: it waits on MailerLite, and the rest of the page doesn't. */}
+        {emailChoices && (
+          <Suspense
+            fallback={
+              <Card className="p-5.5">
+                <p className="text-muted">Loading your email choices…</p>
+              </Card>
+            }
+          >
+            <EmailChoicesCard />
+          </Suspense>
+        )}
       </div>
       {/* Its own boundary: the rest of the page doesn't wait for the listings, or fail with them. */}
       <Suspense fallback={<p className="mt-8 text-muted">Loading your listings…</p>}>
