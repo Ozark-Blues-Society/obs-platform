@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { defineConfig, devices } from "@playwright/test";
+import { FAKE_API_KEY } from "./lib/mailerlite/fake-api";
 
 const PORT = Number(process.env.E2E_PORT ?? 3000);
 const baseURL = `http://localhost:${PORT}`;
@@ -15,6 +16,17 @@ const SANITY_STAND_IN_ENV = {
   NEXT_PUBLIC_SANITY_PROJECT_ID: "e2estandin",
   SANITY_API_HOST_STAND_IN: `http://127.0.0.1:${STAND_IN_PORT}`,
   SANITY_API_READ_TOKEN: "e2e-stand-in-token",
+};
+
+// MailerLite is a local stand-in too (e2e/support/mailerlite-stand-in.mts), never MailerLite: tests
+// must never reach a real account. With its made-up key, the app shows the blog's newsletter signup
+// box and the email switches on My Account, and the server code that syncs member groups after a
+// change talks to the stand-in. These are server-only values, read at request time, so CI's build
+// doesn't need them.
+const MAILERLITE_STAND_IN_PORT = Number(process.env.MAILERLITE_STAND_IN_PORT ?? PORT + 500);
+const MAILERLITE_ENV = {
+  MAILERLITE_API_KEY: FAKE_API_KEY,
+  MAILERLITE_API_URL_STAND_IN: `http://127.0.0.1:${MAILERLITE_STAND_IN_PORT}`,
 };
 
 /**
@@ -76,6 +88,14 @@ export default defineConfig({
       env: { SANITY_STAND_IN_PORT: String(STAND_IN_PORT), ...SANITY_STAND_IN_ENV },
     },
     {
+      command:
+        "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON e2e/support/mailerlite-stand-in.mts",
+      url: `${MAILERLITE_ENV.MAILERLITE_API_URL_STAND_IN}/health`,
+      reuseExistingServer: !isCI,
+      timeout: 20_000,
+      env: { MAILERLITE_STAND_IN_PORT: String(MAILERLITE_STAND_IN_PORT) },
+    },
+    {
       // CI runs `pnpm build` first and tests the production server; locally the dev server is
       // reused.
       command: isCI ? `pnpm start --port ${PORT}` : `pnpm dev --port ${PORT}`,
@@ -84,7 +104,7 @@ export default defineConfig({
       timeout: 120_000,
       // SITE_URL: the site's own address, which links in the monthly newsletter and the emails
       // start with. CI has no .env.local to set it.
-      env: { ...SANITY_STAND_IN_ENV, ...EMAIL_ENV, SITE_URL: baseURL },
+      env: { ...SANITY_STAND_IN_ENV, ...MAILERLITE_ENV, ...EMAIL_ENV, SITE_URL: baseURL },
     },
   ],
 });

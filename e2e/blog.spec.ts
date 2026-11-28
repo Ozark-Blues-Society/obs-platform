@@ -109,7 +109,8 @@ test.describe("a visitor", () => {
   test("filters the blog by category, each filter at its own address", async ({ page }) => {
     await page.goto("/blog");
     const categories = page.getByRole("navigation", { name: "Blog categories" });
-    const status = page.getByRole("main").getByRole("status");
+    // The list's status line, before the newsletter signup box's own status region.
+    const status = page.getByRole("main").getByRole("status").first();
     await expect(status).toHaveText(`${LISTED.length} posts.`);
     await expect(categories.getByRole("link", { name: "All" })).toHaveAttribute(
       "aria-current",

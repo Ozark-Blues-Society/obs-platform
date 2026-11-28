@@ -1,7 +1,9 @@
-// MailerLite's API (https://developers.mailerlite.com, read 2026-11-26), as far as the member group
-// sync (lib/mailerlite/sync.ts) uses it: the groups, and subscribers and their groups.
+// MailerLite's API (https://developers.mailerlite.com, read 2026-11-26 and 2026-11-28), as far as
+// the site uses it: the groups, and subscribers, their status and their groups. The member group
+// sync (lib/mailerlite/sync.ts), the blog's newsletter signup and the email switches on My Account
+// (lib/mailerlite/topics.ts) go through it.
 //
-// The sync is off until MAILERLITE_API_KEY is set: getMailerLiteClient() returns null without it.
+// All of it is off until MAILERLITE_API_KEY is set: getMailerLiteClient() returns null without it.
 // The tests use a stand-in for the API (lib/mailerlite/fake-api.ts), never MailerLite itself.
 
 import type { ServerEnv } from "@/lib/env/schema";
@@ -25,6 +27,31 @@ export interface SubscriberFields {
   last_name?: string | null;
 }
 
+/**
+ * Where a subscriber stands in MailerLite. Only `active` ones get campaigns; `unconfirmed` ones
+ * haven't confirmed their address yet (double opt-in). Someone who unsubscribed, bounced or marked a
+ * campaign as spam comes back only by asking to (MailerLite calls that a resubscribe).
+ */
+export type SubscriberStatus = "active" | "unsubscribed" | "unconfirmed" | "bounced" | "junk";
+
+const STATUSES: readonly string[] = [
+  "active",
+  "unsubscribed",
+  "unconfirmed",
+  "bounced",
+  "junk",
+] satisfies SubscriberStatus[];
+
+/** A subscriber as getSubscriber() reads them. */
+export interface MailerLiteSubscriber {
+  id: string;
+  /** Their address in MailerLite, which they can change themselves there. */
+  email: string;
+  status: SubscriberStatus;
+  /** The ids of the groups they're in. */
+  groupIds: string[];
+}
+
 /** MailerLite answered with an error: `status` is the HTTP status. */
 export class MailerLiteError extends Error {
   constructor(
@@ -37,23 +64,35 @@ export class MailerLiteError extends Error {
 }
 
 export interface MailerLiteClient {
-  /** The groups whose name contains `search`. */
-  listGroups(search: string): Promise<MailerLiteGroup[]>;
+  /** The groups whose name contains `search`; every group when it's left out. */
+  listGroups(search?: string): Promise<MailerLiteGroup[]>;
   createGroup(name: string): Promise<MailerLiteGroup>;
   /** The subscriber with this address (or id), or null when there's none. */
   findSubscriber(idOrEmail: string): Promise<{ id: string } | null>;
   /**
+   * The subscriber with this id (or address), with their status and groups, or null when there's
+   * none.
+   */
+  getSubscriber(idOrEmail: string): Promise<MailerLiteSubscriber | null>;
+  /**
    * Adds a subscriber with this address, or updates the one there is: sets the fields given and
-   * adds the groups, leaving the subscriber's other fields and groups as they are. It sends no
-   * status, so a new subscriber gets the account's default (active, or unconfirmed with double
-   * opt-in) and an existing one keeps theirs. For a subscriber who unsubscribed, bounced or marked
-   * a campaign as spam, MailerLite refuses this with 422, since only a resubscribe would bring them
-   * back, and that's for them to ask for.
+   * adds the groups, leaving the subscriber's other fields and groups as they are.
+   *
+   * Without a status, a new subscriber gets the account's default (active, or unconfirmed with
+   * double opt-in, when MailerLite emails them to confirm) and an existing one keeps theirs. For a
+   * subscriber who unsubscribed, bounced or marked a campaign as spam, MailerLite refuses that with
+   * 422, since only a resubscribe brings them back, and that's for them to ask for.
+   *
+   * `status: "active"` makes a new or unconfirmed subscriber active at once; MailerLite ignores it
+   * for those three. `resubscribe: true` brings them back: send it only when the person has asked to
+   * get emails again (MailerLite's rule).
    */
   upsertSubscriber(subscriber: {
     email: string;
     fields: SubscriberFields;
     groups: readonly string[];
+    status?: "active";
+    resubscribe?: true;
   }): Promise<{ id: string }>;
   /** Changes a subscriber's address, name or both. Never their status or groups. */
   updateSubscriber(
@@ -77,11 +116,38 @@ const idOf = (data: unknown, what: string): string => {
   return id;
 };
 
+/**
+ * A subscriber from MailerLite's answer. Their groups come as group objects (the documentation's
+ * examples show them so); a bare id is taken too. An answer without the list is an error, not a
+ * subscriber in no group, so a change on MailerLite's side can't make the switches on My Account
+ * show the wrong thing.
+ */
+function subscriberOf(data: unknown): MailerLiteSubscriber {
+  const { id, email, status, groups } = (data ?? {}) as Record<string, unknown>;
+  const groupIds = Array.isArray(groups)
+    ? groups.map((group: unknown) =>
+        typeof group === "string" ? group : (group as { id?: unknown } | null)?.id,
+      )
+    : null;
+  if (
+    typeof id !== "string" ||
+    typeof email !== "string" ||
+    typeof status !== "string" ||
+    !STATUSES.includes(status) ||
+    !groupIds?.every((groupId) => typeof groupId === "string")
+  ) {
+    throw new Error("MailerLite's answer to fetching a subscriber wasn't a subscriber with groups");
+  }
+  return { id, email, status: status as SubscriberStatus, groupIds };
+}
+
 export function createMailerLiteClient(options: {
   apiKey: string;
   fetch?: Fetch;
+  /** Where the API is: MailerLite's, unless the end-to-end tests point the client at a stand-in. */
+  apiUrl?: string;
 }): MailerLiteClient {
-  const { apiKey, fetch = globalThis.fetch } = options;
+  const { apiKey, fetch = globalThis.fetch, apiUrl = API_URL } = options;
 
   /**
    * Sends one request and returns the `data` of MailerLite's answer. `what` names the request in
@@ -116,7 +182,7 @@ export function createMailerLiteClient(options: {
     return json?.data;
   }
 
-  const url = (path: string) => new URL(path, API_URL);
+  const url = (path: string) => new URL(path, apiUrl);
   const subscriberPath = (id: string) => `subscribers/${encodeURIComponent(id)}`;
   const memberPath = (subscriberId: string, groupId: string) =>
     `${subscriberPath(subscriberId)}/groups/${encodeURIComponent(groupId)}`;
@@ -124,7 +190,7 @@ export function createMailerLiteClient(options: {
   return {
     async listGroups(search) {
       const target = url("groups");
-      target.searchParams.set("filter[name]", search);
+      if (search !== undefined) target.searchParams.set("filter[name]", search);
       // An account holds at most 1,000 groups, so one page has them all.
       target.searchParams.set("limit", "1000");
       const data = await request("list the groups", "GET", target);
@@ -150,11 +216,25 @@ export function createMailerLiteClient(options: {
       }
     },
 
-    async upsertSubscriber({ email, fields, groups }) {
+    async getSubscriber(idOrEmail) {
+      const target = url(subscriberPath(idOrEmail));
+      // The list endpoints leave the groups out unless asked; asking here costs nothing.
+      target.searchParams.set("include", "groups");
+      try {
+        return subscriberOf(await request("fetch a subscriber", "GET", target));
+      } catch (error) {
+        if (error instanceof MailerLiteError && error.status === 404) return null;
+        throw error;
+      }
+    },
+
+    async upsertSubscriber({ email, fields, groups, status, resubscribe }) {
       const data = await request("add a subscriber", "POST", url("subscribers"), {
         email,
         fields,
         groups,
+        ...(status ? { status } : {}),
+        ...(resubscribe ? { resubscribe } : {}),
       });
       return { id: idOf(data, "adding a subscriber") };
     },
@@ -182,14 +262,21 @@ export function createMailerLiteClient(options: {
   };
 }
 
+/** The variables getMailerLiteClient() reads: `serverEnv(...MAILERLITE_ENV)`. */
+export const MAILERLITE_ENV = ["MAILERLITE_API_KEY", "MAILERLITE_API_URL_STAND_IN"] as const;
+
 /**
  * The MailerLite client for this environment's MAILERLITE_API_KEY, which the caller reads with
- * `serverEnv("MAILERLITE_API_KEY")` (the end-to-end tests import this file, so it can't read it
- * itself), or null while it isn't set: the member group sync is off until then.
+ * `serverEnv(...MAILERLITE_ENV)` (the end-to-end tests import this file, so it can't read it
+ * itself), or null while it isn't set: everything MailerLite does for the site is off until then.
+ * MAILERLITE_API_URL_STAND_IN, which only the end-to-end tests set, points it at their stand-in.
  */
 export function getMailerLiteClient(
-  env: Pick<ServerEnv, "MAILERLITE_API_KEY">,
+  env: Pick<ServerEnv, "MAILERLITE_API_KEY"> &
+    Partial<Pick<ServerEnv, "MAILERLITE_API_URL_STAND_IN">>,
 ): MailerLiteClient | null {
   const apiKey = env.MAILERLITE_API_KEY;
-  return apiKey ? createMailerLiteClient({ apiKey }) : null;
+  if (!apiKey) return null;
+  const standIn = env.MAILERLITE_API_URL_STAND_IN;
+  return createMailerLiteClient({ apiKey, ...(standIn ? { apiUrl: `${standIn}/api/` } : {}) });
 }

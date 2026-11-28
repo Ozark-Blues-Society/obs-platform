@@ -80,7 +80,8 @@ passes `process.env` to `lib/env/schema.ts`).
 | `RESEND_API_KEY`                       | Secret      | Sends email through Resend; without it, Mailpit       |
 | `MAILPIT_URL`                          | Server-only | The local stack's mail catcher (local addresses only) |
 | `CRON_SECRET`                          | Secret      | Turns on the daily jobs (decision 0006)               |
-| `MAILERLITE_API_KEY`                   | Secret      | Turns on the MailerLite member group sync             |
+| `MAILERLITE_API_KEY`                   | Secret      | Turns on MailerLite: group sync, signup, switches     |
+| `MAILERLITE_API_URL_STAND_IN`          | Server-only | End-to-end tests only: the stand-in for MailerLite    |
 | `ZEFFY_API_KEY`                        | Secret      | Zeffy's API (decision 0007); never locally or in CI   |
 | `ZEFFY_WEBHOOK_SECRET`                 | Secret      | Checks Zeffy's webhook signatures (`whsec_...`)       |
 
@@ -639,13 +640,16 @@ dataset (decision 0001). The migration is `supabase/migrations/20261126083600_me
   saves them as the member, so row level security and the column privileges apply: members never
   change their level, status or `expires_at` (`supabase/tests/profiles_test.sql`). A new name goes
   to MailerLite after the answer is sent (see [MailerLite member groups](#mailerlite-member-groups)).
+- **Newsletter and announcements:** the two email switches, Monthly newsletter and Event
+  announcements, read from MailerLite and saved there (decision 0016; see
+  [Newsletter signup and email switches](#newsletter-signup-and-email-switches)). Shown only while
+  MailerLite is connected, with their own loading boundary.
 - **My listings:** the member's classifieds listings and where each one stands, with a link to My
   listings, where they renew and remove them (see [My listings](#my-listings)). It has its own
   loading boundary, so the rest of the page doesn't wait for the listings or fail with them.
 - Links to set a password and to post a classifieds listing, and Sign out.
 
-Still to come: email preferences (waiting on Parker's answer to Q-20261127-174756-24341) and the
-"Manage payment or auto-renew" link (M-6).
+Still to come: the "Manage payment or auto-renew" link (M-6).
 
 ## Classifieds listings
 
@@ -973,7 +977,10 @@ who need it. Steps for volunteers:
 | `Website: Sponsor members`    | Sponsor members whose membership hasn't ended                      |
 
 A member is in their status's group and, until their membership lapses, their level's group. A
-profile with no level or status (never paid) isn't sent to MailerLite.
+profile with no level or status (never paid) isn't sent to MailerLite. The first time the sync adds
+a member, it also puts them in the two lists people choose for themselves, `Newsletter` and
+`Event announcements`, unless their membership has already lapsed (see
+[Newsletter signup and email switches](#newsletter-signup-and-email-switches)).
 
 - **When.** Every night, as step 3 of the daily jobs, right after the statuses are updated. And
   after a change: server code that changes a membership, an address or a name (the Stripe webhook,
@@ -993,7 +1000,8 @@ profile with no level or status (never paid) isn't sent to MailerLite.
   free.
 - **The seven groups are the site's; the rest is MailerLite's.** The sync adds and removes members
   of these groups and sets the subscriber's address and name (MailerLite's `name` and `last_name`
-  fields). It never sends a status. A new subscriber gets the account's default (active, or
+  fields). Apart from a member's first upsert, which also holds the two lists, it never touches
+  another group. It never sends a status. A new subscriber gets the account's default (active, or
   unconfirmed with double opt-in), and someone who unsubscribed, bounced or marked a campaign as
   spam stays that way: MailerLite refuses an upsert for them without a resubscribe, so they're added
   to the groups one at a time. Their other groups are left alone. Someone who stops being a member
@@ -1012,8 +1020,10 @@ profile with no level or status (never paid) isn't sent to MailerLite.
   another run, left for the next run, failed), or `"off"`. Its errors, with profile ids and never
   addresses, make the route answer 500.
 
-**Off until `MAILERLITE_API_KEY` is set.** Turning it on in production is a human gate (a production
-setting that sends real members' names and addresses to MailerLite). In MailerLite, open
+**Off until `MAILERLITE_API_KEY` is set**, with the newsletter signup and the email switches. Turning
+it on in production is a human gate (a production setting that sends real members' names and
+addresses to MailerLite). Before setting it, do the MailerLite steps under
+[Newsletter signup and email switches](#newsletter-signup-and-email-switches) too. In MailerLite, open
 **Integrations**, choose **MailerLite API** and select **Generate new token**, named for instance
 "Website group sync - production"; set it in Netlify's environment variables as
 `MAILERLITE_API_KEY`. The next daily run makes the groups and adds every member with a membership,
@@ -1023,11 +1033,87 @@ Leave the key empty locally and in CI: the tests use a stand-in for MailerLite's
 account.
 
 **Tests.** `lib/mailerlite/sync.test.ts` runs the sync against the stand-in API (the groups, moves,
-removals, statuses left alone, new addresses, subscribers and groups deleted in MailerLite, a member
-another run has, the deadline, 429 and errors). `lib/mailerlite/client.test.ts` checks the requests
+removals, statuses left alone, the lists on a member's first time only, new addresses, subscribers
+and groups deleted in MailerLite, a member another run has, the deadline, 429 and errors). `lib/mailerlite/client.test.ts` checks the requests
 and answers, `supabase/tests/mailerlite_subscribers_test.sql` the records, the lease and who can
 reach them, and `e2e/mailerlite-sync.spec.ts` runs the sync against the local database with the
 stand-in API, for the members it creates only.
+
+## Newsletter signup and email switches
+
+People choose two kinds of email from the Society, each a group in its MailerLite account
+(decisions 0015 and 0016, `lib/mailerlite/topics.ts`):
+
+| Group                 | What goes to it                                 | Who's in it                               |
+| --------------------- | ----------------------------------------------- | ----------------------------------------- |
+| `Newsletter`          | The monthly newsletter (the digest of the blog) | People who signed up on the blog; members |
+| `Event announcements` | Shows and events, as they're announced          | Members                                   |
+
+**MailerLite is the only record.** The site stores no choice of its own: My Account reads the
+member's state from MailerLite each time and changes it there, so the switches, MailerLite's
+unsubscribe link and whatever volunteers change in MailerLite always agree. Each campaign goes to
+its list's group, which the newsletter writer's guide says
+([`docs/volunteer-guide/monthly-digest.md`](docs/volunteer-guide/monthly-digest.md),
+[`docs/volunteer-guide/mailerlite-groups.md`](docs/volunteer-guide/mailerlite-groups.md)). The site
+finds both groups by name and makes one that's missing when it has someone to put in it.
+
+- **The signup box** ("Get the blog in your inbox", `components/blog/newsletter-signup.tsx`) ends
+  the blog list. Its Server Function (`lib/newsletter/signup-actions.ts`) adds the address to
+  `Newsletter` through the site's server: no MailerLite script on the page. A new address gets
+  MailerLite's double opt-in: MailerLite emails a link to confirm, and the newsletter reaches them
+  once they do. An address MailerLite has already joins the group as it is, as with MailerLite's
+  own forms. Anyone can type any address, so the box never brings back someone who unsubscribed,
+  bounced or marked a campaign as spam (MailerLite refuses that, 422). Every address gets the same
+  answer, so the box doesn't tell who's on the list. A hidden field catches form-filling bots.
+- **Members are on both lists to start with.** The first time the member group sync adds a member
+  to MailerLite, its upsert puts them in both groups too, unless their membership has already
+  lapsed (the box says "Members get it automatically"). After that the groups are the member's:
+  the sync never puts anyone back. A member added again later (a deleted MailerLite subscriber, or
+  a new address MailerLite wouldn't move) keeps that subscriber's own lists. Someone who
+  unsubscribed, bounced or marked a campaign as spam isn't put on the lists.
+- **The switches on My Account** (`app/(site)/account/email-choices-card.tsx` and
+  `email-choices-form.tsx`, Server Function in `lib/account/email-choices-actions.ts`) show a list
+  as on when MailerLite has the member in its group and sends them campaigns. A member who hasn't
+  confirmed their address, unsubscribed, bounced or marked a campaign as spam sees both off, with a
+  note. The member is found by the subscriber id the sync recorded (`mailerlite_subscribers`, read
+  with the service role for the signed-in member's own row), then by their sign-in address, since
+  members can change their address in MailerLite's preference center. Saving puts them in the
+  groups they chose and takes them out of the others. Choosing any list makes them an active
+  subscriber: a new one is added as active, with no confirmation email, and one who unsubscribed,
+  bounced or marked a campaign as spam is resubscribed. Choosing a list on their own account is
+  the person asking, the one case MailerLite allows a resubscribe in. Choosing neither changes
+  nothing else, so campaigns to the member groups, which are about the membership, still reach
+  them. Emails about the member's own membership or listing have no switch.
+- **Signing in has to prove the address.** The switches trust the session: that's what lets a
+  member subscribe or resubscribe without a confirmation email. Local Supabase allows sign-ups
+  through Auth's API without a confirmation (`enable_signup` with `enable_confirmations: false` in
+  `supabase/config.jsonc`), which the app never uses: production must not. Turn off **Allow new
+  users to sign up**, or keep **Confirm email** on, in the production project's Auth settings.
+- **Hidden until `MAILERLITE_API_KEY` is set.** Both read the key at request time, never when the
+  site is built.
+
+**Before setting the key in production** (a human gate, with the group sync above):
+
+1. In MailerLite, open **Account settings**, then **Subscribe settings**, and turn on **Double
+   opt-in for API and integrations** (MailerLite's help: "How to use double opt-in when collecting
+   subscribers"). Without it, the box adds new addresses as active, with no confirmation, and the
+   member group sync does too. Edit the confirmation email there, so it comes from the Society.
+2. When the old mailing list is imported into MailerLite (data migration), import it into the
+   `Newsletter` group. People on it stay on the newsletter that way.
+3. Once the key is set, check the live API once with an address of your own: sign up from the
+   blog, confirm, then switch Monthly newsletter off and on in My Account (as a member) and watch
+   the subscriber's groups in MailerLite. The site reads a subscriber's groups from MailerLite's
+   "fetch a subscriber" answer (asked with `include=groups`), which the documentation shows only
+   in examples.
+
+**Tests.** `lib/mailerlite/topics.test.ts` runs the box and the switches against the stand-in API
+(statuses, groups made, the subscriber id first, resubscribes only for members). The Server
+Functions and components have their own tests. In the end-to-end tests, Playwright starts a
+MailerLite stand-in (`e2e/support/mailerlite-stand-in.mts`, the same stand-in API, with double
+opt-in) and gives the app its made-up key and address (`MAILERLITE_API_URL_STAND_IN`, loopback
+only), so the box and the switches show: `e2e/newsletter-signup.spec.ts` and
+`e2e/email-choices.spec.ts` drive them and read the result from the stand-in. Nothing reaches
+MailerLite.
 
 ## Zeffy (payments)
 

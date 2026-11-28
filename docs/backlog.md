@@ -144,8 +144,10 @@ Launch 1; Z-2 and Z-5 are Launch 2.
   membership renews by itself (no request to pay).
 - **E-3 MailerLite sync** (test account): groups active/expiring/lapsed/per level; on change + nightly.
 - **E-4 Newsletter template** in MailerLite style matching the brand; monthly digest content export.
-  E-3 and E-4 stay in place but on hold (decision 0007): which newsletter tool the Society uses
-  (Zeffy's email tool or MailerLite) is a 🧑 question, asked later.
+  Decision 0015 settled the newsletter tool: MailerLite (not Zeffy's email tool), so E-3 and E-4 are
+  off hold. Launch 1 also gets the blog's newsletter signup box (decision 0015) and the two email
+  switches on My Account (decision 0016), each a MailerLite group, hidden until the MailerLite key
+  is set.
 - **E-5 Email authentication guide** (SPF/DKIM/DMARC records to add) — applying them is 🧑 (DNS).
   Split by decision 0004: the Resend records are Launch 1, in
   [`docs/launch/resend-dns-records.md`](launch/resend-dns-records.md); the MailerLite records and

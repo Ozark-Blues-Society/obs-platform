@@ -4,6 +4,9 @@ For the newsletter writer, the membership manager and administrators. The websit
 groups in the Society's MailerLite account up to date with its members, so you can send a campaign
 to just the members who need it. There's nothing to press: the website updates the groups itself.
 
+Two more groups, **Newsletter** and **Event announcements**, hold what people chose to get (see
+[The two lists people choose](#the-two-lists-people-choose)).
+
 ## The groups
 
 Their names start with "Website:", so they sit together in MailerLite's list of groups.
@@ -29,17 +32,38 @@ on the website. Their card is charged on its own, so a "please renew" campaign i
 The groups follow the statuses every morning at about 7 AM (8 AM in summer). A change to a
 membership, such as a payment, shows in the groups by the next morning at the latest.
 
-## Sending to members
+## The two lists people choose
 
-In MailerLite, when you get to **Select recipients** for a campaign, choose the groups. For
-example:
+| Group               | What goes to it                         | Who's in it                                          |
+| ------------------- | --------------------------------------- | ---------------------------------------------------- |
+| Newsletter          | The monthly newsletter                  | People who signed up on the blog page, and members   |
+| Event announcements | Shows and events, as they're announced  | Members                                              |
 
-- Everyone whose membership is current: **Website: Active members** and **Website: Expiring
-  members**. The monthly newsletter goes to these two and the mailing list (see
-  [Monthly email digest](monthly-digest.md)).
-- A reminder to renew: **Website: Expiring members**, or **Website: Lapsed members** to invite back
-  those whose membership has ended.
-- News for sponsors: **Website: Sponsor members**.
+- **Visitors** sign up for the newsletter in the box at the end of the blog page. MailerLite emails
+  them a link to confirm their address, and they're on the list once they do.
+- **Members** are on both lists from the day the website first adds them to MailerLite, unless
+  their membership had already ended. They switch each list off or on in My Account, under
+  **Newsletter and announcements**.
+- **MailerLite keeps the choices.** My Account shows what MailerLite has, so it always matches
+  MailerLite's own unsubscribe link. Someone who unsubscribed gets nothing from any group; a member
+  who changes their mind turns a list on in My Account.
+- **Don't put people on these lists by hand**, unless they asked you to. The website never puts a
+  member back on a list they left.
+
+## Sending a campaign
+
+In MailerLite, when you get to **Select recipients** for a campaign, choose the group it's for:
+
+- The monthly newsletter: **Newsletter** only (see [Monthly email digest](monthly-digest.md)).
+- An announcement of a show or an event: **Event announcements** only.
+- Something about the membership itself, such as a reminder to renew: the member group it's for,
+  like **Website: Expiring members**, or **Website: Lapsed members** to invite back those whose
+  membership has ended.
+
+Send newsletters and announcements only to their list: the member groups include people who
+switched them off. For an announcement meant for some members only, such as sponsors, make a
+MailerLite segment of the people in both **Event announcements** and the member group, here
+**Website: Sponsor members**, and send to the segment.
 
 Adding someone to a group sends them nothing. Only a campaign or an automation sends emails.
 
@@ -58,12 +82,15 @@ Adding someone to a group sends them nothing. Only a campaign or an automation s
 
 - Each member's email address, first name and last name, and which of these groups they're in.
   When a member changes their address or name on the website, it changes in MailerLite too.
+- The first time it adds a member, it puts them on the two lists too, unless their membership has
+  ended. After that, only the member changes their lists, in My Account.
 - Members already in MailerLite, from the mailing list for example, keep their status and their
-  other groups. Someone who unsubscribed stays unsubscribed.
+  other groups. Someone who unsubscribed stays unsubscribed and isn't put on the lists.
 - If the account asks new subscribers to confirm their address (double opt-in), new members get
   MailerLite's confirmation email first, as they would from MailerLite's own sign-up forms.
 - Someone who stops being a member, say after a refund, leaves the website's groups and stays in
   MailerLite with their other groups.
 
 The website starts doing this once a technical volunteer connects it to the Society's MailerLite
-account (see "MailerLite member groups" in the README). The groups appear the morning after.
+account (see "MailerLite member groups" and "Newsletter signup and email switches" in the README).
+The member groups appear the morning after; the two lists appear with their first members.

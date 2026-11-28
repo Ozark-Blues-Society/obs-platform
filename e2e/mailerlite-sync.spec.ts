@@ -5,6 +5,7 @@ import { createMailerLiteClient } from "../lib/mailerlite/client";
 import { FAKE_API_KEY, fakeMailerLite } from "../lib/mailerlite/fake-api";
 import { createMailerLiteStore } from "../lib/mailerlite/store";
 import { MEMBER_GROUPS, syncMailerLite } from "../lib/mailerlite/sync";
+import { TOPIC_GROUPS } from "../lib/mailerlite/topics";
 import { secretKey, SUPABASE_URL } from "./support/supabase-auth";
 
 // The MailerLite group sync (backlog E-3) against the local database, with a stand-in for
@@ -101,6 +102,11 @@ async function keepsGroupsInStep(admin: SupabaseClient) {
   expect(api.membersOf(MEMBER_GROUPS.lapsed)).toEqual([address("cy")]);
   expect(api.membersOf(MEMBER_GROUPS.individual)).toEqual([]);
   expect(api.subscriber(address("di"))).toBeUndefined();
+  // Their first time: on both lists too, unless the membership has lapsed.
+  expect(api.membersOf(TOPIC_GROUPS.newsletter)).toEqual([address("ada"), address("bo")]);
+  expect(api.membersOf(TOPIC_GROUPS.events)).toEqual([address("ada"), address("bo")]);
+  // The records hold the member groups only: the lists are the members' own.
+  const memberGroupIds = Object.values(MEMBER_GROUPS).map((name) => api.groupId(name));
   expect(await records()).toEqual(
     ["ada", "bo", "cy"].map((name) => {
       const subscriber = api.subscriber(address(name))!;
@@ -110,7 +116,7 @@ async function keepsGroupsInStep(admin: SupabaseClient) {
         email: address(name),
         first_name: name.toUpperCase(),
         last_name: "Tester",
-        group_ids: [...subscriber.groups],
+        group_ids: [...subscriber.groups].filter((id) => memberGroupIds.includes(id)),
         lease_until: null,
       };
     }),
