@@ -7,9 +7,9 @@
 ## Why
 
 Zeffy is free for nonprofits: no processing fees, with an optional tip from the payer. The Society
-already uses it for donations. Stripe would cost about 3.6% + 30¢ per membership. Parker's goal is
-to use Zeffy wherever it is feasible, while the OBS platform stays the one place members and
-volunteers do their work.
+doesn't use it yet: its current site takes donations through PayPal (corrected by decision 0014).
+Stripe would cost about 3.6% + 30¢ per membership. Parker's goal is to use Zeffy wherever it is
+feasible, while the OBS platform stays the one place members and volunteers do their work.
 
 A Stripe account will still be created. It is used only where a later decision says Zeffy can't do
 the job, or where the Society asks for it. No Stripe code paths in Launch 1.
