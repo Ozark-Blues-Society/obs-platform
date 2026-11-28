@@ -173,8 +173,8 @@ Synthetic data lives in `scripts/fixtures/`. Real member data never goes in the 
 - `members.mts`: 40 members across the four levels and three statuses (active, expiring,
   lapsed), including the staff roles below.
 - `listings.mts`: classifieds in every category and status.
-- `events.mts`: events and venues. Events live in Sanity, so these go to Sanity's development
-  dataset once the schemas exist (C-1).
+- `events.mts`: events and venues. They live in Sanity: `pnpm fixtures:sanity` loads them into the
+  development dataset (see [Loading the fixtures into Sanity](#loading-the-fixtures-into-sanity)).
 
 `supabase/seed.sql` is generated from the fixtures by `pnpm fixtures:generate`, and `pnpm test`
 fails if it's out of date. The seed loads only tables that exist: the members' sign-ins, their
@@ -369,6 +369,38 @@ With a project, set these in `.env.local`:
 
 Then, in Manage → API → CORS origins, add `http://localhost:3000` with "Allow credentials" ticked,
 so the Studio can sign in from there. Every address that serves the site needs that entry.
+
+The factory develops against a separate, development-only project with synthetic content
+(decision 0012). Its values are in the factory's secrets file, `~/factory/secrets/.env`, under
+other names: put `SANITY_PROJECT_ID`, `SANITY_DATASET` and `SANITY_API_TOKEN` (a Viewer token) in
+`.env.local` as `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET` and
+`SANITY_API_READ_TOKEN`, without printing the token. Its CORS origins list `http://localhost:3000`
+only, so open the Studio on port 3000.
+
+### Loading the fixtures into Sanity
+
+`pnpm fixtures:sanity` loads the Sanity fixtures from `scripts/fixtures/events.mts` (the venues
+and their directory entries, the events), the Sponsor tier and Site settings into the
+`development` dataset of the project in `.env.local` (`scripts/fixtures/sanity-fixtures.mts`). It
+refuses any other dataset. It needs a token with the Editor role in `SANITY_API_WRITE_TOKEN`, which
+nothing else reads, so pass it to the one command instead of keeping it in `.env.local`. On the
+factory server, the development project's Editor token is `SANITY_EDITOR_TOKEN` in the secrets
+file:
+
+```sh
+SANITY_API_WRITE_TOKEN=$(awk -F= '$1 == "SANITY_EDITOR_TOKEN" { print substr($0, index($0, "=") + 1) }' ~/factory/secrets/.env) pnpm fixtures:sanity
+```
+
+The token only reaches the command's environment: nothing prints it, and the shell's history keeps
+the command, not the token.
+
+- Each document keeps its fixture's id (a venue's directory entry adds `-directory`), and the
+  import writes it with `createOrReplace`. It reads those ids first and writes only the documents
+  that differ, so a second run the same day reports "Nothing to write". It never touches drafts
+  or other documents.
+- Event dates count from today's date in Central Time, so a run on a later day moves them along.
+- An editor's change to a fixture document is undone by the next run. Site settings is the
+  exception: the import creates it, with the board's benefits table, only if it doesn't exist yet.
 
 ### How it fits together
 
@@ -1022,6 +1054,7 @@ payments become memberships (M-5).
 | `pnpm test:e2e`          | Playwright end-to-end tests (desktop and 390px phone, in Chromium) |
 | `pnpm test:db`           | Database tests (pgTAP) against the local Supabase stack            |
 | `pnpm fixtures:generate` | Regenerate `supabase/seed.sql` from `scripts/fixtures/`            |
+| `pnpm fixtures:sanity`   | Load the Sanity fixtures into the development dataset              |
 | `pnpm check:dataset`     | Check that anonymous queries can't read the Sanity dataset         |
 | `pnpm email:preview`     | Preview the email templates at http://localhost:3030               |
 | `pnpm format`            | Format the code with Prettier                                      |

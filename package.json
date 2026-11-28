@@ -15,6 +15,7 @@
     "test:db": "supabase test db",
     "fixtures:generate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/fixtures/generate.mts",
     "check:dataset": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/sanity/check-private-dataset.mts",
+    "fixtures:sanity": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/fixtures/sanity-import.mts",
     "email:preview": "email dev --dir emails --port 3030",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

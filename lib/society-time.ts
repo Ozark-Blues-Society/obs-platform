@@ -1,6 +1,9 @@
 // Dates and times as the Society shows them: in its own time zone (Central Time), whatever the
 // time zone of the server or the visitor's device.
-import { SOCIETY_TIME_ZONE } from "@/sanity/schemas/options";
+//
+// The import names its file in full (".ts"): scripts/fixtures/sanity-fixtures.mts loads this file
+// in plain Node.
+import { SOCIETY_TIME_ZONE } from "../sanity/schemas/options.ts";
 
 const format = (options: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat("en-US", { ...options, timeZone: SOCIETY_TIME_ZONE });
