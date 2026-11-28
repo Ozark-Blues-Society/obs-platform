@@ -40,7 +40,8 @@ work with the local stack. Copy it to `.env.local`, which git ignores (as it doe
 file except `.env.example`), then fill in what you need:
 
 - `SUPABASE_SECRET_KEY`: the local stack's secret key, which `supabase status` prints as
-  `SECRET_KEY`. The daily jobs and the emails to classifieds posters need it.
+  `SECRET_KEY`. The daily jobs, the classifieds (posters' names, and messages to posters) and the
+  emails to posters need it.
 - The Sanity variables, once the Society's Sanity project exists (see
   [Connecting a Sanity project](#connecting-a-sanity-project)).
 - `CRON_SECRET`, to run the daily jobs by hand (see [Daily jobs](#daily-jobs)).
@@ -693,13 +694,12 @@ do what, and `e2e/listings.spec.ts` tests the form.
   version, `createSignedUrl(path, expiresIn, { versionId: photo_version })`: a link without it
   keeps serving a replaced photo until it expires.
 - **Contact preference:** `email`, where people write through the website and the poster's address
-  stays private (K-3 builds that), or `phone`, the number on the poster's profile. The form offers
-  phone only when the profile has a number.
+  stays private (see [Public listings](#public-listings)), or `phone`, the number on the poster's
+  profile. The form offers phone only when the profile has a number.
 - **The fixture listings** (`scripts/fixtures/listings.mts`) are the seed's last section. To load
   them into a database that got the migration with `supabase migration up` (no reset), run
   `awk '/^-- Classifieds listings\./,0' supabase/seed.sql | docker exec -i supabase_db_obs-platform psql -U postgres -v ON_ERROR_STOP=1`.
   Loading them again changes nothing.
-- Still to come: the public listings (K-3), and expiry with "My listings" (K-4).
 
 ### My listings
 
@@ -760,6 +760,51 @@ only after the moderator's role has been checked.
   `e2e/admin-classifieds.spec.ts` the queue against the local stack and Mailpit. The guide for
   moderators is `docs/volunteer-guide/classifieds-moderation.md`.
 
+### Public listings
+
+Everyone, visitors included, browses the live listings at `/classifieds` (backlog K-3, board
+decisions §7: `app/(site)/classifieds/`, with its reads in `lib/listings/public.ts`), newest first,
+filtered by category with `?category=` (`musicians-wanted`, `gear`, `merch`, `street-team`,
+`member-connect`). Each listing has its own page, `/classifieds/<id>`. Anything else at that address
+(a pending, rejected or expired listing, or no listing) is a page not found, for everyone.
+
+- **Listings are read as the viewer**, and each read asks for live ones itself: row level security
+  also shows members their own listings and moderators all of them. Visitors and members can't
+  read other members' profiles, so the posters' names ("Dale R.") come through the service role,
+  which reads only the name columns, and the phone number of a poster who asked for calls. A
+  listing's photo link is signed for its `photo_version`, for an hour; a photo replaced since
+  doesn't sign, and the page shows the listing without it.
+- **Anyone can write to a poster** (decision 0009): a name, an email address and a message, on the
+  listing's page. `sendContactMessage` (`lib/listings/contact.ts`) emails it to the poster's
+  address, read with the service role and never returned to the page, with the address the sender
+  gave as the Reply-To, so the poster answers with Reply (`emails/listing-message.tsx`;
+  `getEmailSender()` sends it: Mailpit locally and in the tests). A signed-in member's name and
+  address are filled in. A poster who chose phone shows the number from their profile to signed-in
+  people only; a visitor is told to sign in for it, or writes instead.
+- **Decision 0009's checks against spam, with no third party:**
+  - a hidden field (`website`) that people never see and scripts fill in: the script is told the
+    message went, and nothing goes;
+  - a message may go only a few seconds after the page was made. The page gets its Server Function
+    from `contactFormAction()`, which closes over the listing and that moment; Next.js encrypts
+    what a Server Function closes over, so nobody can send a time of their own;
+  - in a day, 10 messages per sender email address and per network address, and 20 per listing.
+    `supabase/migrations/20261127195203_listing_messages.sql` adds `listing_messages` (the listing,
+    the time and SHA-256 hashes of the two addresses: nothing anyone wrote; about a day of rows;
+    service role only) and `record_listing_message()`, which counts and records one message at a
+    time and only for a live listing. A message whose email fails is deleted again. The network
+    address comes from Netlify's `x-nf-client-connection-ip` (or `x-real-ip`), never from
+    `x-forwarded-for`, whose first entry the visitor writes; without one (locally) there's no
+    network limit;
+  - the email says the sender's address is unchecked, and shows links in the message as plain text
+    (an invisible U+2060 inside each address, `unlinkText()` in `emails/_lib/format.ts`).
+- **"Post a listing"** opens the form for anyone signed in (the form tells a member whose
+  membership ended, or who never joined, to renew or join). A visitor gets a dialog asking them to
+  sign in or join.
+- `supabase/tests/listing_messages_test.sql` tests the limits and who can reach the table,
+  `lib/listings/public*.test.ts` and `lib/listings/contact.test.ts` the reads and the sending,
+  `components/classifieds/classifieds.test.tsx` the pages' parts, and `e2e/classifieds.spec.ts` the
+  pages against the local stack and Mailpit.
+
 ## Emails (React Email)
 
 The app's own emails (backlog E-1) are [React Email](https://react.email) templates in `emails/`.
@@ -775,6 +820,7 @@ Sign-in emails belong to Supabase Auth (see [Sign-in](#sign-in-supabase-auth)).
 | `listing-approved.tsx`      | A moderator approves a listing             | Moderation (K-2)                                |
 | `listing-rejected.tsx`      | A moderator rejects one, with a reason     | Moderation (K-2)                                |
 | `listing-expiring.tsx`      | 5 days before a listing expires            | Listing expiry (K-4)                            |
+| `listing-message.tsx`       | Someone writes to a listing's poster       | The listing page's contact form (K-3)           |
 | `monthly-newsletter.tsx`    | Once a month, by the newsletter writer     | MailerLite (the Monthly digest screen, E-4)     |
 
 Stripe also emails its own receipt for online payments (decision 0002), and its own notices to

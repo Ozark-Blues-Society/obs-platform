@@ -68,6 +68,19 @@ describe("createResendSender", () => {
     expect(sentRequest(fetch).headers.has("idempotency-key")).toBe(false);
   });
 
+  it("sends replies to the reply-to address when the email has one", async () => {
+    const fetch = fakeFetch(200, { id: "email-id" });
+    await createResendSender({ apiKey: "re_test_key", from: "noreply@mail.example.org", fetch })({
+      ...EMAIL,
+      replyTo: "casey.brooks@example.com",
+    });
+
+    expect(sentRequest(fetch).body).toMatchObject({
+      from: "Ozark Blues Society <noreply@mail.example.org>",
+      reply_to: "casey.brooks@example.com",
+    });
+  });
+
   it("throws Resend's error type and message when it refuses the email, without the key", async () => {
     const fetch = fakeFetch(429, {
       statusCode: 429,
@@ -132,6 +145,20 @@ describe("createMailpitSender", () => {
       Subject: EMAIL.subject,
       HTML: EMAIL.html,
       Text: EMAIL.text,
+    });
+  });
+
+  it("sends replies to the reply-to address when the email has one", async () => {
+    const fetch = fakeFetch(200, { ID: "mailpit-message-id" });
+    await createMailpitSender({
+      url: "http://127.0.0.1:54324",
+      from: "onboarding@resend.dev",
+      fetch,
+    })({ ...EMAIL, replyTo: "casey.brooks@example.com" });
+
+    expect(sentRequest(fetch).body).toMatchObject({
+      From: { Email: "onboarding@resend.dev", Name: "Ozark Blues Society" },
+      ReplyTo: [{ Email: "casey.brooks@example.com" }],
     });
   });
 

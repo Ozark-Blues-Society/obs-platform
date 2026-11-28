@@ -16,6 +16,8 @@ const files = readdirSync(new URL(".", import.meta.url)).filter(
 // unsubscribe page and the web version. Every other template is one of the site's own emails, sent
 // through Resend, which would leave such a link as it is.
 const NEWSLETTERS = new Set(["monthly-newsletter.tsx"]);
+// Emails that pass on someone's message, with their address as the Reply-To: replying reaches them.
+const PASSED_ON = new Set(["listing-message.tsx"]);
 const MAILERLITE_LINKS = ["{$unsubscribe}", "{$url}"];
 
 const templates = await Promise.all(
@@ -42,6 +44,7 @@ it("finds the templates", () => {
     expect.arrayContaining([
       "listing-approved.tsx",
       "listing-expiring.tsx",
+      "listing-message.tsx",
       "listing-rejected.tsx",
       "membership-lapsed.tsx",
       "monthly-newsletter.tsx",
@@ -108,7 +111,9 @@ describe.each(templates)("$file", ({ file, template, rendered: { subject, html, 
     if (newsletter) {
       expect(text).toContain("Unsubscribe {$unsubscribe}");
     } else {
-      expect(text).toContain("Replies to this email aren't read.");
+      expect(text).toContain(
+        PASSED_ON.has(file) ? "not to the Society." : "Replies to this email aren't read.",
+      );
       expect(text).toContain(`contact page ${siteUrl}/contact`);
     }
   });

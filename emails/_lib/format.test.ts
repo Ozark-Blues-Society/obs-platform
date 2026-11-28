@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { formatAmount, formatDate, levelName, siteLink } from "./format";
+import { formatAmount, formatDate, levelName, siteLink, unlinkText } from "./format";
 
 describe("formatDate", () => {
   it("shows a timestamp's day in the Society's time zone (Central)", () => {
@@ -55,5 +55,23 @@ describe("siteLink", () => {
 
   it("refuses a site address that isn't absolute", () => {
     expect(() => siteLink("example.org", "/account")).toThrow();
+  });
+});
+
+describe("unlinkText", () => {
+  const JOINER = String.fromCodePoint(0x2060);
+
+  it("breaks web and email addresses with an invisible character, so they aren't links", () => {
+    expect(
+      unlinkText("See https://example.com/amp or www.example.com, or mail jo@example.com."),
+    ).toBe(
+      `See https:${JOINER}//example${JOINER}.com/amp or www${JOINER}.example${JOINER}.com, or mail jo${JOINER}@example${JOINER}.com.`,
+    );
+  });
+
+  it("leaves the words and line breaks as written", () => {
+    const text = "Is it still for sale?\nI can pay $650. Thanks!";
+    expect(unlinkText(text)).toBe(text);
+    expect(unlinkText("example.com").replaceAll(JOINER, "")).toBe("example.com");
   });
 });

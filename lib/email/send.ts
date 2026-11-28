@@ -20,6 +20,11 @@ export interface OutgoingEmail {
   /** The plain-text version, for email clients that don't show HTML. */
   text: string;
   /**
+   * Where replies go instead of the sender's address: the person a message is from, when the site
+   * passes one on (a message to a classifieds poster).
+   */
+  replyTo?: string;
+  /**
    * Names this email, so that sending it again doesn't deliver it twice: for 24 hours, Resend
    * answers a repeated key with the first send's result. Up to 256 characters.
    */
@@ -56,6 +61,7 @@ export function createResendSender(options: {
       body: JSON.stringify({
         from: `${SENDER_NAME} <${from}>`,
         to: email.to,
+        ...(email.replyTo ? { reply_to: email.replyTo } : {}),
         subject: email.subject,
         html: email.html,
         text: email.text,
@@ -118,6 +124,7 @@ export function createMailpitSender(options: {
       body: JSON.stringify({
         From: { Email: from, Name: SENDER_NAME },
         To: [{ Email: email.to }],
+        ...(email.replyTo ? { ReplyTo: [{ Email: email.replyTo }] } : {}),
         Subject: email.subject,
         HTML: email.html,
         Text: email.text,

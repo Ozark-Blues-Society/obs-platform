@@ -62,3 +62,20 @@ can also remove their own listings at any time.
   website couldn't load it. A replaced photo never goes live, so if you approve the listing, it may
   appear without one. If the photo matters, reject the listing with a reason asking the poster to
   post it again with the photo.
+
+## What everyone sees on the classifieds
+
+Approved listings appear on the **Classifieds** page of the website, newest first, with filters
+for the five categories. Anyone can read them, members or not. Each listing shows its category,
+title, price, details and photo, and the poster's first name and last initial, never their email
+address.
+
+Anyone can write to a poster from the listing's page, members or not (decision 0009). They give
+their name, their email address and a message, and the website emails it to the poster, who can
+simply reply. The poster's own address stays private until they reply. If the poster chose
+**phone**, people who are signed in see the phone number on the poster's profile instead.
+
+Because anyone can write, the website keeps spam down without any outside service: each email
+address or internet connection can send up to 10 messages a day, and each listing can get up to 20.
+The email tells the poster that the sender's address hasn't been checked, and links in messages
+appear as plain text, not as links.
