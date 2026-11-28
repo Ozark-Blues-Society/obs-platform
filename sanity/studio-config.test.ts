@@ -5,7 +5,7 @@ import { createStructureBuilder, type ListBuilder } from "sanity/structure";
 import { beforeAll, describe, expect, it } from "vitest";
 import { resolve } from "./presentation";
 import { documentTypes } from "./schemas";
-import { BOARD_BENEFITS } from "./schemas/documents/site-settings";
+import { BOARD_BENEFITS } from "./schemas/board-benefits";
 import { structure } from "./structure";
 import { createTestWorkspace } from "./test-workspace";
 

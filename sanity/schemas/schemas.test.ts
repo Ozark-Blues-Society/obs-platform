@@ -13,7 +13,7 @@ import {
 import { LEVELS as FIXTURE_LEVELS } from "@/scripts/fixtures/members.mts";
 import { createTestWorkspace, stubClient, type Fetch } from "@/sanity/test-workspace";
 import { documentTypes, schemaTypes } from ".";
-import { BOARD_BENEFITS } from "./documents/site-settings";
+import { BOARD_BENEFITS } from "./board-benefits";
 import {
   EVENT_CATEGORIES,
   MEMBERSHIP_LEVELS,

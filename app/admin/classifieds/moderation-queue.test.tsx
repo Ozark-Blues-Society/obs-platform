@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   MODERATION_MESSAGES,
@@ -127,6 +127,44 @@ describe("ModerationQueue", () => {
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
     expect(approveButton).toHaveFocus();
   });
+
+  // In the browser the outcome arrives first and the refreshed queue after it; either order works.
+  it.each(["outcome first", "refreshed queue first"])(
+    "moves focus to the list when a refusal takes the listing out of it (%s)",
+    async (order) => {
+      const message = `“${HARMONICA.title}” was already approved, perhaps by another moderator.`;
+      let answer: (result: ModerationResult) => void = () => {};
+      const approve = vi.fn(
+        () =>
+          new Promise<ModerationResult>((resolve) => {
+            answer = resolve;
+          }),
+      );
+      const reject = vi.fn(never);
+      const { rerender } = render(
+        <ModerationQueue listings={[HARMONICA, KEYS]} approve={approve} reject={reject} />,
+      );
+      const approveButton = card(HARMONICA.title).getByRole("button", { name: "Approve" });
+      approveButton.focus();
+      // The Server Function refreshes the page: another moderator approved the listing, so it's
+      // gone, and so is the button that had focus.
+      const refresh = () =>
+        rerender(<ModerationQueue listings={[KEYS]} approve={approve} reject={reject} />);
+
+      fireEvent.click(approveButton);
+      if (order === "outcome first") {
+        await act(async () => answer({ status: "error", message }));
+        expect(approveButton).toHaveFocus();
+        refresh();
+      } else {
+        refresh();
+        await act(async () => answer({ status: "error", message }));
+      }
+
+      expect(screen.getByRole("alert")).toHaveTextContent(message);
+      expect(screen.getByRole("heading", { name: "Waiting for review (1)" })).toHaveFocus();
+    },
+  );
 
   it("says so when the request fails on the way", async () => {
     renderQueue({

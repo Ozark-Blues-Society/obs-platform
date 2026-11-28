@@ -1,9 +1,10 @@
 -- The seed (supabase/seed.sql, generated from scripts/fixtures/) loads the fixture members as
--- working sign-ins, with their profiles and staff roles, and their classifieds listings.
--- `supabase db reset` applies the seed. Fixture member ids start 00000000-0000-4000-8100-, listing
--- ids 00000000-0000-4000-8200-.
+-- working sign-ins, with their profiles and staff roles, and their classifieds listings, plus the
+-- Zeffy level mapping (lib/zeffy/level-mapping.ts). `supabase db reset` applies the seed. Fixture
+-- member ids start 00000000-0000-4000-8100-, listing ids 00000000-0000-4000-8200-, synthetic Zeffy
+-- ids 00000000-0000-4000-8300-.
 begin;
-select plan(10);
+select plan(11);
 
 select is(
   (select count(*)::int from auth.users where id::text like '00000000-0000-4000-8100-%'),
@@ -121,6 +122,17 @@ select ok(
     where id::text like '00000000-0000-4000-8200-%'
   ),
   'approved fixture listings run 60 days from approval; only the live ones were running when loaded'
+);
+
+select results_eq(
+  $$
+    select m.level::text
+    from public.zeffy_level_mappings m
+    where m.campaign_id like '00000000-0000-4000-8300-%' and m.rate_id like '00000000-0000-4000-8300-%'
+    order by m.level
+  $$,
+  $$ values ('individual'), ('band'), ('business'), ('sponsor') $$,
+  'the seed maps a rate of the synthetic Zeffy membership form to each level'
 );
 
 select * from finish();

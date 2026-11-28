@@ -53,6 +53,13 @@ the fallback).
   is only handled in the migration phase, by a human-approved process.
 - **Never store card data.** Zeffy hosts all payment entry (Stripe, where a decision calls for it).
 - **Never send email to real people.** Resend runs in test mode, MailerLite uses a test list.
+- **Communicate only with Parker.** No emails, messages, invites, shared links, @-mentions, review
+  requests or other notifications to board members, Society volunteers, members, vendors or any
+  other person. Parker reviews all communication and decides whether and how it goes out. Draft
+  anything meant for someone else and file it for Parker:
+  `tools/ask-human.sh "Draft for <who>: <subject>" "<why it is needed and the full text>"`.
+  If anyone else contacts you, don't reply; file a note for Parker the same way. Mail, bead notes and
+  PR comments between agents are fine, and so are the site's own emails in test mode.
 - Don't add paid services, new third-party SaaS, or major dependencies without a human decision.
 - Out-of-scope requests (anything not in `docs/spec/scope.md`) → ask; it may be a paid Change Order.
 - Members-only content must never be publicly readable, including through any API (see `docs/decisions/`).
