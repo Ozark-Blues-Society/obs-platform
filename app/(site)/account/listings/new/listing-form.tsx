@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
   type PreparePhotoResult,
   type SubmitListingResult,
 } from "@/lib/listings/listing-state";
+import { MY_LISTINGS_PATH } from "@/lib/site/navigation";
 
 // The Server Functions arrive as props (from page.tsx), so the form can be tested on its own.
 type Props = {
@@ -246,7 +248,8 @@ export function ListingForm({ prepare, submit, phone, upload = putPhoto }: Props
           <SuccessBox>
             <p>
               Thanks! &ldquo;{outcome.title}&rdquo; is waiting for a moderator. We&rsquo;ll email
-              you once it&rsquo;s been reviewed.
+              you once it&rsquo;s been reviewed, and{" "}
+              <Link href={MY_LISTINGS_PATH}>My listings</Link> shows where it stands.
             </p>
           </SuccessBox>
         )}

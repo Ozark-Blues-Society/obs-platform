@@ -39,7 +39,7 @@ export default function ListingExpiringEmail(props: ListingExpiringEmailProps) {
       </Title>
       <Paragraph>
         Your listing comes down from the classifieds on {date}. If you still need it, renew it from
-        My listings to keep it up.
+        My listings: it stays up, as it is, for another 60 days from the day you renew.
       </Paragraph>
       <Details
         rows={[

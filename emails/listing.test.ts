@@ -78,6 +78,7 @@ describe("listing expiring", () => {
     expect(subject).toBe("Your classified listing expires soon");
     expect(html).toContain("Your listing expires soon, Jordan");
     expect(text).toContain("comes down from the classifieds on December 1, 2026.");
+    expect(text).toContain("it stays up, as it is, for another 60 days from the day you renew.");
     expect(text).toMatch(/Expires on +December 1, 2026\n/);
     expect(text).toContain("there's nothing to do: it comes down by itself");
   });

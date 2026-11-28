@@ -8,9 +8,13 @@ import { getMyAccount } from "@/lib/account/my-account";
 import { saveProfile } from "@/lib/account/profile-actions";
 import { profileValues } from "@/lib/account/profile-state";
 import { signOut } from "@/lib/auth/actions";
+import { requireUser } from "@/lib/auth/user";
+import { listMyListings } from "@/lib/listings/my-listings";
+import { listingStanding, type MyListing } from "@/lib/listings/my-listings-state";
 import { membershipStanding } from "@/lib/members/membership";
-import { NEW_LISTING_PATH } from "@/lib/site/navigation";
+import { ACCOUNT_PATH, NEW_LISTING_PATH } from "@/lib/site/navigation";
 import { getMemberPerks } from "@/sanity/content/member-perks";
+import { ListingsCard } from "./listings-card";
 import { MembershipCard } from "./membership-card";
 import { PerksCard } from "./perks-card";
 import { ProfileForm } from "./profile-form";
@@ -19,12 +23,12 @@ export const metadata: Metadata = {
   title: "My Account · Ozark Blues Society",
 };
 
-// My Account (backlog M-8): the member's membership, their perks and their details. Members-only,
+// My Account (backlog M-8): the member's membership, their perks and their details, and a summary
+// of their classifieds listings (K-4; they renew and remove them on My listings). Members-only,
 // like all of /account (the proxy sends visitors to sign in). The heading and intro are part of the
 // static shell; the rest needs the member, so it streams in at request time.
 //
-// Email preferences wait on Q-20261127-174756-24341, and "My listings" arrives with the
-// classifieds (K-4, Launch 2); the Customer Portal link is M-6.
+// Email preferences wait on Q-20261127-174756-24341; the Customer Portal link is M-6.
 export default function AccountPage() {
   return (
     <>
@@ -64,6 +68,10 @@ async function AccountSections() {
           </p>
         </Card>
       </div>
+      {/* Its own boundary: the rest of the page doesn't wait for the listings, or fail with them. */}
+      <Suspense fallback={<p className="mt-8 text-muted">Loading your listings…</p>}>
+        <Listings />
+      </Suspense>
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <ButtonLink href={NEW_LISTING_PATH} variant="dark" size="sm">
           Post a classifieds listing
@@ -75,5 +83,26 @@ async function AccountSections() {
         </form>
       </div>
     </>
+  );
+}
+
+async function Listings() {
+  const user = await requireUser(ACCOUNT_PATH);
+  let listings: MyListing[];
+  try {
+    listings = await listMyListings(user.id);
+  } catch (error) {
+    console.error("Loading the member's listings for My Account failed:", error);
+    return (
+      <p role="alert" className="mt-8 rounded-lg border border-danger bg-danger-soft p-4">
+        Your classifieds listings can&rsquo;t be shown right now. Please try again in a few minutes.
+      </p>
+    );
+  }
+  const now = new Date();
+  return (
+    <ListingsCard
+      items={listings.map((listing) => ({ listing, standing: listingStanding(listing, now) }))}
+    />
   );
 }
