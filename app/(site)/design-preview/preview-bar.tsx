@@ -26,8 +26,8 @@ export function PreviewBar({ current, directoryView }: PreviewBarProps) {
     <nav aria-label="Design preview" className="bg-accent-soft text-sm text-ink">
       <div className="mx-auto max-w-site px-gutter py-2.5">
         <p>
-          <strong>Design preview with sample content.</strong> The logo, colors and photos are
-          placeholders until the Society sends its own.
+          <strong>Design preview with sample content.</strong> The logo, colors, photos and sponsors
+          come from the Society’s current website.
         </p>
         <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
           {(Object.keys(PREVIEW_PAGES) as PreviewPage[]).map((page) => (

@@ -1,8 +1,21 @@
 // Sample content for the Design Approval package (backlog D-4), in the approved concept's style
-// (docs/design/prototype.html). Every event, post, person, venue and sponsor here is made up:
-// the Society's real content is still to come (docs/spec/board-decisions.md, "Brand and content").
-// Phone numbers use the 555-01xx range set aside for fiction; web addresses use example.com.
-import type { PlaceholderPhotoTone } from "@/components/ui/placeholder-photo";
+// (docs/design/prototype.html). Every event, post, person and venue here is made up: the Society's
+// real content is still to come (docs/spec/board-decisions.md, "Brand and content"). Phone numbers
+// use the 555-01xx range set aside for fiction; web addresses use example.com. The photos and the
+// sponsors are the Society's own, from its current website (decision 0014), in ./images: only
+// optimized copies of the files used, and none of its unconfirmed headshots.
+import type { StaticImageData } from "next/image";
+import bandInBlueLight from "./images/band-in-blue-light.jpg";
+import crowd from "./images/crowd.jpg";
+import festivalStage from "./images/festival-stage.jpg";
+import obsStage from "./images/obs-stage.jpg";
+import societyOnStage from "./images/society-on-stage.jpg";
+import arkansasMusicworks from "./images/sponsors/arkansas-musicworks.png";
+import mdFurniture from "./images/sponsors/md-furniture.png";
+import musicMoves from "./images/sponsors/music-moves.png";
+import pinnacleRugCleaning from "./images/sponsors/pinnacle-rug-cleaning.png";
+import thomasFamilyAgency from "./images/sponsors/thomas-family-agency.png";
+import trioOnStage from "./images/trio-on-stage.jpg";
 
 export const PREVIEW_PATH = "/design-preview";
 
@@ -63,12 +76,26 @@ export const UPCOMING_EVENTS = [
   },
 ];
 
+/**
+ * The credit on the photos of the photographer whose watermark they carry, spelled as on the
+ * watermark ("J. C. Prazak Photography"). Decision 0014 has "Pruszak": Parker is asked which is
+ * right (Q-20261127-232339-17742).
+ */
+export const PHOTO_CREDIT = "Photo: J.C. Prazak Photography";
+
+/**
+ * The Society's photos the sample pages use. Behind a headline or on a card they're decoration;
+ * the Standard page's photo block describes its own.
+ */
+export const PHOTOS = { trioOnStage, obsStage, bandInBlueLight, festivalStage };
+
 type SamplePost = {
   title: string;
   href: string;
   publishedAt: string;
   category: string;
-  tone: PlaceholderPhotoTone;
+  /** The cover photo: decoration, since the headline says what the post is. */
+  cover: StaticImageData;
 } & ({ locked?: false; excerpt: string } | { locked: true });
 
 export const LATEST_POSTS: SamplePost[] = [
@@ -78,7 +105,7 @@ export const LATEST_POSTS: SamplePost[] = [
     publishedAt: "2026-11-18T12:00:00-06:00",
     category: "Band Spotlight",
     excerpt: "Three friends, one beat-up Silvertone, and a sound that’s pure hill-country.",
-    tone: "rust",
+    cover: obsStage,
   },
   {
     // Members only: visitors see the headline and a blurred stand-in, never the summary.
@@ -87,7 +114,7 @@ export const LATEST_POSTS: SamplePost[] = [
     publishedAt: "2026-11-12T12:00:00-06:00",
     category: "Society News",
     locked: true,
-    tone: "brass",
+    cover: societyOnStage,
   },
   {
     title: "Fall Fest Recap: 1,200 Fans and a Whole Lot of Slide Guitar",
@@ -95,23 +122,34 @@ export const LATEST_POSTS: SamplePost[] = [
     publishedAt: "2026-10-24T12:00:00-05:00",
     category: "Recap",
     excerpt: "Two days, eleven bands, and one very muddy field. Here are the highlights.",
-    tone: "night",
+    cover: crowd,
   },
 ];
 
+// The current site's Sponsor Spotlight. It shows no logo or website for it, so neither does this.
 export const FEATURED_SPONSOR = {
-  name: "Riverbend Brewing Co.",
-  href: "https://example.com/",
-  blurb:
-    "Riverbend has hosted our Tuesday Open Jam for six years, and keeps a stage open for local players every week.",
+  name: "Bob Arvin Realtor",
+  blurb: "Thank you to Bob Arvin Realtor for supporting live blues in Northwest Arkansas.",
 };
 
-export const SPONSORS = [
-  { name: "Riverbend Brewing Co." },
-  { name: "Old Mill Music Hall" },
-  { name: "Hilltop Guitar Works" },
-  { name: "Ozark Community Bank" },
-  { name: "Community Radio 90.1" },
+export type SampleSponsor = {
+  name: string;
+  /** The logo, with its size in pixels (the sponsor components show it 40px high). */
+  logo?: { src: StaticImageData; width: number; height: number };
+};
+
+// The sponsors on the current site, with their logos. It shows M&D Furniture's and Pinnacle Rug
+// Cleaning's in one picture, one above the other, which is unreadable 40px high, so each has its
+// own here. It has photos rather than logos for the last two, so their names show in their place,
+// as the design does until a logo arrives.
+export const SPONSORS: SampleSponsor[] = [
+  { name: "Arkansas Musicworks", logo: { src: arkansasMusicworks, width: 431, height: 120 } },
+  { name: "M&D Furniture", logo: { src: mdFurniture, width: 238, height: 120 } },
+  { name: "Pinnacle Rug Cleaning", logo: { src: pinnacleRugCleaning, width: 307, height: 120 } },
+  { name: "Thomas Family Agency", logo: { src: thomasFamilyAgency, width: 342, height: 120 } },
+  { name: "Music Moves", logo: { src: musicMoves, width: 346, height: 93 } },
+  { name: "Crisp Recording Studios" },
+  { name: "Allen’s Food Market" },
 ];
 
 /** The lowest yearly dues (Individual, docs/spec/board-decisions.md §1). */

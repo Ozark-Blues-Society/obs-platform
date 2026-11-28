@@ -4,10 +4,12 @@ Backlog D-1. The tokens live in [`app/globals.css`](../../app/globals.css) as a 
 so each one is both a utility class (`bg-canvas`, `text-muted`, `rounded-card`) and a CSS variable
 (`var(--color-canvas)`). They come from the approved concept, [`prototype.html`](prototype.html).
 
-**The colors and fonts are placeholders** until the Society's real logo and colors arrive
-([board decisions](../spec/board-decisions.md), "Brand and content"). Token names say what a color
-is for, not what it looks like, so the real brand goes in by changing values, not names. See
-[Swapping in the real brand](#swapping-in-the-real-brand).
+**The blues and the ink come from the Society's logo** ([decision
+0014](../decisions/0014-brand-assets-from-current-site.md)): `primary` is the logo's navy,
+`#003060`, the other blues are shades of it, and `ink` is the logo's lettering. The brass, the
+cream neutrals and the fonts are still the concept's (the Society has no brand fonts). Token names
+say what a color is for, not what it looks like, so a brand change is a change of values, not
+names. See [Changing the brand](#changing-the-brand).
 
 - Pages and components use tokens only: no hex values, `rgb()` or Tailwind palette classes such as
   `text-neutral-700` outside `app/globals.css`. Tailwind's default palette is switched off, and
@@ -20,10 +22,10 @@ is for, not what it looks like, so the real brand goes in by changing values, no
 
 | Token           | Value     | Prototype                                                 | Use for                                                                              |
 | --------------- | --------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `primary-dark`  | `#0e1a2b` | `--night`                                                 | Header, footer, hero, toast, the preview banner's button; text on `accent`           |
-| `primary`       | `#1d3557` | `--blue`                                                  | Page header band, dark buttons, date badges, selected pills                          |
-| `primary-light` | `#2b4c7e` | `--blue2`                                                 | Links                                                                                |
-| `primary-soft`  | `#e6ecf5` | `--blue-soft`                                             | Default tags, calendar chips                                                         |
+| `primary-dark`  | `#001a33` | `--night`; now a darker shade of the logo's navy          | Header, footer, hero, toast, the preview banner's button; text on `accent`           |
+| `primary`       | `#003060` | `--blue`; now the logo's navy                             | Page header band, dark buttons, date badges, selected pills                          |
+| `primary-light` | `#1f5288` | `--blue2`; now a lighter shade of the logo's navy         | Links                                                                                |
+| `primary-soft`  | `#e6eef7` | `--blue-soft`; now a tint of the logo's navy              | Default tags, calendar chips                                                         |
 | `accent`        | `#c9973f` | `--brass`                                                 | Main buttons, call-to-action band, selected borders; as text only on dark            |
 | `accent-light`  | `#f0d49a` | `--brass-l`                                               | Accent text on `primary` and `primary-dark`                                          |
 | `accent-soft`   | `#f6e6c3` | brass tag background                                      | "Members only", "Pending" and "Expiring soon" tags; the preview banner               |
@@ -35,7 +37,7 @@ is for, not what it looks like, so the real brand goes in by changing values, no
 | `canvas`        | `#f7f2e8` | `--cream`                                                 | Page background                                                                      |
 | `surface`       | `#fffdf8` | `--paper`                                                 | Cards and panels                                                                     |
 | `white`         | `#ffffff` | `#fff`                                                    | Form fields, filter pills; text on dark                                              |
-| `ink`           | `#1c1a17` | `--ink`                                                   | Text                                                                                 |
+| `ink`           | `#181818` | `--ink`; now the logo's lettering                         | Text                                                                                 |
 | `muted`         | `#6b6458` | `--muted`                                                 | Secondary text                                                                       |
 | `muted-soft`    | `#ece8df` | grey tag background                                       | Neutral tags                                                                         |
 | `muted-on-dark` | `#cfd8e6` | hero and page header intro; nav and footer text are close | Secondary text on `primary` and `primary-dark`                                       |
@@ -45,7 +47,8 @@ is for, not what it looks like, so the real brand goes in by changing values, no
 
 The prototype's semi-transparent colors are tokens with Tailwind's opacity modifier: modal
 backdrop `bg-primary-dark/55`, nav link hover `bg-white/8`, "Next up" panel border
-`border-accent-light/35`, members-only lock overlay `bg-canvas/97`.
+`border-accent-light/35` and background `bg-primary-dark/80` (dark enough for its text over any
+photo), members-only lock overlay `bg-canvas/97`.
 
 ## Contrast (WCAG 2.1 AA)
 
@@ -57,37 +60,37 @@ A pair the site uses belongs here.
 
 | Text or element | Background      | Where                                                    | Ratio   | AA needs |
 | --------------- | --------------- | -------------------------------------------------------- | ------- | -------- |
-| `ink`           | `canvas`        | Body text                                                | 15.56:1 | 4.5:1    |
-| `ink`           | `surface`       | Text on cards                                            | 17.08:1 | 4.5:1    |
-| `ink`           | `white`         | Text in form fields and filter pills                     | 17.36:1 | 4.5:1    |
+| `ink`           | `canvas`        | Body text                                                | 15.91:1 | 4.5:1    |
+| `ink`           | `surface`       | Text on cards                                            | 17.47:1 | 4.5:1    |
+| `ink`           | `white`         | Text in form fields and filter pills                     | 17.76:1 | 4.5:1    |
 | `muted`         | `canvas`        | Secondary text                                           | 5.24:1  | 4.5:1    |
 | `muted`         | `surface`       | Secondary text on cards                                  | 5.76:1  | 4.5:1    |
 | `muted`         | `white`         | Placeholder text in form fields, sponsor names           | 5.85:1  | 4.5:1    |
-| `primary-light` | `canvas`        | Links                                                    | 7.72:1  | 4.5:1    |
-| `primary-light` | `surface`       | Links on cards                                           | 8.47:1  | 4.5:1    |
+| `primary-light` | `canvas`        | Links                                                    | 7.18:1  | 4.5:1    |
+| `primary-light` | `surface`       | Links on cards                                           | 7.88:1  | 4.5:1    |
 | `accent-dark`   | `canvas`        | Eyebrows on light backgrounds                            | 6.00:1  | 4.5:1    |
 | `accent-dark`   | `surface`       | Eyebrows on cards                                        | 6.59:1  | 4.5:1    |
 | `danger`        | `canvas`        | Error messages                                           | 5.29:1  | 4.5:1    |
 | `danger`        | `surface`       | Error messages on cards and forms                        | 5.81:1  | 4.5:1    |
 | `success`       | `canvas`        | Success messages                                         | 5.15:1  | 4.5:1    |
-| `primary`       | `primary-soft`  | Default tags, calendar chips                             | 10.41:1 | 4.5:1    |
+| `primary`       | `primary-soft`  | Default tags, calendar chips                             | 11.27:1 | 4.5:1    |
 | `accent-dark`   | `accent-soft`   | "Members only", "Pending", "Expiring soon" tags          | 5.43:1  | 4.5:1    |
 | `success`       | `success-soft`  | "Active", "Published", "Live" tags                       | 4.79:1  | 4.5:1    |
 | `danger`        | `danger-soft`   | "Lapsed" tags                                            | 4.51:1  | 4.5:1    |
-| `ink`           | `success-soft`  | Text in success messages                                 | 14.47:1 | 4.5:1    |
-| `ink`           | `danger-soft`   | Text in error alerts                                     | 13.27:1 | 4.5:1    |
-| `ink`           | `accent-soft`   | Text in the preview banner                               | 14.08:1 | 4.5:1    |
+| `ink`           | `success-soft`  | Text in success messages                                 | 14.80:1 | 4.5:1    |
+| `ink`           | `danger-soft`   | Text in error alerts                                     | 13.57:1 | 4.5:1    |
+| `ink`           | `accent-soft`   | Text in the preview banner                               | 14.40:1 | 4.5:1    |
 | `muted`         | `muted-soft`    | Neutral tags ("Weekly", "Expired")                       | 4.79:1  | 4.5:1    |
-| `white`         | `primary-dark`  | Header, footer, hero, toast; the preview banner's button | 17.48:1 | 4.5:1    |
-| `muted-on-dark` | `primary-dark`  | Hero intro, nav links, footer text                       | 12.17:1 | 4.5:1    |
-| `accent-light`  | `primary-dark`  | Logo tagline, phone menu group labels, "Next up" date    | 12.14:1 | 4.5:1    |
-| `accent`        | `primary-dark`  | Eyebrows on the hero                                     | 6.64:1  | 4.5:1    |
-| `white`         | `primary`       | Page header, dark buttons, date badges, selected pills   | 12.36:1 | 4.5:1    |
-| `white`         | `primary-light` | Dark buttons on hover                                    | 8.61:1  | 4.5:1    |
-| `muted-on-dark` | `primary`       | Page header intro                                        | 8.60:1  | 4.5:1    |
-| `accent-light`  | `primary`       | Date badge month, page header eyebrow                    | 8.59:1  | 4.5:1    |
-| `accent-light`  | `primary-light` | Sponsor spotlight's name, at the panel's lightest corner | 5.98:1  | 4.5:1    |
-| `primary-dark`  | `accent`        | Main buttons, call-to-action band; focus outline there   | 6.64:1  | 4.5:1    |
+| `white`         | `primary-dark`  | Header, footer, hero, toast; the preview banner's button | 17.56:1 | 4.5:1    |
+| `muted-on-dark` | `primary-dark`  | Hero intro, nav links, footer text                       | 12.23:1 | 4.5:1    |
+| `accent-light`  | `primary-dark`  | Email logo tagline, phone menu labels, "Next up" date    | 12.20:1 | 4.5:1    |
+| `accent`        | `primary-dark`  | Eyebrows on the hero                                     | 6.68:1  | 4.5:1    |
+| `white`         | `primary`       | Page header, dark buttons, date badges, selected pills   | 13.19:1 | 4.5:1    |
+| `white`         | `primary-light` | Dark buttons on hover                                    | 8.01:1  | 4.5:1    |
+| `muted-on-dark` | `primary`       | Page header intro                                        | 9.18:1  | 4.5:1    |
+| `accent-light`  | `primary`       | Date badge month, page header eyebrow                    | 9.17:1  | 4.5:1    |
+| `accent-light`  | `primary-light` | Sponsor spotlight's name, at the panel's lightest corner | 5.57:1  | 4.5:1    |
+| `primary-dark`  | `accent`        | Main buttons, call-to-action band; focus outline there   | 6.68:1  | 4.5:1    |
 | `white`         | `success`       | "Approve" button                                         | 5.75:1  | 4.5:1    |
 | `line-strong`   | `white`         | Form field border                                        | 3.71:1  | 3:1      |
 | `line-strong`   | `surface`       | Form field border on cards                               | 3.65:1  | 3:1      |
@@ -95,10 +98,10 @@ A pair the site uses belongs here.
 | `focus`         | `canvas`        | Focus outline                                            | 3.33:1  | 3:1      |
 | `focus`         | `surface`       | Focus outline on cards                                   | 3.65:1  | 3:1      |
 | `focus`         | `white`         | Focus outline on white                                   | 3.71:1  | 3:1      |
-| `focus`         | `primary-dark`  | Focus outline on the header, footer and hero             | 4.71:1  | 3:1      |
-| `focus`         | `primary`       | Focus outline on the page header                         | 3.33:1  | 3:1      |
-| `primary-dark`  | `accent-soft`   | Focus outline on the preview banner                      | 14.17:1 | 3:1      |
-| `primary-dark`  | `danger-soft`   | Focus outline on a link or button in an error alert      | 13.36:1 | 3:1      |
+| `focus`         | `primary-dark`  | Focus outline on the header, footer and hero             | 4.73:1  | 3:1      |
+| `focus`         | `primary`       | Focus outline on the page header                         | 3.55:1  | 3:1      |
+| `primary-dark`  | `accent-soft`   | Focus outline on the preview banner                      | 14.24:1 | 3:1      |
+| `primary-dark`  | `danger-soft`   | Focus outline on a link or button in an error alert      | 13.42:1 | 3:1      |
 
 Some of the prototype's pairs fail AA. Don't copy these:
 
@@ -156,13 +159,21 @@ Everything else uses Tailwind's own scales, which match the concept: spacing ste
 (`gap-5` is 20px), `rounded-sm` (4px) for tags, `rounded-md` (6px) for nav links, `rounded-lg`
 (8px) for form fields and date badges, and `rounded-full` for buttons and pills.
 
-## Swapping in the real brand
+## Changing the brand
+
+The logo and the colors come from the Society's current website ([decision
+0014](../decisions/0014-brand-assets-from-current-site.md)). Files from the board, if they arrive,
+replace them:
 
 1. Change the values in the `@theme` block of `app/globals.css`.
 2. Run `pnpm test`. It names each value and ratio in this file that changed and each pair that no
    longer passes. Update the tables; for a failing pair, choose a darker or lighter value.
 3. For new fonts, change the two `next/font/google` calls in `app/layout.tsx`, keeping their
    `variable` names (or update the `@theme inline` block in `app/globals.css`).
-4. Update copies outside the web app, which can't read CSS variables: the Auth email templates in
-   `supabase/templates/`, and the React Email templates' colors in `emails/_lib/theme.ts` (step 2's
-   `pnpm test` names each of those that no longer matches).
+4. Update copies outside the web app, which can't read CSS variables: the React Email templates'
+   colors in `emails/_lib/theme.ts` (step 2's `pnpm test` names each one that no longer matches),
+   and the Auth email templates in `supabase/templates/`, which no test checks: search them for the
+   old values.
+5. For a new logo, replace `components/layout/obs-logo-white.png`, the white version the dark
+   header shows (trimmed, 192px high), and its size in `components/layout/site-header.tsx`. An SVG
+   would be sharper still, if the board has one.

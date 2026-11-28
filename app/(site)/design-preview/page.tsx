@@ -56,8 +56,9 @@ export default function DesignPreviewOverview() {
           <ul>
             <li>Open each page on a phone and on a computer.</li>
             <li>
-              The sample content is made up. The logo, the colors and the photos (drawn stage
-              scenes) are placeholders until the Society sends its own.
+              The events, posts, people and venues are made up. The logo, the colors, the photos and
+              the sponsors are the Society’s own, from its current website, until the board sends
+              its own files.
             </li>
             <li>
               Links to pages that aren’t built yet, such as the events calendar, lead to a “page not

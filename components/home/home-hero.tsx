@@ -47,8 +47,9 @@ export function HomeHero({
           {photo}
         </div>
       )}
-      {/* Keeps the text readable over a bright photo: the side with the text stays darkest. */}
-      <div className="absolute inset-0 -z-10 bg-linear-to-b from-primary-dark/70 to-primary-dark/20 md:bg-linear-to-r" />
+      {/* Keeps the text readable over a bright photo: the side with the text stays darkest. Even over
+          a white photo, the eyebrow, the faintest text, keeps AA contrast. */}
+      <div className="absolute inset-0 -z-10 bg-linear-to-b from-primary-dark/85 to-primary-dark/20 md:bg-linear-to-r" />
       <div className="mx-auto grid max-w-site items-center gap-10 px-gutter py-16 md:grid-cols-[1.3fr_1fr]">
         <div>
           {eyebrow && <p className="text-eyebrow text-accent uppercase">{eyebrow}</p>}
@@ -73,9 +74,11 @@ function NextUp({ event }: { event: NextUpEvent }) {
   const headingId = useId();
   const { iso, month, day, time } = eventDateParts(event.startsAt);
   return (
+    // Dark enough that its text keeps AA contrast where the photo shows most (away from the
+    // headline), whatever the photo.
     <section
       aria-labelledby={headingId}
-      className="rounded-panel border border-accent-light/35 bg-white/6 p-5.5"
+      className="rounded-panel border border-accent-light/35 bg-primary-dark/80 p-5.5"
     >
       <h2 id={headingId} className="font-sans text-eyebrow text-accent uppercase">
         Next up
