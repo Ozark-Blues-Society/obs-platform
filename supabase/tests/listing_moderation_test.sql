@@ -7,7 +7,7 @@
 -- 00000000-0000-4000-8960- and the listings' 00000000-0000-4000-8970-. The sections change the
 -- data as they go, so each section's expected results follow from the ones before it.
 begin;
-select plan(18);
+select plan(21);
 
 insert into auth.users (id, email)
 values
@@ -87,6 +87,47 @@ select results_eq(
   $$,
   $$ values (2) $$,
   'saving the listing unchanged isn''t a new revision'
+);
+
+-- Every part of what the poster wrote counts, not only the words: a moderator must see the new
+-- price, contact preference or photo before approving it.
+
+select results_eq(
+  $$
+    update public.listings set price = 640
+    where title = 'M04 new amp'
+    returning revision
+  $$,
+  $$ values (2) $$,
+  'a new price is a new revision'
+);
+
+select results_eq(
+  $$
+    update public.listings set contact_pref = 'phone'
+    where title = 'M04 new amp'
+    returning revision
+  $$,
+  $$ values (3) $$,
+  'a new contact preference is a new revision'
+);
+
+insert into storage.objects (bucket_id, name, version)
+values (
+  'listing-photos',
+  '00000000-0000-4000-8960-000000000001/00000000-0000-4000-8980-000000000001.jpg',
+  'v1'
+);
+
+select results_eq(
+  $$
+    update public.listings
+    set photo_path = '00000000-0000-4000-8960-000000000001/00000000-0000-4000-8980-000000000001.jpg'
+    where title = 'M04 new amp'
+    returning revision, photo_version
+  $$,
+  $$ values (4, 'v1') $$,
+  'a new photo is a new revision'
 );
 
 reset role;
