@@ -24,6 +24,7 @@ describe("buildMainNav", () => {
     expect(buildMainNav([])).toEqual([
       { kind: "link", label: "Events", href: "/events" },
       { kind: "link", label: "Blog", href: "/blog" },
+      { kind: "link", label: "Classifieds", href: "/classifieds" },
       { kind: "link", label: "Sponsors", href: "/sponsors" },
       { kind: "link", label: "Donate", href: "/donate" },
     ]);
@@ -40,6 +41,7 @@ describe("buildMainNav", () => {
         ],
       },
       { kind: "link", label: "Blog", href: "/blog" },
+      { kind: "link", label: "Classifieds", href: "/classifieds" },
       { kind: "link", label: "Sponsors", href: "/sponsors" },
       { kind: "link", label: "About & Volunteer", href: "/about-and-volunteer" },
       { kind: "link", label: "Festival site", href: "https://festival.example.org/" },
@@ -55,13 +57,14 @@ describe("buildMainNav", () => {
 });
 
 describe("buildFooterNav", () => {
-  it("puts editors' footer entries under Explore, after Events and Blog", () => {
+  it("puts editors' footer entries under Explore, after Events, Blog and Classifieds", () => {
     expect(buildFooterNav(MENU)).toEqual([
       {
         heading: "Explore",
         links: [
           { label: "Events", href: "/events" },
           { label: "Blog", href: "/blog" },
+          { label: "Classifieds", href: "/classifieds" },
           { label: "Privacy policy", href: "/privacy" },
         ],
       },

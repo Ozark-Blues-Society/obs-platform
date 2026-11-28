@@ -9,7 +9,8 @@ import { siteUrl } from "@/lib/site/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { ContactPreference, ListingCategory } from "./listing-state";
-import { posterName, type PendingListing } from "./moderation-state";
+import type { PendingListing } from "./moderation-state";
+import { posterNames } from "./poster-names";
 
 // Reads and emails for the moderation queue (backlog K-2, A-3) and its Server Functions. Not a
 // Server Function file: anyone can call those, so keep this one free of "use server".
@@ -92,29 +93,6 @@ export async function listPendingListings(): Promise<PendingListing[]> {
     poster: names.get(row.profile_id) ?? null,
     photo: photos[index],
   }));
-}
-
-/**
- * The posters' first names and last initials, by profile id. Without them the queue still works,
- * so a failure is logged and gives no names.
- */
-async function posterNames(profileIds: string[]): Promise<Map<string, string>> {
-  const names = new Map<string, string>();
-  if (profileIds.length === 0) return names;
-  try {
-    const { data, error } = await createAdminClient()
-      .from("profiles")
-      .select("id, first_name, last_name")
-      .in("id", [...new Set(profileIds)]);
-    if (error) throw new Error(`${error.code} ${error.message}`);
-    for (const row of (data ?? []) as { id: string; first_name: unknown; last_name: unknown }[]) {
-      const name = posterName(row.first_name, row.last_name);
-      if (name) names.set(row.id, name);
-    }
-  } catch (cause) {
-    console.error("Reading the posters' names for the moderation queue failed:", cause);
-  }
-  return names;
 }
 
 /** A decision to tell a poster about: the listing as the decision left it. */

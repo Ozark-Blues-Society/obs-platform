@@ -7,6 +7,7 @@ import { blockSanity } from "./support/sanity";
 const BUILT_IN_LINKS = [
   ["Events", "/events"],
   ["Blog", "/blog"],
+  ["Classifieds", "/classifieds"],
   ["Sponsors", "/sponsors"],
   ["Donate", "/donate"],
 ];
