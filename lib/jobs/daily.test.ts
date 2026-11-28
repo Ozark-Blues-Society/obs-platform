@@ -2,6 +2,7 @@
 // The daily jobs with a fake clock, a store kept in memory and a sender that records what it's
 // given. Which emails are due on which day is the database's job, tested in
 // supabase/tests/membership_emails_test.sql; e2e/daily-jobs.spec.ts runs these jobs against it.
+// The classifieds step is tested in lib/jobs/listings.test.ts; here, only where it runs.
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { SOCIETY_TIME_ZONE } from "@/sanity/schemas/options";
@@ -15,6 +16,7 @@ import {
   type DueMembershipEmail,
   type MembershipStore,
 } from "./daily";
+import type { DueListingReminder, ListingStore } from "./listings";
 
 // A stand-in for the MailerLite group sync: lib/mailerlite/sync.test.ts tests it.
 const mailerLite = vi.hoisted(() => ({ syncMailerLite: vi.fn() }));
@@ -87,6 +89,33 @@ function memoryStore(due: DueMembershipEmail[]) {
   return store satisfies MembershipStore;
 }
 
+/** A classifieds store in memory: `expired` listings come down, and `due` reminders go out once. */
+function listingStore(due: DueListingReminder[] = [], expired = 0) {
+  const claimed = new Set<string>();
+  const store = {
+    expire: vi.fn<ListingStore["expire"]>(async () => expired),
+    dueReminders: vi.fn<ListingStore["dueReminders"]>(async () =>
+      due.filter((reminder) => !claimed.has(reminder.listingId)),
+    ),
+    claim: vi.fn<ListingStore["claim"]>(async (reminder) => {
+      if (claimed.has(reminder.listingId)) return null;
+      claimed.add(reminder.listingId);
+      return claimed.size;
+    }),
+    markSent: vi.fn<ListingStore["markSent"]>(async () => {}),
+    release: vi.fn<ListingStore["release"]>(async () => {}),
+  };
+  return store satisfies ListingStore;
+}
+
+const VOCALIST: DueListingReminder = {
+  listingId: "00000000-0000-4000-8200-000000000002",
+  expiresAt: "2026-11-30T22:41:07.123+00:00",
+  title: "Vocalist available for weekend gigs",
+  email: "tasha.moore@example.com",
+  firstName: "Tasha",
+};
+
 /** A sender that records each email and answers with an id, or fails for the given addresses. */
 function recordingSender(failFor: string[] = []) {
   const sent: OutgoingEmail[] = [];
@@ -105,7 +134,15 @@ function options(
   send: SendEmail,
   extra: Partial<DailyJobsOptions> = {},
 ): DailyJobsOptions {
-  return { now: NOW, store, send, siteUrl: SITE_URL, clock: () => NOW.getTime(), ...extra };
+  return {
+    now: NOW,
+    store,
+    listings: listingStore(),
+    send,
+    siteUrl: SITE_URL,
+    clock: () => NOW.getTime(),
+    ...extra,
+  };
 }
 
 describe("runDailyJobs", () => {
@@ -134,10 +171,81 @@ describe("runDailyJobs", () => {
         claimedElsewhere: 0,
         deferred: 0,
       },
+      listings: { expired: 0, reminders: { sent: 0, failed: 0, claimedElsewhere: 0, deferred: 0 } },
       mailerLite: "off",
       errors: [],
     });
     expect(mailerLite.syncMailerLite).not.toHaveBeenCalled();
+  });
+
+  it("then takes down the listings whose time is up and reminds posters, in the time left", async () => {
+    const store = memoryStore([REMINDER]);
+    const listings = listingStore([VOCALIST], 3);
+    const { send, sent } = recordingSender();
+    mailerLite.syncMailerLite.mockResolvedValueOnce({
+      ...{ synced: 0, removed: 0, claimedElsewhere: 0, deferred: 0, failed: 0 },
+      errors: [],
+    });
+    const sync = {
+      client: { kind: "MailerLite client" } as unknown as MailerLiteClient,
+      store: { kind: "MailerLite store" } as unknown as MailerLiteStore,
+    };
+
+    const summary = await runDailyJobs(options(store, send, { listings, mailerLite: sync }));
+
+    expect(listings.expire).toHaveBeenCalledExactlyOnceWith(NOW);
+    expect(sent.map((email) => email.to)).toEqual([
+      "bev.grant@example.com",
+      "tasha.moore@example.com",
+    ]);
+    expect(summary.listings).toEqual({
+      expired: 3,
+      reminders: { sent: 1, failed: 0, claimedElsewhere: 0, deferred: 0 },
+    });
+    // After the membership emails, before the MailerLite sync.
+    expect(store.dueEmails.mock.invocationCallOrder[0]).toBeLessThan(
+      listings.expire.mock.invocationCallOrder[0],
+    );
+    expect(listings.dueReminders.mock.invocationCallOrder[0]).toBeLessThan(
+      mailerLite.syncMailerLite.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("starts no listing reminder once the membership emails have used up the time", async () => {
+    const store = memoryStore([REMINDER]);
+    const listings = listingStore([VOCALIST], 1);
+    const { send, sent } = recordingSender();
+    let time = NOW.getTime();
+    send.mockImplementation(async (email) => {
+      time += 12_000;
+      sent.push(email);
+      return { id: `email-${sent.length}` };
+    });
+
+    const summary = await runDailyJobs(
+      options(store, send, { listings, clock: () => time, deadline: NOW.getTime() + 10_000 }),
+    );
+
+    expect(sent.map((email) => email.to)).toEqual(["bev.grant@example.com"]);
+    // Taking listings down sends nothing, so it still happens.
+    expect(summary.listings).toEqual({
+      expired: 1,
+      reminders: { sent: 0, failed: 0, claimedElsewhere: 0, deferred: 1 },
+    });
+  });
+
+  it("reports what the listing step got wrong with the rest of the run's errors", async () => {
+    const listings = listingStore([VOCALIST]);
+    listings.expire.mockRejectedValueOnce(new Error("expire_listings: 57014 timeout"));
+    const { send } = recordingSender(["tasha.moore@example.com"]);
+
+    const summary = await runDailyJobs(options(memoryStore([]), send, { listings }));
+
+    expect(summary.errors).toEqual([
+      "Taking down the expired listings failed: expire_listings: 57014 timeout",
+      "Sending the reminder for listing 00000000-0000-4000-8200-000000000002: Resend refused the email (HTTP 422 validation_error): Invalid `to` field.",
+    ]);
+    expect(summary.errors.join()).not.toContain("tasha.moore@example.com");
   });
 
   it("then syncs the MailerLite groups, in the time left, and reports what it did", async () => {

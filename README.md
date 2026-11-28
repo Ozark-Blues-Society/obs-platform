@@ -808,31 +808,43 @@ runs `runDailyJobs()` (`lib/jobs/daily.ts`). Why Netlify, and the options it was
    not on yearly auto-renew (Stripe emails those who are), and the lapsed note (14 days after). The
    job claims each email in `membership_emails`, which holds one email of each kind per member and
    membership end, then renders it, sends it and records the email service's id.
-3. **Syncs the member groups in MailerLite**, with the statuses just updated, once
+3. **Takes down the classifieds listings whose 60 days are over, and reminds posters** (backlog
+   K-4, `lib/jobs/listings.ts`). `expire_listings(now)` marks each live listing whose `expires_at`
+   has passed as `expired`, keeping its dates. Visitors stop seeing a listing at `expires_at`
+   anyway, so this only brings the status in line, for the poster and the moderators.
+   `due_listing_reminders(now)` lists the live listings that come down within 5 days, and the job
+   claims each reminder in `listing_reminders` (one per listing and `expires_at`), then sends the
+   listing-expiring email, whose button opens My listings at that listing
+   (`/account/listings?renew=<listing id>`).
+4. **Syncs the member groups in MailerLite**, with the statuses just updated, once
    `MAILERLITE_API_KEY` is set ([MailerLite member groups](#mailerlite-member-groups)).
 
-Both functions are in `supabase/migrations/20261126143035_membership_emails.sql`, with the rules
-spelled out at the top; `20261126163935_membership_status_from_row.sql` replaced the refresh with one
-that works each status out from the row it updates. Days count on the Society's calendar, in Central
-Time. How the job behaves:
+The membership functions are in `supabase/migrations/20261126143035_membership_emails.sql`, with
+the rules spelled out at the top; `20261126163935_membership_status_from_row.sql` replaced the
+refresh with one that works each status out from the row it updates. The listing functions are in
+`supabase/migrations/20261127221430_listing_expiry.sql`. Both kinds of email are claimed, sent and
+recorded the same way (`lib/jobs/claimed-emails.ts`). Days count on the Society's calendar, in
+Central Time. How the job behaves:
 
 - **Nothing goes out twice.** A second run the same day, or two runs at once, find every email
   claimed. Netlify's **Run now** button is safe.
 - **A renewal during a run stands.** A member renewed while the refresh is running (by the Stripe
-  webhook, once it's built) keeps the status of their new expiry date.
+  webhook, once it's built) keeps the status of their new expiry date, and a listing renewed while
+  the job takes listings down stays live: the update checks `expires_at` again on the renewed row.
 - **Failures are retried.** An email that fails loses its claim, so the next run sends it. Each email
   stays due for a few days after its day (the first reminder until 8 days before, the last until
-  the membership ends, the lapsed note until 20 days after), so a missed run catches up, and nothing
-  older is ever sent.
+  the membership ends, the lapsed note until 20 days after, a listing's reminder until it comes
+  down), so a missed run catches up, and nothing older is ever sent.
 - **It stops in time.** Netlify allows a scheduled function 30 seconds, and the function waits 28 of
   them for the route's answer. So a run starts no email after 15 seconds (sending one can take 10
-  more); the next run sends the rest.
+  more), membership emails first, then listing reminders; the next run sends the rest.
 - **The answer is a summary**, with counts and no addresses: statuses moved, emails sent of each
-  kind, failed, claimed by another run, left for the next run, and the errors (with profile ids).
-  The route answers 500 if anything failed, so it shows in Netlify's log; both functions log the
-  summary.
-- **Only server code reaches it.** `membership_emails` and both functions are for the service role:
-  members and visitors can't read the claims, list who is due or call the functions.
+  kind, failed, claimed by another run, left for the next run, listings taken down and their
+  reminders, and the errors (with profile and listing ids). The route answers 500 if anything
+  failed, so it shows in Netlify's log; both functions log the summary.
+- **Only server code reaches it.** `membership_emails`, `listing_reminders` and the four functions
+  are for the service role: members and visitors can't read the claims, list who is due or call the
+  functions.
 
 **Turning it on in production** is a human gate (production settings, and emails to real members;
 renewal emails are Launch 2, decision 0002). In Netlify's environment variables:
@@ -857,8 +869,10 @@ export CRON_SECRET=local-secret   # the value in .env.local
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/daily
 ```
 
-The emails land in Mailpit. This runs on the real clock across every member in the local database:
-it updates the fixture members' statuses and claims their emails, so a second try sends nothing until
+The emails land in Mailpit. This runs on the real clock across every member and listing in the
+local database: it updates the fixture members' statuses and claims their emails, takes down the
+fixture listings whose 60 days are over and reminds their posters (the fixture "Vocalist available
+for weekend gigs" ends 4 days after the seed is loaded), so a second try sends nothing until
 `supabase db reset`. On a seed more than a day old, the new statuses can fail
 `supabase/tests/seed_test.sql` until that reset, so don't run it against a database others are using.
 
@@ -866,13 +880,14 @@ it updates the fixture members' statuses and claims their emails, so a second tr
 (each boundary, Central Time's midnight, auto-renew, claims, who can reach what).
 `supabase/tests/membership_status_race_test.sql` runs a renewal and the refresh in two sessions,
 through dblink in a throwaway database, and checks that the renewal keeps its status.
-`lib/jobs/daily.test.ts` tests a run (claims, retries, the deadline, failures) with a fake clock and
-store. `e2e/daily-jobs.spec.ts` runs the jobs against the local database and Mailpit with a clock in
-June 2001, when only the members it creates are due, and checks the route refuses requests without
-the secret. `lib/email/send.test.ts`, `lib/jobs/membership-store.test.ts`,
+`supabase/tests/listing_expiry_test.sql` tests the listing rules the same way, with a clock in June
+2001 (each boundary, Central Time's midnight, claims, who can reach what). `lib/jobs/daily.test.ts`
+tests a run (claims, retries, the deadline, failures) with a fake clock and store, and
+`lib/jobs/listings.test.ts` the classifieds step. `e2e/daily-jobs.spec.ts` runs the jobs against
+the local database and Mailpit with clocks in 2001 and 2002, when only the members and listings it
+creates are due, and checks the route refuses requests without the secret.
+`lib/email/send.test.ts`, `lib/jobs/membership-store.test.ts`, `lib/jobs/listing-store.test.ts`,
 `lib/jobs/daily-jobs-function.test.ts` and `app/api/cron/daily/route.test.ts` cover the rest.
-
-K-4 (listing expiry) adds its job to `runDailyJobs()`.
 
 ## MailerLite member groups
 

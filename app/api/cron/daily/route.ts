@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { getEmailSender } from "@/lib/email/send";
 import { serverEnv } from "@/lib/env/server";
 import { runDailyJobs, type DailyJobsSummary } from "@/lib/jobs/daily";
+import { createListingStore } from "@/lib/jobs/listing-store";
 import { createMembershipStore } from "@/lib/jobs/membership-store";
 import { getMailerLiteClient } from "@/lib/mailerlite/client";
 import { createMailerLiteStore } from "@/lib/mailerlite/store";
@@ -16,7 +17,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // 500 when something failed, so the scheduled function's log shows the failure.
 
 /**
- * How long a run may keep starting emails, then MailerLite requests; the next run does the rest.
+ * How long a run may keep starting emails (membership emails, then listing reminders), then
+ * MailerLite requests; the next run does the rest.
  * Netlify stops a scheduled function after 30 seconds, and netlify/functions/daily-jobs.mts waits
  * 28 of them for this answer. The last email or request started may take up to 10 seconds more
  * (REQUEST_TIMEOUT_MS in lib/email/send.ts and lib/mailerlite/client.ts), and this route may have
@@ -50,6 +52,7 @@ export async function POST(request: Request): Promise<Response> {
       now: new Date(startedAt),
       deadline: startedAt + RUN_BUDGET_MS,
       store: createMembershipStore(supabase),
+      listings: createListingStore(supabase),
       send: getEmailSender(serverEnv("EMAIL_FROM", "RESEND_API_KEY", "MAILPIT_URL")),
       siteUrl: siteUrl(),
       mailerLite: mailerLiteClient

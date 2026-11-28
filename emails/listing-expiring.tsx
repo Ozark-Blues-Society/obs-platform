@@ -1,4 +1,4 @@
-import { MY_LISTINGS_PATH } from "../lib/site/navigation";
+import { renewListingPath } from "../lib/site/navigation";
 import { EmailLayout } from "./_components/layout";
 import { Details, Eyebrow, Note, Paragraph, PrimaryButton, SignOff, Title } from "./_components/ui";
 import { formatDate, siteLink } from "./_lib/format";
@@ -9,6 +9,8 @@ export interface ListingExpiringEmailProps {
   siteUrl: string;
   /** The poster's profiles.first_name. Null when they didn't give one. */
   firstName: string | null;
+  /** listings.id: the button opens My listings at this listing's Renew button. */
+  listingId: string;
   /** listings.title, as the member wrote it. */
   listingTitle: string;
   /** listings.expires_at (ISO 8601): when the listing comes down. */
@@ -16,11 +18,11 @@ export interface ListingExpiringEmailProps {
 }
 
 /**
- * The reminder 5 days before a classified listing expires (board decisions §7). Listing expiry
- * (backlog K-4) sends it, and the poster renews from My listings.
+ * The reminder 5 days before a classified listing expires (board decisions §7). The daily job sends
+ * it (backlog K-4, lib/jobs/listings.ts), and the poster renews from My listings.
  */
 export default function ListingExpiringEmail(props: ListingExpiringEmailProps) {
-  const { siteUrl, listingTitle, expiresAt } = props;
+  const { siteUrl, listingId, listingTitle, expiresAt } = props;
   const firstName = firstNameOf(props.firstName);
   const date = formatDate(expiresAt);
 
@@ -45,7 +47,9 @@ export default function ListingExpiringEmail(props: ListingExpiringEmailProps) {
           { label: "Expires on", value: date },
         ]}
       />
-      <PrimaryButton href={siteLink(siteUrl, MY_LISTINGS_PATH)}>Renew your listing</PrimaryButton>
+      <PrimaryButton href={siteLink(siteUrl, renewListingPath(listingId))}>
+        Renew your listing
+      </PrimaryButton>
       <Note>
         If you don&apos;t need it anymore, there&apos;s nothing to do: it comes down by itself.
       </Note>
@@ -60,6 +64,7 @@ ListingExpiringEmail.subject = () => "Your classified listing expires soon";
 ListingExpiringEmail.PreviewProps = {
   siteUrl: "http://localhost:3000",
   firstName: "Jordan",
+  listingId: "00000000-0000-4000-8000-000000000001",
   listingTitle: "Drummer wanted for a Friday night blues trio",
   expiresAt: "2026-12-01T18:00:00Z",
 } satisfies ListingExpiringEmailProps;
