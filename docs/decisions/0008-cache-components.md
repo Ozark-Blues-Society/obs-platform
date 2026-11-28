@@ -62,8 +62,7 @@ visitor who opened `/account` to sign in. A password sign-in as a fixture member
 `/account`, a reload kept the session, and `/account` answered `private, no-store` to the browser
 and the CDN.
 
-**The real deploy** (`develop` at `f7ab408`, after PR #64, 2026-11-27 19:40Z):
-https://develop--obs-platform.netlify.app
+**The real deploy** (the develop branch deploy at `f7ab408`, after PR #64, 2026-11-27 19:40Z):
 
 - Every page checked answers 200: `/`, `/design-preview` and its templates, `/sign-in`, `/studio`,
   `/events` and `/account`. The raw build files are gone: `/server/app/index.html` is a 404, and

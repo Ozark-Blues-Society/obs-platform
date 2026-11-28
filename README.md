@@ -1199,8 +1199,11 @@ adapter by itself only to a site created by linking a repository in its dashboar
 every build, as its docs recommend. Without the adapter, Netlify publishes the raw `.next` folder,
 every page is a 404, and the build's manifest files are public.
 
-- Every push to `develop` deploys to https://develop--obs-platform.netlify.app (a branch deploy).
-  `main` is production. Pull requests get no deploy preview.
+- Every push to `develop` updates the develop branch deploy. Its address is never written in this
+  public repository, in pull requests or in their comments
+  ([decision 0017](docs/decisions/0017-deploy-address-not-in-repo.md)): agents that need it for a
+  deploy check read it from Netlify or local, untracked config. `main` is production. Pull requests
+  get no deploy preview.
 - Cache Components and Partial Prefetching work on Netlify
   ([decision 0008](docs/decisions/0008-cache-components.md)).
 - A working deploy answers 200 for `/sign-in` and 404 for `/server/app/index.html`, a build file
