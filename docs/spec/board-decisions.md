@@ -134,8 +134,8 @@ from its `people/` folder.
 | Photos | 20 event photos; `BRAND-NOTES.md` names the hero picks. `IMG_3362` to `IMG_3375` carry a photographer's watermark: show the credit "J.C. Prazak Photography" with them. The old site's share image is a Getty stock photo licensed only inside GoDaddy's builder, so it isn't in the intake and can't be reused. | Permission for the watermarked photos (contract Section 3.4 puts photo rights on the Society), and confirmation that the rest are the Society's own |
 | Headshots | 8 unnamed photos. Never commit them; don't publish them until the board says who is who and agrees. | Names and consent |
 
-Decision 0014 spells the credit "Pruszak", but the watermark reads "Prazak". Use "Prazak" until
-Q-20261127-232339-17742 is answered.
+The credit is spelled as on the watermark, "Prazak": Parker confirmed it (Q-20261127-232339-17742),
+and decision 0014 says the same. `BRAND-NOTES.md` in the intake folder still misspells it.
 
 Board list, volunteer roles, donation impact examples, venue directory data, real events, the rest of
 the page text and blog posts: **all PENDING**. Agents build those with clearly marked placeholder
