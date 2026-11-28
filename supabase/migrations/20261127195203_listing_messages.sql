@@ -4,7 +4,7 @@
 -- Anyone, visitors included, can write to a poster from the listing's page: a name, an email
 -- address and a message. The site emails the message to the poster's address, which it reads with
 -- the service role and never shows, and the poster replies straight to the address the sender gave
--- (lib/listings/contact-actions.ts). The form is open to everyone, so decision 0009 asks for limits
+-- (lib/listings/contact.ts). The form is open to everyone, so decision 0009 asks for limits
 -- without a third party: so many messages a day from one email address, from one network address,
 -- and to one listing. Each message also goes out through the same email account as the sign-in
 -- links, which a flood would use up.

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { cache, Suspense } from "react";
 import { ListingView } from "@/components/classifieds/listing-view";
 import { PageHeader } from "@/components/layout/page-header";
@@ -18,6 +18,8 @@ const loadListing = cache(async (id: string): Promise<ListingDetail | null | "un
   try {
     return await getLiveListing(id);
   } catch (error) {
+    // Next.js's own signals (the request's prerender ending while the read waits) aren't failures.
+    unstable_rethrow(error);
     console.error("Loading a classifieds listing failed:", error);
     return "unavailable";
   }

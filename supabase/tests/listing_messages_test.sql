@@ -32,6 +32,10 @@ values
   ('00000000-0000-4000-8990-000000000004', '00000000-0000-4000-8980-000000000001', 'merch',
     'L04 live too', 'Posters.', 'live', now() - interval '1 day', now() + interval '59 days');
 
+-- The counts below start from no messages. A database that people tried the form on holds some
+-- for a day; the rollback at the end brings them back.
+delete from public.listing_messages;
+
 -- Who can reach the table and the function. The behaviour tests below cover what they do.
 
 select policies_are(

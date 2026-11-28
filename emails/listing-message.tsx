@@ -29,7 +29,8 @@ export interface ListingMessageEmailProps {
 export default function ListingMessageEmail(props: ListingMessageEmailProps) {
   const { siteUrl, listingTitle, listingPath, senderEmail, message } = props;
   const firstName = firstNameOf(props.firstName);
-  const senderName = props.senderName.trim() || senderEmail;
+  // The sender types their name too, so a link in it is text as well (decision 0009).
+  const senderName = unlinkText(props.senderName.trim() || senderEmail);
 
   return (
     <EmailLayout

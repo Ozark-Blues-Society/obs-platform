@@ -197,6 +197,23 @@ describe("listing message", () => {
     expect(text).not.toContain("jo@example.com");
   });
 
+  it("turns no address in the sender's name into a link either", async () => {
+    const { html, text } = await render({
+      senderName: "Jo, see www.cheap-deals.example and https://spam.example/now",
+    });
+
+    for (const link of ["www.cheap-deals.example", "https://spam.example"]) {
+      expect(html).not.toContain(link);
+      expect(text).not.toContain(link);
+    }
+    expect(plain(text)).toContain(
+      "Jo, see www.cheap-deals.example and https://spam.example/now (jordan.ellis@example.com) wrote",
+    );
+    expect(plain(text)).toContain(
+      "this address belongs to Jo, see www.cheap-deals.example and https://spam.example/now,",
+    );
+  });
+
   it("names a sender without a name by their address", async () => {
     const { text } = await render({ senderName: "  " });
 

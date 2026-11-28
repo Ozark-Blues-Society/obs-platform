@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { ClassifiedsList } from "@/components/classifieds/classifieds-list";
 import { PageHeader } from "@/components/layout/page-header";
@@ -58,6 +59,8 @@ async function loadListings(
   try {
     return await listLiveListings(category);
   } catch (error) {
+    // Next.js's own signals (the request's prerender ending while the read waits) aren't failures.
+    unstable_rethrow(error);
     console.error("Loading the classifieds failed:", error);
     return "unavailable";
   }
