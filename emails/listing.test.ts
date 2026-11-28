@@ -79,8 +79,19 @@ describe("listing expiring", () => {
     expect(html).toContain("Your listing expires soon, Jordan");
     expect(text).toContain("comes down from the classifieds on December 1, 2026.");
     expect(text).toMatch(/Expires on +December 1, 2026\n/);
-    expect(text).toContain("Renew your listing https://example.org/account/listings");
     expect(text).toContain("there's nothing to do: it comes down by itself");
+  });
+
+  it("opens My listings at the listing's Renew button", async () => {
+    const { html, text } = await renderEmail(ListingExpiringEmail, {
+      ...ListingExpiringEmail.PreviewProps,
+      siteUrl: "https://example.org",
+      listingId: "00000000-0000-4000-8940-000000000123",
+    });
+
+    const link = "https://example.org/account/listings?renew=00000000-0000-4000-8940-000000000123";
+    expect(html).toContain(`href="${link}"`);
+    expect(text).toContain(`Renew your listing ${link}`);
   });
 
   it("dates the expiry in the Society's time zone", async () => {
@@ -111,7 +122,8 @@ describe.each([
   it("links to My listings", async () => {
     const { html } = await render({ siteUrl: "https://example.org" });
 
-    expect(html).toContain('href="https://example.org/account/listings"');
+    // The expiring email opens it at the listing (?renew=<listing id>).
+    expect(html).toMatch(/href="https:\/\/example\.org\/account\/listings(\?renew=[0-9a-f-]+)?"/);
   });
 
   it("shows the listing's title as text, never as markup", async () => {

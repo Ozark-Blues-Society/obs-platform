@@ -99,7 +99,7 @@ describe("parsePublicEnv", () => {
   );
 
   it.each([
-    ["a secret key", "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz"],
+    ["a secret key", "sb_secret_madeUpForTheseTests0000000000"],
     ["a service role key from before the sb_ keys", legacyKey("service_role")],
   ])("refuses %s in the publishable key, which every browser gets", (_case, key) => {
     const error = envError(() =>
@@ -155,7 +155,8 @@ describe("parseServerEnv", () => {
       MAILPIT_URL: undefined,
       CRON_SECRET: undefined,
       MAILERLITE_API_KEY: undefined,
-      STRIPE_SECRET_KEY: undefined,
+      ZEFFY_API_KEY: undefined,
+      ZEFFY_WEBHOOK_SECRET: undefined,
     });
   });
 
@@ -167,19 +168,27 @@ describe("parseServerEnv", () => {
           RESEND_API_KEY: "re_test_key",
           CRON_SECRET: "local-secret",
           MAILERLITE_API_KEY: "eyJ0eXAiOiJKV1Qi",
+          ZEFFY_API_KEY: " zeffy-made-up-key ",
         },
-        ["SANITY_API_READ_TOKEN", "RESEND_API_KEY", "CRON_SECRET", "MAILERLITE_API_KEY"],
+        [
+          "SANITY_API_READ_TOKEN",
+          "RESEND_API_KEY",
+          "CRON_SECRET",
+          "MAILERLITE_API_KEY",
+          "ZEFFY_API_KEY",
+        ],
       ),
     ).toEqual({
       SANITY_API_READ_TOKEN: "skToken",
       RESEND_API_KEY: "re_test_key",
       CRON_SECRET: "local-secret",
       MAILERLITE_API_KEY: "eyJ0eXAiOiJKV1Qi",
+      ZEFFY_API_KEY: "zeffy-made-up-key",
     });
   });
 
   it.each([
-    ["a secret key", "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz", true],
+    ["a secret key", "sb_secret_madeUpForTheseTests0000000000", true],
     ["a service role key from before the sb_ keys", legacyKey("service_role"), true],
     ["the publishable key", LOCAL_SUPABASE.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, false],
     ["an anon key from before the sb_ keys", legacyKey("anon"), false],
@@ -233,17 +242,20 @@ describe("parseServerEnv", () => {
     );
   });
 
-  it("takes a Stripe secret key, never the publishable one", () => {
-    const stripe = (value: string) =>
-      parseServerEnv({ STRIPE_SECRET_KEY: value }, ["STRIPE_SECRET_KEY"]);
-    for (const value of ["sk_test_51Abc", "rk_test_51Abc", "sk_live_51Abc"]) {
-      expect(stripe(value)).toEqual({ STRIPE_SECRET_KEY: value });
-    }
-    for (const value of ["pk_test_51Abc", "whsec_51Abc", "51Abc"]) {
-      expect(envError(() => stripe(value)).message, value).toContain(
-        "STRIPE_SECRET_KEY must be a Stripe secret key",
-      );
-    }
+  it("takes Zeffy's webhook signing secret only in ZEFFY_WEBHOOK_SECRET", () => {
+    const zeffy = (vars: RawEnv) => parseServerEnv(vars, ["ZEFFY_API_KEY", "ZEFFY_WEBHOOK_SECRET"]);
+    expect(zeffy({ ZEFFY_WEBHOOK_SECRET: "whsec_madeUp" })).toEqual({
+      ZEFFY_API_KEY: undefined,
+      ZEFFY_WEBHOOK_SECRET: "whsec_madeUp",
+    });
+    expect(envError(() => zeffy({ ZEFFY_WEBHOOK_SECRET: "madeUp" })).message).toBe(
+      "ZEFFY_WEBHOOK_SECRET must be Zeffy's webhook signing secret (Settings > Integrations), " +
+        "which starts with whsec_.",
+    );
+    const swapped = envError(() => zeffy({ ZEFFY_API_KEY: "whsec_madeUp" }));
+    expect(swapped.keys).toEqual(["ZEFFY_API_KEY"]);
+    expect(swapped.message).toContain("ZEFFY_API_KEY holds the webhook signing secret");
+    expect(swapped.message).not.toContain("whsec_madeUp");
   });
 
   it("takes only an address on this machine for Mailpit", () => {

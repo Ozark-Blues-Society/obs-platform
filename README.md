@@ -1,8 +1,8 @@
 # Ozark Blues Society platform
 
 The Ozark Blues Society's new website, membership and email platform: Next.js (App Router) with
-TypeScript and Tailwind, plus Sanity, Supabase, Stripe, Resend and MailerLite as the backlog adds
-them.
+TypeScript and Tailwind, plus Sanity, Supabase, Zeffy (decision 0007), Resend and MailerLite as the
+backlog adds them.
 
 - What we're building: [`docs/spec/scope.md`](docs/spec/scope.md),
   [`docs/spec/architecture.md`](docs/spec/architecture.md), [`docs/backlog.md`](docs/backlog.md)
@@ -82,7 +82,8 @@ passes `process.env` to `lib/env/schema.ts`).
 | `MAILPIT_URL`                          | Server-only | The local stack's mail catcher (local addresses only) |
 | `CRON_SECRET`                          | Secret      | Turns on the daily jobs (decision 0006)               |
 | `MAILERLITE_API_KEY`                   | Secret      | Turns on the MailerLite member group sync             |
-| `STRIPE_SECRET_KEY`                    | Secret      | Stripe's API: membership dues, test mode until launch |
+| `ZEFFY_API_KEY`                        | Secret      | Zeffy's API (decision 0007); never locally or in CI   |
+| `ZEFFY_WEBHOOK_SECRET`                 | Secret      | Checks Zeffy's webhook signatures (`whsec_...`)       |
 
 Secrets are server-only. In CI, every variable is a test or made-up value (see
 [Continuous integration](#continuous-integration)). Production's are set in the hosting
@@ -173,12 +174,13 @@ Synthetic data lives in `scripts/fixtures/`. Real member data never goes in the 
 - `members.mts`: 40 members across the four levels and three statuses (active, expiring,
   lapsed), including the staff roles below.
 - `listings.mts`: classifieds in every category and status.
-- `events.mts`: events and venues. Events live in Sanity, so these go to Sanity's development
-  dataset once the schemas exist (C-1).
+- `events.mts`: events and venues. They live in Sanity: `pnpm fixtures:sanity` loads them into the
+  development dataset (see [Loading the fixtures into Sanity](#loading-the-fixtures-into-sanity)).
 
 `supabase/seed.sql` is generated from the fixtures by `pnpm fixtures:generate`, and `pnpm test`
 fails if it's out of date. The seed loads only tables that exist: the members' sign-ins, their
-profiles, the staff roles and the classifieds listings.
+profiles, the staff roles, the Zeffy level mapping (from `lib/zeffy/level-mapping.ts`, see
+[Zeffy (payments)](#zeffy-payments)) and the classifieds listings.
 
 Every fixture member can sign in locally with their address (for example
 `avery.collins@example.com`) and the password `obs-local-dev`. These four have staff roles (see
@@ -316,9 +318,9 @@ the board created no family memberships (board decisions §2).
   `first_name` and `last_name` from the sign-up's user metadata (`options.data` in
   `supabase.auth.signUp`). Level, status and the dates stay empty until the first payment. When a
   member changes their address through Supabase Auth, the profile follows.
-- **Members can't change their membership.** Level, status, `expires_at`, auto-renew, the Stripe
-  customer, `joined_at` and the staff notes are written by server code with the service role (the
-  Stripe webhook, scheduled jobs, the importer). Column privileges block a member's own update of
+- **Members can't change their membership.** Level, status, `expires_at`, auto-renew, `joined_at`
+  and the staff notes are written by server code with the service role (the Zeffy webhook,
+  scheduled jobs, the importer). Column privileges block a member's own update of
   them, whatever the policies say. Members can read their own staff notes.
 - **Role checks** in policies call `private.has_role(...)`, in the `private` schema (see
   [Migrations and database tests](#migrations-and-database-tests)).
@@ -368,6 +370,38 @@ With a project, set these in `.env.local`:
 
 Then, in Manage → API → CORS origins, add `http://localhost:3000` with "Allow credentials" ticked,
 so the Studio can sign in from there. Every address that serves the site needs that entry.
+
+The factory develops against a separate, development-only project with synthetic content
+(decision 0012). Its values are in the factory's secrets file, `~/factory/secrets/.env`, under
+other names: put `SANITY_PROJECT_ID`, `SANITY_DATASET` and `SANITY_API_TOKEN` (a Viewer token) in
+`.env.local` as `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET` and
+`SANITY_API_READ_TOKEN`, without printing the token. Its CORS origins list `http://localhost:3000`
+only, so open the Studio on port 3000.
+
+### Loading the fixtures into Sanity
+
+`pnpm fixtures:sanity` loads the Sanity fixtures from `scripts/fixtures/events.mts` (the venues
+and their directory entries, the events), the Sponsor tier and Site settings into the
+`development` dataset of the project in `.env.local` (`scripts/fixtures/sanity-fixtures.mts`). It
+refuses any other dataset. It needs a token with the Editor role in `SANITY_API_WRITE_TOKEN`, which
+nothing else reads, so pass it to the one command instead of keeping it in `.env.local`. On the
+factory server, the development project's Editor token is `SANITY_EDITOR_TOKEN` in the secrets
+file:
+
+```sh
+SANITY_API_WRITE_TOKEN=$(awk -F= '$1 == "SANITY_EDITOR_TOKEN" { print substr($0, index($0, "=") + 1) }' ~/factory/secrets/.env) pnpm fixtures:sanity
+```
+
+The token only reaches the command's environment: nothing prints it, and the shell's history keeps
+the command, not the token.
+
+- Each document keeps its fixture's id (a venue's directory entry adds `-directory`), and the
+  import writes it with `createOrReplace`. It reads those ids first and writes only the documents
+  that differ, so a second run the same day reports "Nothing to write". It never touches drafts
+  or other documents.
+- Event dates count from today's date in Central Time, so a run on a later day moves them along.
+- An editor's change to a fixture document is undone by the next run. Site settings is the
+  exception: the import creates it, with the board's benefits table, only if it doesn't exist yet.
 
 ### How it fits together
 
@@ -853,31 +887,43 @@ runs `runDailyJobs()` (`lib/jobs/daily.ts`). Why Netlify, and the options it was
    not on yearly auto-renew (Stripe emails those who are), and the lapsed note (14 days after). The
    job claims each email in `membership_emails`, which holds one email of each kind per member and
    membership end, then renders it, sends it and records the email service's id.
-3. **Syncs the member groups in MailerLite**, with the statuses just updated, once
+3. **Takes down the classifieds listings whose 60 days are over, and reminds posters** (backlog
+   K-4, `lib/jobs/listings.ts`). `expire_listings(now)` marks each live listing whose `expires_at`
+   has passed as `expired`, keeping its dates. Visitors stop seeing a listing at `expires_at`
+   anyway, so this only brings the status in line, for the poster and the moderators.
+   `due_listing_reminders(now)` lists the live listings that come down within 5 days, and the job
+   claims each reminder in `listing_reminders` (one per listing and `expires_at`), then sends the
+   listing-expiring email, whose button opens My listings at that listing
+   (`/account/listings?renew=<listing id>`).
+4. **Syncs the member groups in MailerLite**, with the statuses just updated, once
    `MAILERLITE_API_KEY` is set ([MailerLite member groups](#mailerlite-member-groups)).
 
-Both functions are in `supabase/migrations/20261126143035_membership_emails.sql`, with the rules
-spelled out at the top; `20261126163935_membership_status_from_row.sql` replaced the refresh with one
-that works each status out from the row it updates. Days count on the Society's calendar, in Central
-Time. How the job behaves:
+The membership functions are in `supabase/migrations/20261126143035_membership_emails.sql`, with
+the rules spelled out at the top; `20261126163935_membership_status_from_row.sql` replaced the
+refresh with one that works each status out from the row it updates. The listing functions are in
+`supabase/migrations/20261127221430_listing_expiry.sql`. Both kinds of email are claimed, sent and
+recorded the same way (`lib/jobs/claimed-emails.ts`). Days count on the Society's calendar, in
+Central Time. How the job behaves:
 
 - **Nothing goes out twice.** A second run the same day, or two runs at once, find every email
   claimed. Netlify's **Run now** button is safe.
 - **A renewal during a run stands.** A member renewed while the refresh is running (by the Stripe
-  webhook, once it's built) keeps the status of their new expiry date.
+  webhook, once it's built) keeps the status of their new expiry date, and a listing renewed while
+  the job takes listings down stays live: the update checks `expires_at` again on the renewed row.
 - **Failures are retried.** An email that fails loses its claim, so the next run sends it. Each email
   stays due for a few days after its day (the first reminder until 8 days before, the last until
-  the membership ends, the lapsed note until 20 days after), so a missed run catches up, and nothing
-  older is ever sent.
+  the membership ends, the lapsed note until 20 days after, a listing's reminder until it comes
+  down), so a missed run catches up, and nothing older is ever sent.
 - **It stops in time.** Netlify allows a scheduled function 30 seconds, and the function waits 28 of
   them for the route's answer. So a run starts no email after 15 seconds (sending one can take 10
-  more); the next run sends the rest.
+  more), membership emails first, then listing reminders; the next run sends the rest.
 - **The answer is a summary**, with counts and no addresses: statuses moved, emails sent of each
-  kind, failed, claimed by another run, left for the next run, and the errors (with profile ids).
-  The route answers 500 if anything failed, so it shows in Netlify's log; both functions log the
-  summary.
-- **Only server code reaches it.** `membership_emails` and both functions are for the service role:
-  members and visitors can't read the claims, list who is due or call the functions.
+  kind, failed, claimed by another run, left for the next run, listings taken down and their
+  reminders, and the errors (with profile and listing ids). The route answers 500 if anything
+  failed, so it shows in Netlify's log; both functions log the summary.
+- **Only server code reaches it.** `membership_emails`, `listing_reminders` and the four functions
+  are for the service role: members and visitors can't read the claims, list who is due or call the
+  functions.
 
 **Turning it on in production** is a human gate (production settings, and emails to real members;
 renewal emails are Launch 2, decision 0002). In Netlify's environment variables:
@@ -902,8 +948,10 @@ export CRON_SECRET=local-secret   # the value in .env.local
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/daily
 ```
 
-The emails land in Mailpit. This runs on the real clock across every member in the local database:
-it updates the fixture members' statuses and claims their emails, so a second try sends nothing until
+The emails land in Mailpit. This runs on the real clock across every member and listing in the
+local database: it updates the fixture members' statuses and claims their emails, takes down the
+fixture listings whose 60 days are over and reminds their posters (the fixture "Vocalist available
+for weekend gigs" ends 4 days after the seed is loaded), so a second try sends nothing until
 `supabase db reset`. On a seed more than a day old, the new statuses can fail
 `supabase/tests/seed_test.sql` until that reset, so don't run it against a database others are using.
 
@@ -911,13 +959,14 @@ it updates the fixture members' statuses and claims their emails, so a second tr
 (each boundary, Central Time's midnight, auto-renew, claims, who can reach what).
 `supabase/tests/membership_status_race_test.sql` runs a renewal and the refresh in two sessions,
 through dblink in a throwaway database, and checks that the renewal keeps its status.
-`lib/jobs/daily.test.ts` tests a run (claims, retries, the deadline, failures) with a fake clock and
-store. `e2e/daily-jobs.spec.ts` runs the jobs against the local database and Mailpit with a clock in
-June 2001, when only the members it creates are due, and checks the route refuses requests without
-the secret. `lib/email/send.test.ts`, `lib/jobs/membership-store.test.ts`,
+`supabase/tests/listing_expiry_test.sql` tests the listing rules the same way, with a clock in June
+2001 (each boundary, Central Time's midnight, claims, who can reach what). `lib/jobs/daily.test.ts`
+tests a run (claims, retries, the deadline, failures) with a fake clock and store, and
+`lib/jobs/listings.test.ts` the classifieds step. `e2e/daily-jobs.spec.ts` runs the jobs against
+the local database and Mailpit with clocks in 2001 and 2002, when only the members and listings it
+creates are due, and checks the route refuses requests without the secret.
+`lib/email/send.test.ts`, `lib/jobs/membership-store.test.ts`, `lib/jobs/listing-store.test.ts`,
 `lib/jobs/daily-jobs-function.test.ts` and `app/api/cron/daily/route.test.ts` cover the rest.
-
-K-4 (listing expiry) adds its job to `runDailyJobs()`.
 
 ## MailerLite member groups
 
@@ -993,6 +1042,51 @@ and answers, `supabase/tests/mailerlite_subscribers_test.sql` the records, the l
 reach them, and `e2e/mailerlite-sync.spec.ts` runs the sync against the local database with the
 stand-in API, for the members it creates only.
 
+## Zeffy (payments)
+
+Zeffy takes the Society's payments: memberships, tickets and donations
+([decision 0007](docs/decisions/0007-zeffy-payments.md)). Supabase stays the source of truth for who
+is a member and until when; [architecture](docs/spec/architecture.md) ("Zeffy → Supabase") says how
+payments become memberships (M-5).
+
+- **The client** (`lib/zeffy/client.ts`, server-only) covers what the site needs from Zeffy's Public
+  API v1: list and get payments, record an offline payment (check or cash, A-1), upsert a contact
+  (Z-4), and list and get campaigns (Z-1 to Z-3). `getZeffyClient()` returns null until
+  `ZEFFY_API_KEY` is set. The client sends the key as a bearer token, follows `next_cursor` through
+  a list (100 records a page, 20 pages unless told otherwise), and waits out a 429's `Retry-After`
+  up to three times, never past a `deadline` the caller gives it (Zeffy allows 100 requests a
+  minute and 20 a second). Zeffy's error envelope becomes a `ZeffyError` with its `status`, `code`
+  and `param`. Writes fail with 403 `organization_not_verified` until the Society finishes Zeffy's
+  Stripe verification. The error's message leaves out Zeffy's own, which can repeat an address:
+  `zeffyMessage` has that, for an administrator's screen, not for logs.
+- **The spec snapshot.** The client is built against
+  [`docs/vendor/zeffy-openapi-2026-11-27.json`](docs/vendor/zeffy-openapi-2026-11-27.json), Zeffy's
+  spec as fetched, unedited, from <https://api.zeffy.com/api/docs/openapi.json> on 2026-11-27. The
+  schemas in `lib/zeffy/schemas.ts` mirror it field for field, the client checks every answer
+  against them, and `lib/zeffy/schemas.test.ts` fails when a schema and the snapshot differ. When
+  Zeffy changes its API, save a new dated snapshot beside the old one, point `ZEFFY_SPEC_SNAPSHOT`
+  at it, and fix what the test reports.
+- **No test mode.** Zeffy has no sandbox, so nothing local or in CI calls it, and its keys are
+  never set there. The tests answer the client with synthetic fixtures (`lib/zeffy/fixtures.ts`:
+  the membership form, a ticketing campaign, a donation form, payments with auto-renew, a refund, a
+  lost dispute and one recorded by hand, contacts, and every error envelope), and a net guard in
+  `lib/zeffy/client.test.ts` fails the suite if a test opens any network connection. The webhook
+  (M-5) is tested with payloads signed with a made-up `whsec_` secret.
+- **The keys.** `ZEFFY_API_KEY` (in Zeffy, **Settings → Integrations**; organization owners only)
+  and `ZEFFY_WEBHOOK_SECRET` (the same dialog's webhook signing secret, `whsec_...`) are set by a
+  human on Netlify staging and production only ([`docs/HUMAN_GATES.md`](docs/HUMAN_GATES.md)).
+- **The level mapping.** A payment names the rate it bought, not a membership level.
+  `zeffy_level_mappings` (`supabase/migrations/20261127231530_zeffy_level_mappings.sql`) maps a
+  campaign and rate to a level: administrators read and change it (M-5 adds the screen, and sends a
+  payment whose rate isn't mapped to its review list), the service role reads it, and nobody else
+  sees a row (`supabase/tests/zeffy_level_mappings_test.sql`). The local seed fills it from
+  `lib/zeffy/level-mapping.ts`, whose ids are synthetic (`00000000-0000-4000-8300-...`). To add the
+  mapping to a stack seeded before it existed:
+  `awk '/^-- Zeffy level mapping\./,/^$/' supabase/seed.sql | docker exec -i supabase_db_obs-platform psql -U postgres -v ON_ERROR_STOP=1`.
+- **At launch** (backlog Q-5): the real membership form's campaign and rate ids go into the
+  production table, and Parker checks the whole flow with one real membership payment on staging,
+  refunded afterwards (decision 0007).
+
 ## Scripts
 
 | Command                  | What it does                                                       |
@@ -1007,6 +1101,7 @@ stand-in API, for the members it creates only.
 | `pnpm test:e2e`          | Playwright end-to-end tests (desktop and 390px phone, in Chromium) |
 | `pnpm test:db`           | Database tests (pgTAP) against the local Supabase stack            |
 | `pnpm fixtures:generate` | Regenerate `supabase/seed.sql` from `scripts/fixtures/`            |
+| `pnpm fixtures:sanity`   | Load the Sanity fixtures into the development dataset              |
 | `pnpm check:dataset`     | Check that anonymous queries can't read the Sanity dataset         |
 | `pnpm email:preview`     | Preview the email templates at http://localhost:3030               |
 | `pnpm format`            | Format the code with Prettier                                      |
@@ -1089,10 +1184,11 @@ When the end-to-end tests fail, the run keeps the Playwright HTML report for 7 d
 `gh run download <run-id> -n playwright-report -D playwright-report`, then open it with
 `pnpm exec playwright show-report`.
 
-CI is a single job because the repository is private on GitHub's free plan: 2,000 Actions minutes
-a month, with each job billed rounded up to the minute. A team that pushes around the clock uses
-that up in days, and paying for more minutes is a human decision (`docs/HUMAN_GATES.md`, "Money and
-accounts"). So CI keeps runs short:
+CI is a single job, so dependencies install once. That was chosen while the repository was private
+on GitHub's free plan (2,000 Actions minutes a month, each job billed rounded up to the minute). The
+repository is public now ([decision 0011](docs/decisions/0011-public-repository.md)), so Actions
+minutes on GitHub's standard runners are free. A short run still answers sooner, so CI keeps runs
+short:
 
 - Starting local Supabase takes about two minutes, mostly pulling its Docker images, so everything
   up to the database tests runs while it starts.
@@ -1137,7 +1233,7 @@ every page is a 404, and the build's manifest files are public.
 .github/        CI workflow (GitHub Actions)
 app/            Next.js App Router: pages, layouts, route handlers
 components/     Shared UI: components/ui/ (buttons, cards, form fields, modal…), the layout shell (components/layout/), home page sections (components/home/), page blocks (components/blocks/), page templates (components/templates/) and form classes
-lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs, the MailerLite sync
+lib/            Server and shared code: Supabase clients, sign-in helpers, sending email, the daily jobs, the MailerLite sync, the Zeffy client
 netlify/        Netlify Functions: the daily jobs' schedule (netlify/functions/)
 netlify.toml    How Netlify builds the site (see Hosting (Netlify))
 proxy.ts        Runs before every request: refreshes Supabase sessions
@@ -1146,7 +1242,7 @@ emails/         Email templates (React Email)
 scripts/        Synthetic fixtures (scripts/fixtures/) and the seed generator
 sanity/         Sanity client, live preview helpers, Studio structure and content schemas
 supabase/       Local Supabase config, migrations, seed and pgTAP tests
-docs/           Specs, decisions, design concept, backlog
+docs/           Specs, decisions, design concept, backlog, vendors' API specs (docs/vendor/)
 tools/          Helper scripts for the agent team
 ```
 

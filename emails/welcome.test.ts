@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { BOARD_BENEFITS } from "@/sanity/schemas/documents/site-settings";
+import { BOARD_BENEFITS } from "@/sanity/schemas/board-benefits";
 import { renderEmail } from "./render";
 import WelcomeEmail, { type WelcomeEmailProps } from "./welcome";
 

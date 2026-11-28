@@ -27,7 +27,10 @@ type Listing = { id: string; title: string; photo_path: string | null };
 async function postListing(
   request: APIRequestContext,
   title: string,
-  { photo = false }: { photo?: boolean } = {},
+  {
+    photo = false,
+    body = "Hand-wired, 15 W.\nLocal pickup only.",
+  }: { photo?: boolean; body?: string } = {},
 ): Promise<Listing> {
   const token = await accessToken(request, POSTER);
   let photoPath: string | null = null;
@@ -45,7 +48,7 @@ async function postListing(
     data: {
       category: "gear",
       title,
-      body: "Hand-wired, 15 W.\nLocal pickup only.",
+      body,
       price: 650,
       contact_pref: "email",
       photo_path: photoPath,
@@ -232,6 +235,26 @@ test.describe("a moderator", () => {
     expect(await readListing(request, listing.id)).toBeUndefined();
   });
 
+  test("wraps a long link in a listing, so the queue still fits the screen", async ({
+    page,
+    request,
+  }, testInfo) => {
+    // Links are one long word each: in the title, wider than the card on a phone, and a shared
+    // album's in the details, wider than the card on a phone and on a desktop.
+    const titleLink = `example.org/amp/${"a1b2c3d4".repeat(6)}`;
+    const link = `https://photos.example.org/share/${"a1b2c3d4".repeat(14)}`;
+    const listing = await postListing(request, `E2E ${titleLink} ${runOf(testInfo)}`, {
+      body: `Photos: ${link}`,
+    });
+    await signIn(page, MODERATOR);
+    await expect(cardOf(page, listing.title)).toContainText(link);
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, "how far the page is wider than the window, in pixels").toBe(0);
+  });
+
   test("doesn't approve a change the poster made while the moderator was looking", async ({
     page,
     request,
@@ -264,5 +287,33 @@ test.describe("a moderator", () => {
       `“${changed}” is approved`,
     );
     expect((await readListing(request, listing.id))?.title).toBe(changed);
+  });
+
+  test("says so when the poster deleted the listing first, and keeps focus in the queue", async ({
+    page,
+    request,
+  }, testInfo) => {
+    const listing = await postListing(request, `E2E deleted amp ${runOf(testInfo)}`);
+    await signIn(page, MODERATOR);
+    const approve = cardOf(page, listing.title).getByRole("button", { name: "Approve" });
+    await expect(approve).toBeVisible();
+
+    // The poster deletes the listing after the queue showed it.
+    const posterToken = await accessToken(request, POSTER);
+    await request.delete(`${SUPABASE_URL}/rest/v1/listings`, {
+      headers: supabaseHeaders(posterToken),
+      params: { id: `eq.${listing.id}` },
+    });
+    expect(await readListing(request, listing.id, posterToken)).toBeUndefined();
+
+    await approve.click();
+
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "That listing was deleted by its poster, so there's nothing to decide.",
+    );
+    // The refreshed queue drops the card, and the button that had focus with it: focus goes to the
+    // list's heading, not to the page.
+    await expect(cardOf(page, listing.title)).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: /^Waiting for review/ })).toBeFocused();
   });
 });

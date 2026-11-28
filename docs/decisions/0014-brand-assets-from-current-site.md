@@ -13,7 +13,7 @@ uses them now, replacing the placeholder look.
 Rules:
 - Commit only optimized versions of files actually used. Never commit the whole intake folder.
 - Never commit anything from its `people/` folder (unconfirmed headshots).
-- Show the credit "J.C. Pruszak Photography" on his photos.
+- Show the credit "J.C. Prazak Photography" on his photos (spelled as his watermark; corrected 2026-11-28, Q-20261127-232339-17742).
 - Files from the board, if they arrive later, replace these.
 
 ## Correction to decision 0007

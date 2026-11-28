@@ -13,7 +13,7 @@ Change Order). Launch target: about 10–11 weeks from kickoff.
 | Events calendar | Month and list views, weekly/monthly repeating events, venues, categories, member pricing, members-only events, add-to-calendar, subscribable calendar (ICS) feed. |
 | Blog | Posts with categories, cover photos, scheduling, members-only option, "include in monthly digest" option. |
 | Musician classifieds | Member submission form with photo, moderation queue (approve/reject + emails to poster), auto-expiry after 60 days with renewal reminder, "My listings" page. |
-| Membership & dues | Up to 4 levels; Stripe checkout with optional yearly auto-renew; Stripe-hosted page to update card and download receipts; email-link or password sign-in; family memberships; manual recording of check/cash payments. |
+| Membership & dues | Up to 4 levels; Stripe checkout with optional yearly auto-renew; Stripe-hosted page to update card and download receipts; email-link or password sign-in; family memberships; manual recording of check/cash payments. **Note:** Zeffy replaces Stripe here (decision 0007, `docs/decisions/0007-zeffy-payments.md`), pending a contract change note. |
 | My Account | Status, renewal date, perks, profile and email preferences, the member's classifieds. |
 | Members-only content | Any page, post, event or file can be limited to members or specific levels, stored so it is not publicly readable. |
 | Admin screens | Member list (search, filter by status/level, CSV export, record payment). Classifieds moderation queue. Roles: Administrator, Membership Manager, Editor, Moderator. |
@@ -29,6 +29,7 @@ Change Order). Launch target: about 10–11 weeks from kickoff.
 | Area | Included |
 | --- | --- |
 | Member gig submission | Band/Business/Sponsor members submit gigs from My Account; creates a draft event for an editor to approve. See `docs/decisions/0003-member-gig-submission.md`. Agreed 2026-11-26. |
+| Zeffy ticket sales | Link and import Zeffy ticketing campaigns to calendar events, Buy tickets on event pages (decision 0007). See `docs/decisions/0007-zeffy-payments.md`. Agreed 2026-11-27. |
 
 ## Delivery plan
 
@@ -42,9 +43,10 @@ Soft launch ("Launch 1") by 2026-12-11, then "Launch 2" — see `docs/decisions/
 
 ## Not included (ask before doing any of this)
 
-Online ticket sales, merchandise store, mobile app, public musician directory, paid classifieds or ads,
-integrations with other systems (e.g. accounting), writing/editing content, photography, migrating old
-newsletters beyond one archive page of PDFs, maintenance after launch support.
+Online ticket sales (beyond the Zeffy ticket sales add-on above), merchandise store, mobile app,
+public musician directory, paid classifieds or ads, integrations with other systems (e.g. accounting),
+writing/editing content, photography, migrating old newsletters beyond one archive page of PDFs,
+maintenance after launch support.
 
 ## Milestones
 

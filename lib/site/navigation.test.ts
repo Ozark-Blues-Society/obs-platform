@@ -4,6 +4,7 @@ import {
   buildMainNav,
   isCurrentPage,
   isInSection,
+  renewListingPath,
   safeHref,
   telHref,
   type MenuEntry,
@@ -135,5 +136,14 @@ describe("telHref", () => {
   it("refuses something too short to be a phone number", () => {
     expect(telHref("555-01")).toBeNull();
     expect(telHref("")).toBeNull();
+  });
+});
+
+describe("renewListingPath", () => {
+  it("opens My listings at the listing, with its id as a query parameter", () => {
+    expect(renewListingPath("00000000-0000-4000-8940-000000000001")).toBe(
+      "/account/listings?renew=00000000-0000-4000-8940-000000000001",
+    );
+    expect(renewListingPath("a b&c")).toBe("/account/listings?renew=a%20b%26c");
   });
 });

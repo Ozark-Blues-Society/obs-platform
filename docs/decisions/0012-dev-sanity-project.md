@@ -15,3 +15,6 @@ Rules:
   committed, printed in logs or pasted into chat, and `.env.example` keeps placeholders only.
 - Only synthetic content goes in the dev project. Its dataset may turn public when the trial ends,
   which is harmless with fake data.
+
+Update 2026-11-27 (Q-20261127-233533-27089): Parker set both datasets of the dev project
+(`development` and `production`) to Private, so the factory tests private-dataset behavior now.

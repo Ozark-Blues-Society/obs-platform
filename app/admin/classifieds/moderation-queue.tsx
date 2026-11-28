@@ -53,6 +53,15 @@ export function ModerationQueue({ listings, approve, reject }: Props) {
       headingRef.current?.focus();
     }
   }, [outcome]);
+  // A refusal can take the listing out of the queue too (another moderator decided first, or the
+  // poster deleted it): the refreshed queue arrives after the outcome, without the listing's
+  // buttons, so focus falls to the page. It goes to the list's heading then. Any other refusal
+  // leaves focus where it was.
+  useEffect(() => {
+    if (outcome.status === "error" && document.activeElement === document.body) {
+      headingRef.current?.focus();
+    }
+  }, [outcome, listings]);
 
   function decide(send: () => Promise<ModerationResult>) {
     startTransition(async () => {
@@ -166,7 +175,8 @@ function PendingListingCard({
           <time dateTime={listing.submittedAt}>{formatSocietyDate(listing.submittedAt)}</time>
         </span>
       </p>
-      <h3 id={titleId} className="mt-2 text-xl">
+      {/* Members write these: a long link or word wraps instead of widening the page. */}
+      <h3 id={titleId} className="mt-2 text-xl wrap-break-word">
         {title}
         {price !== null && ` — ${formatPrice(price)}`}
       </h3>
@@ -186,7 +196,7 @@ function PendingListingCard({
           goes live, so if you approve it, the listing may appear without one.
         </p>
       )}
-      <p className="mt-3 whitespace-pre-line">{listing.body}</p>
+      <p className="mt-3 whitespace-pre-line wrap-break-word">{listing.body}</p>
       <p className="mt-3 text-small text-muted">Contact: {CONTACT[listing.contactPref]}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button

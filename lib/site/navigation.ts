@@ -16,6 +16,11 @@ export const MY_LISTINGS_PATH = `${ACCOUNT_PATH}/listings`;
 /** Post a listing (K-1): the form for active members. The classifieds (K-3) link here too. */
 export const NEW_LISTING_PATH = `${MY_LISTINGS_PATH}/new`;
 
+/** My listings, open at one listing's Renew button: where the 5-day reminder (K-4) links. */
+export function renewListingPath(listingId: string): string {
+  return `${MY_LISTINGS_PATH}?renew=${encodeURIComponent(listingId)}`;
+}
+
 export type NavLink = { label: string; href: string };
 
 /** A menu item: a link, or a labeled group of links that opens from the header. */

@@ -196,9 +196,16 @@ export const SERVER_VARS = {
   ]),
   CRON_SECRET: optional(),
   MAILERLITE_API_KEY: optional(),
-  STRIPE_SECRET_KEY: optional([
-    (value) => /^[rs]k_(test|live)_/.test(value),
-    "must be a Stripe secret key: sk_test_... in test mode (a publishable pk_ key won't do).",
+  // Zeffy (decision 0007) has no test mode, so a human sets these two on Netlify staging and
+  // production only, never on the factory server or in CI.
+  ZEFFY_API_KEY: optional([
+    (value) => !value.startsWith("whsec_"),
+    "holds the webhook signing secret (whsec_...): put the organization's API key here and the " +
+      "signing secret in ZEFFY_WEBHOOK_SECRET.",
+  ]),
+  ZEFFY_WEBHOOK_SECRET: optional([
+    (value) => value.startsWith("whsec_"),
+    "must be Zeffy's webhook signing secret (Settings > Integrations), which starts with whsec_.",
   ]),
 };
 

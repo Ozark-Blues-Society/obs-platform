@@ -138,6 +138,16 @@ values
   ('00000000-0000-4000-8100-000000000003'::uuid, 'editor'),
   ('00000000-0000-4000-8100-000000000017'::uuid, 'moderator');
 
+-- Zeffy level mapping. The membership form's rates, from lib/zeffy/level-mapping.ts, with
+-- synthetic ids. Loading it again changes nothing.
+insert into public.zeffy_level_mappings (campaign_id, rate_id, level)
+values
+  ('00000000-0000-4000-8300-010000000001', '00000000-0000-4000-8300-020000000001', 'individual'),
+  ('00000000-0000-4000-8300-010000000001', '00000000-0000-4000-8300-020000000002', 'band'),
+  ('00000000-0000-4000-8300-010000000001', '00000000-0000-4000-8300-020000000003', 'business'),
+  ('00000000-0000-4000-8300-010000000001', '00000000-0000-4000-8300-020000000004', 'sponsor')
+on conflict (campaign_id, rate_id) do nothing;
+
 -- Classifieds listings. Dates are days before now; an approved listing runs 60 days.
 -- Loading it again changes nothing.
 insert into public.listings (
