@@ -34,8 +34,9 @@ export function HeroBlock({
   return (
     <div className="relative isolate overflow-hidden bg-primary-dark text-white">
       <div className="absolute inset-0 -z-10">{photo}</div>
-      {/* Darkens the photo under the text, so it stays readable whatever the photo. */}
-      <div className="absolute inset-0 -z-10 bg-linear-to-t from-primary-dark from-25% via-primary-dark/80 to-primary-dark/20" />
+      {/* Darkens the photo under the text, so it stays readable whatever the photo: even over a
+          white photo, the eyebrow, the faintest text, keeps 5:1 at every width. */}
+      <div className="absolute inset-0 -z-10 bg-linear-to-t from-primary-dark from-30% via-primary-dark/90 via-60% to-primary-dark/50" />
       <div className="mx-auto flex min-h-88 max-w-site flex-col justify-end px-gutter pt-24 pb-10 md:min-h-112">
         {tag && <div className="mb-3">{tag}</div>}
         {eyebrow && <p className="mb-2 text-eyebrow text-accent-light uppercase">{eyebrow}</p>}

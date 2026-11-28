@@ -5,15 +5,15 @@
 
 /** Token colors, named like the tokens in app/globals.css (camelCase for kebab-case). */
 export const colors = {
-  primaryDark: "#0e1a2b",
-  primary: "#1d3557",
-  primaryLight: "#2b4c7e",
+  primaryDark: "#001a33",
+  primary: "#003060",
+  primaryLight: "#1f5288",
   accentLight: "#f0d49a",
   accentDark: "#7a5512",
   canvas: "#f7f2e8",
   surface: "#fffdf8",
   white: "#ffffff",
-  ink: "#1c1a17",
+  ink: "#181818",
   muted: "#6b6458",
   line: "#e4dccb",
 } as const;

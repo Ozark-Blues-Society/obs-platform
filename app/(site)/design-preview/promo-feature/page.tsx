@@ -4,9 +4,9 @@ import { SponsorStripBlock } from "@/components/blocks/list-blocks";
 import { Prose } from "@/components/blocks/prose";
 import { PageTemplate } from "@/components/templates/page-template";
 import { ButtonLink } from "@/components/ui/button";
-import { PlaceholderPhoto } from "@/components/ui/placeholder-photo";
 import { PreviewBar } from "../preview-bar";
-import { SPONSORS } from "../sample-content";
+import { PHOTOS, SPONSORS } from "../sample-content";
+import { SamplePhoto, bandSponsor } from "../sample-images";
 
 export const metadata: Metadata = {
   title: "Promo Feature page (design preview) · Ozark Blues Society",
@@ -25,7 +25,7 @@ export default function PromoFeaturePreview() {
             eyebrow="Applications close January 2"
             heading="Blues Challenge 2027: Bands Wanted"
             text="Bands compete for a spot at the national finals in Memphis. Auditions are on January 16 at Old Mill Music Hall."
-            photo={<PlaceholderPhoto tone="brass" />}
+            photo={<SamplePhoto src={PHOTOS.bandInBlueLight} sizes="100vw" preload />}
             button={{ label: "How to apply", href: "#how-to-apply" }}
           />
         }
@@ -47,7 +47,10 @@ export default function PromoFeaturePreview() {
         <div>
           <ButtonLink href="https://example.com/apply">Apply to compete</ButtonLink>
         </div>
-        <SponsorStripBlock heading="Presented with our sponsors" sponsors={SPONSORS.slice(0, 3)} />
+        <SponsorStripBlock
+          heading="Presented with our sponsors"
+          sponsors={SPONSORS.slice(0, 3).map(bandSponsor)}
+        />
       </PageTemplate>
     </>
   );

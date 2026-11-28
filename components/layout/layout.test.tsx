@@ -1,9 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { buildFooterNav } from "@/lib/site/navigation";
+import { buildFooterNav, buildMainNav } from "@/lib/site/navigation";
 import { EMPTY_SITE_CHROME } from "@/sanity/site-chrome";
 import { PageHeader } from "./page-header";
 import { SiteFooter } from "./site-footer";
+import { SiteHeader } from "./site-header";
 import { MAIN_CONTENT_ID, SkipLink } from "./skip-link";
 
 const auth = vi.hoisted(() => ({
@@ -16,6 +17,22 @@ vi.mock("@/lib/supabase/config", () => ({ readSupabaseConfig: auth.readSupabaseC
 vi.mock("@/sanity/live", () => ({ sanityFetch: vi.fn() }));
 
 const { AccountLinks } = await import("./account-links");
+
+describe("SiteHeader", () => {
+  it("opens with the Society's logo, which links home", () => {
+    // A same-page link: ESLint wants next/link for links to the site's pages.
+    render(<SiteHeader items={buildMainNav([])} account={<a href="#sign-in">Sign in</a>} />);
+
+    const home = within(screen.getByRole("banner")).getByRole("link", {
+      name: "Ozark Blues Society of Northwest Arkansas",
+    });
+    expect(home).toHaveAttribute("href", "/");
+    expect(within(home).getByRole("img")).toHaveAttribute(
+      "alt",
+      "Ozark Blues Society of Northwest Arkansas",
+    );
+  });
+});
 
 describe("SiteFooter", () => {
   it("shows the Society's details and the footer links", () => {

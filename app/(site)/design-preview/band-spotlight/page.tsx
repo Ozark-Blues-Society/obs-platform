@@ -4,9 +4,9 @@ import { UpcomingEventsBlock } from "@/components/blocks/list-blocks";
 import { QuoteBlock, VideoBlock } from "@/components/blocks/media-blocks";
 import { Prose } from "@/components/blocks/prose";
 import { PageTemplate } from "@/components/templates/page-template";
-import { PlaceholderPhoto } from "@/components/ui/placeholder-photo";
 import { PreviewBar } from "../preview-bar";
-import { UPCOMING_EVENTS } from "../sample-content";
+import { PHOTOS, UPCOMING_EVENTS } from "../sample-content";
+import { SamplePhoto } from "../sample-images";
 
 export const metadata: Metadata = {
   title: "Band Spotlight page (design preview) · Ozark Blues Society",
@@ -25,7 +25,8 @@ export default function BandSpotlightPreview() {
             eyebrow="Band Spotlight"
             heading="The Muddy Ridge Trio"
             text="Three friends, one beat-up Silvertone and a sound that’s pure hill-country. We sat down with the trio before their December show."
-            photo={<PlaceholderPhoto tone="rust" />}
+            // The band is made up, so its photo is a stage before a show rather than real players.
+            photo={<SamplePhoto src={PHOTOS.obsStage} sizes="100vw" preload />}
           />
         }
       >

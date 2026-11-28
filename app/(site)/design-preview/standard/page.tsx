@@ -4,10 +4,11 @@ import { ImageBlock } from "@/components/blocks/media-blocks";
 import { Prose } from "@/components/blocks/prose";
 import { PageTemplate } from "@/components/templates/page-template";
 import { ButtonLink } from "@/components/ui/button";
-import { PlaceholderPhoto } from "@/components/ui/placeholder-photo";
 import { JOIN_PATH } from "@/lib/site/navigation";
 import { EVENTS_PATH } from "@/sanity/paths";
 import { PreviewBar } from "../preview-bar";
+import { PHOTO_CREDIT, PHOTOS } from "../sample-content";
+import { SamplePhoto } from "../sample-images";
 
 export const metadata: Metadata = {
   title: "Standard page (design preview) · Ozark Blues Society",
@@ -24,9 +25,11 @@ export default function StandardPreview() {
       >
         <Prose>
           <h2>Our mission</h2>
+          {/* The Society's own words, from its current website. */}
           <p>
-            Placeholder mission statement: to preserve, promote and celebrate blues music in the
-            Ozarks through live performance, education and community.
+            The Ozark Blues Society is dedicated to preserving and promoting the rich heritage of
+            blues music. Through education and community outreach, we aim to inspire a new
+            generation of blues artists and enthusiasts.
           </p>
           <h2>What we do</h2>
           <ul>
@@ -39,8 +42,14 @@ export default function StandardPreview() {
           </ul>
         </Prose>
         <ImageBlock
-          image={<PlaceholderPhoto tone="green" label="Placeholder photo: a band on stage" />}
-          caption="The Friday Blues Jam at The Riverside Tap. (Placeholder photo.)"
+          image={
+            <SamplePhoto
+              src={PHOTOS.festivalStage}
+              alt="A band on an outdoor festival stage"
+              sizes="(min-width: 48rem) 48rem, 100vw"
+            />
+          }
+          caption={`On stage at an outdoor festival. ${PHOTO_CREDIT}.`}
         />
         <Prose>
           <h2>Get involved</h2>

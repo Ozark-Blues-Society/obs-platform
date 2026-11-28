@@ -6,22 +6,22 @@
  * contrast of each text/background pair the site uses. lib/design/tokens.test.ts checks that
  * document against this file.
  *
- * The Society's real logo and colors are still PENDING (docs/spec/board-decisions.md, "Brand and
- * content"). Token names describe roles, not hues, so the real brand goes in by changing the values
- * here, after which `pnpm test` re-checks the contrast. Pages and components use these tokens
- * only: no hex, rgb() or Tailwind palette colors anywhere else, which
- * lib/design/no-hard-coded-colors.test.ts enforces.
+ * The blues and the ink come from the Society's logo, taken from its current website (decision
+ * 0014); the board's own files replace them if they arrive. Token names describe roles, not hues,
+ * so a brand change is a change of values here, after which `pnpm test` re-checks the contrast.
+ * Pages and components use these tokens only: no hex, rgb() or Tailwind palette colors anywhere
+ * else, which lib/design/no-hard-coded-colors.test.ts enforces.
  */
 
 @theme {
   /* Tailwind's default palette is switched off: these are the only colors. */
   --color-*: initial;
 
-  /* Primary: the concept's navy blues. */
-  --color-primary-dark: #0e1a2b; /* --night: header, footer, hero, toast; text on accent */
-  --color-primary: #1d3557; /* --blue: page header, dark buttons, date badges, selected pills */
-  --color-primary-light: #2b4c7e; /* --blue2: links */
-  --color-primary-soft: #e6ecf5; /* --blue-soft: default tags and calendar chips */
+  /* Primary: the logo's navy (#003060), with darker, lighter and soft shades of it. */
+  --color-primary-dark: #001a33; /* header, footer, hero, toast; text on accent */
+  --color-primary: #003060; /* the logo's navy: page header, dark buttons, date badges, pills */
+  --color-primary-light: #1f5288; /* links */
+  --color-primary-soft: #e6eef7; /* default tags and calendar chips */
 
   /* Accent: the concept's brass. */
   --color-accent: #c9973f; /* --brass: main buttons, call-to-action band, selected borders */
@@ -39,7 +39,7 @@
   --color-canvas: #f7f2e8; /* --cream: page background */
   --color-surface: #fffdf8; /* --paper: cards and panels */
   --color-white: #ffffff;
-  --color-ink: #1c1a17; /* --ink: text */
+  --color-ink: #181818; /* the logo's lettering: text */
   --color-muted: #6b6458; /* --muted: secondary text */
   --color-muted-soft: #ece8df; /* grey tag background */
   --color-muted-on-dark: #cfd8e6; /* secondary text on primary and primary-dark */
