@@ -78,8 +78,7 @@ export const UPCOMING_EVENTS = [
 
 /**
  * The credit on the photos of the photographer whose watermark they carry, spelled as on the
- * watermark ("J. C. Prazak Photography"). Decision 0014 has "Pruszak": Parker is asked which is
- * right (Q-20261127-232339-17742).
+ * watermark ("J. C. Prazak Photography"), as decision 0014 says (Q-20261127-232339-17742).
  */
 export const PHOTO_CREDIT = "Photo: J.C. Prazak Photography";
 

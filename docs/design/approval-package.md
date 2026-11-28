@@ -53,8 +53,8 @@ folder's headshots, which nobody has confirmed. Files from the board, if they ar
 
   `IMG_3362` to `IMG_3375` carry a photographer's watermark, and decision 0014 asks for his credit
   wherever they show: `PHOTO_CREDIT` in `sample-content.ts`, under the Standard page's photo. The
-  watermark spells his name "Prazak", decision 0014 "Pruszak"; Q-20261127-232339-17742 asks
-  Parker which is right. The intake notes ask the board to confirm the Society may use the photos.
+  credit is spelled as on the watermark, "Prazak" (decision 0014, Q-20261127-232339-17742). The
+  intake notes ask the board to confirm the Society may use the photos.
 - **Sponsors** (`images/sponsors/`): the website's sponsors, with their logos trimmed and 120px
   high, and its Sponsor Spotlight, Bob Arvin Realtor, for which it shows no logo or website. The
   website shows M&D Furniture's and Pinnacle Rug Cleaning's logos in one picture, one above the
@@ -68,8 +68,7 @@ folder's headshots, which nobody has confirmed. Files from the board, if they ar
 ## Open questions and the approval
 
 - **Brand:** decided (decision 0014): the Society's current website's logo, colors, photos and
-  sponsors, until the board sends its own files. Q-20261127-232339-17742 asks how the
-  photographer's credit is spelled.
+  sponsors, until the board sends its own files.
 - **Preview link:** decided ([decision 0010](../decisions/0010-netlify-site.md)): the package is at
   `/design-preview` on the `develop` branch deploy of the Netlify site, and nobody shares the link
   with anyone other than Parker.
