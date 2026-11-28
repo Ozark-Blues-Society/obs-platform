@@ -129,7 +129,9 @@ export const CONTACT_MESSAGES = {
   messageMissing: "Write your message.",
   messageTooLong: `Keep your message to ${MESSAGE_MAX_LENGTH.toLocaleString("en-US")} characters.`,
   tooQuick: "That was quick. Check your message, then send it again.",
-  senderLimit: `You've sent ${MESSAGES_PER_SENDER} messages through the classifieds today, the most there can be in a day. Try again tomorrow.`,
+  // The limit counts by email address and by network address, so the sender may share the
+  // connection with whoever sent the messages.
+  senderLimit: `Your email address or internet connection has sent ${MESSAGES_PER_SENDER} messages through the classifieds today, the most there can be in a day. Try again tomorrow.`,
   listingLimit:
     "This listing has had a lot of messages today, so it can't take more until tomorrow.",
   gone: "This listing isn't on the classifieds any more, so your message wasn't sent.",

@@ -50,6 +50,11 @@ const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
  * The visitor's network address, as Netlify (x-nf-client-connection-ip) or another host's proxy
  * (x-real-ip) gives it, or null. x-forwarded-for isn't used: its first entry is whatever the
  * visitor sent.
+ *
+ * Netlify sets x-nf-client-connection-ip itself, to the address the connection came from, in place
+ * of any value the visitor sent. A host that doesn't set it (Vercel, CLAUDE.md's fallback, is one)
+ * passes on whatever the visitor sends, so one visitor could pass for many networks: on such a
+ * host, read its own header here first.
  */
 export function clientAddress(requestHeaders: Headers): string | null {
   for (const name of ["x-nf-client-connection-ip", "x-real-ip"]) {
