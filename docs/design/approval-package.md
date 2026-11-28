@@ -22,19 +22,57 @@ to the others. Search engines are asked to skip them (`noindex`).
 | `/design-preview/band-spotlight`       | Band Spotlight template: The Muddy Ridge Trio (hero, story, quote, video, shows) |
 | `/design-preview/promo-feature`        | Promo Feature template: Blues Challenge 2027 (banner, details, button, sponsors) |
 
-**Sample and placeholder.** Every event, post, person, venue and sponsor is made up
-(`sample-content.ts`; phone numbers in the 555-01xx range, addresses at example.com). The logo,
-colors and fonts are the concept's placeholders ([tokens](tokens.md)), and the photos are drawn
-stage scenes (`PlaceholderPhoto`). The real brand goes in by changing token values ([Swapping in
-the real brand](tokens.md#swapping-in-the-real-brand)) and the logo in
-`components/layout/site-header.tsx`.
+**Sample content, the Society's brand.** Every event, post, person and venue is made up
+(`sample-content.ts`; phone numbers in the 555-01xx range, addresses at example.com). The logo, the
+colors, the photos and the sponsors are the Society's own, from its current website ([decision
+0014](../decisions/0014-brand-assets-from-current-site.md); see [The brand](#the-brand)).
+
+## The brand
+
+Parker pulled the brand from the Society's current website into the factory's brand intake folder
+(decision 0014). The repository holds only optimized copies of the files used, and nothing from the
+folder's headshots, which nobody has confirmed. Files from the board, if they arrive, replace them
+([Changing the brand](tokens.md#changing-the-brand)).
+
+- **Logo:** the white version, trimmed and 192px high (`components/layout/obs-logo-white.png`), in
+  the site header on every page, 56px high on phones and 64px on larger screens: its lettering is
+  too fine for less. The website has no vector version; an SVG from the board, or a tracing, would
+  be sharper.
+- **Colors:** the blues are the logo's navy, `#003060`, and shades of it, and the text is the logo's
+  near-black ([tokens](tokens.md)). The brass, the cream and the fonts stay the concept's.
+- **Photos** (`images/`), resized and with their metadata (camera, place, time) removed:
+
+  | File                        | From the intake folder    | Where                                          |
+  | --------------------------- | ------------------------- | ---------------------------------------------- |
+  | `trio-on-stage.jpg`         | `Trio_M1007640.11.jpeg`   | Home hero                                      |
+  | `obs-stage.jpg`             | `IMG_5178.jpeg`           | Band Spotlight hero, the spotlight post's card |
+  | `band-in-blue-light.jpg`    | `IMG_3273.jpeg`           | Promo Feature hero                             |
+  | `festival-stage.jpg`        | `IMG_3368.jpeg`           | Standard page's photo, with the credit         |
+  | `society-on-stage.jpg`      | `IMG_0755.jpeg`, cropped  | The members-only post's card                   |
+  | `crowd.jpg`                 | `IMG_2633.jpeg`           | The recap post's card                          |
+
+  `IMG_3362` to `IMG_3375` carry a photographer's watermark, and decision 0014 asks for his credit
+  wherever they show: `PHOTO_CREDIT` in `sample-content.ts`, under the Standard page's photo. The
+  watermark spells his name "Prazak", decision 0014 "Pruszak"; Q-20261127-232339-17742 asks
+  Parker which is right. The intake notes ask the board to confirm the Society may use the photos.
+- **Sponsors** (`images/sponsors/`): the website's sponsors, with their logos trimmed and 120px
+  high, and its Sponsor Spotlight, Bob Arvin Realtor, for which it shows no logo or website. The
+  website shows M&D Furniture's and Pinnacle Rug Cleaning's logos in one picture, one above the
+  other, unreadable at the 40px a logo gets, so each has its own here. Crisp Recording Studios and
+  Allen's Food Market have photos there rather than logos, so their names show in their place, as
+  the design does until a logo arrives. The tiers and the final list are still to come from the
+  board.
+- **The Band Spotlight's band is made up**, so its hero is a stage before a show rather than
+  players someone could take for that band.
 
 ## Open questions and the approval
 
-- **Brand:** Q-20261126-084157-6494 (filed 2026-11-26) asks whether the board sends the logo,
-  colors and photos before the Dec 2 approval date or the approval goes ahead on the placeholders.
-- **Preview link:** Q-20261126-084158-1521 asks Parker to create the Society's Netlify account
-  (production branch `main`, branch deploys for `develop`). Nothing is deployed until then.
+- **Brand:** decided (decision 0014): the Society's current website's logo, colors, photos and
+  sponsors, until the board sends its own files. Q-20261127-232339-17742 asks how the
+  photographer's credit is spelled.
+- **Preview link:** decided ([decision 0010](../decisions/0010-netlify-site.md)): the package is at
+  `/design-preview` on the `develop` branch deploy of the Netlify site, and nobody shares the link
+  with anyone other than Parker.
 - **Approval:** once the link works, file the approval question with `tools/ask-human.sh`,
   linking to `/design-preview` on the preview, and note its ID on bead op-i9b. Agents never approve
   the design themselves. Record the answer in `docs/decisions/`, with the commit that was approved.
@@ -95,7 +133,9 @@ These are in the package for the Society to approve or change.
 - **Pages have an intro sentence** under the title, as the concept's do: the page's Intro field
   (C-2). Like the title, it's public, so a visitor sees it above the lock on a members-only page,
   as in the concept's Directory page.
-- **Hero blocks darken the photo under their text**, so any photo keeps the text readable.
+- **Hero blocks darken the photo under their text**, so any photo keeps the text readable: even
+  over a white photo, every text keeps WCAG AA contrast at every screen width (measured from
+  screenshots). The home hero darkens the text side of its photo and its Next up panel the same way.
 - **"Upcoming shows" on a Band Spotlight lists the next events on the calendar**, not only that
   band's: the upcoming events block has no band filter (C-1).
 

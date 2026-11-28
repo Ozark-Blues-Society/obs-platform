@@ -4,7 +4,6 @@ import { HomeHero } from "@/components/home/home-hero";
 import { MembershipCta } from "@/components/home/membership-cta";
 import { SponsorBand } from "@/components/home/sponsor-band";
 import { EventCard } from "@/components/ui/event-card";
-import { PlaceholderPhoto } from "@/components/ui/placeholder-photo";
 import { PostCard } from "@/components/ui/post-card";
 import { JOIN_PATH } from "@/lib/site/navigation";
 import { BLOG_PATH, EVENTS_PATH } from "@/sanity/paths";
@@ -14,9 +13,11 @@ import {
   LATEST_POSTS,
   LOWEST_DUES,
   NEXT_EVENT,
+  PHOTOS,
   SPONSORS,
   UPCOMING_EVENTS,
 } from "../sample-content";
+import { SamplePhoto, bandSponsor } from "../sample-images";
 
 export const metadata: Metadata = {
   title: "Home (design preview) · Ozark Blues Society",
@@ -34,7 +35,7 @@ export default function HomePreview() {
         primaryAction={{ label: "Become a Member", href: JOIN_PATH }}
         secondaryAction={{ label: "See Upcoming Shows", href: EVENTS_PATH }}
         nextEvent={NEXT_EVENT}
-        photo={<PlaceholderPhoto />}
+        photo={<SamplePhoto src={PHOTOS.trioOnStage} sizes="100vw" preload />}
       />
       <CardSection
         eyebrow="On the calendar"
@@ -54,13 +55,21 @@ export default function HomePreview() {
         action={{ label: "All posts", href: BLOG_PATH }}
         className="pb-section"
       >
-        {LATEST_POSTS.map(({ tone, ...post }) => (
+        {LATEST_POSTS.map(({ cover, ...post }) => (
           <li key={post.href}>
-            <PostCard {...post} cover={<PlaceholderPhoto tone={tone} />} />
+            <PostCard
+              {...post}
+              cover={
+                <SamplePhoto
+                  src={cover}
+                  sizes="(min-width: 72.5rem) 17rem, (min-width: 40rem) 50vw, 100vw"
+                />
+              }
+            />
           </li>
         ))}
       </CardSection>
-      <SponsorBand featured={FEATURED_SPONSOR} sponsors={SPONSORS} />
+      <SponsorBand featured={FEATURED_SPONSOR} sponsors={SPONSORS.map(bandSponsor)} />
       <MembershipCta
         heading={`Membership starts at ${LOWEST_DUES} a year.`}
         text="Members-only events, the monthly newsletter, merchandise discounts, giveaways and more."

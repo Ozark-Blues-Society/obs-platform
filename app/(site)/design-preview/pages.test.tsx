@@ -8,7 +8,7 @@ import DirectoryVisitorPreview from "./directory/visitor/page";
 import HomePreview from "./home/page";
 import DesignPreviewOverview from "./page";
 import PromoFeaturePreview from "./promo-feature/page";
-import { DIRECTORY, PREVIEW_PAGES } from "./sample-content";
+import { DIRECTORY, PHOTO_CREDIT, PREVIEW_PAGES, SPONSORS } from "./sample-content";
 import StandardPreview from "./standard/page";
 
 const PAGES: [string, ComponentType, string][] = [
@@ -55,6 +55,24 @@ describe("design preview pages", () => {
     const event = screen.getByRole("link", { name: "Members’ Holiday Social" }).closest("article")!;
     expect(within(event).getByText("Members only")).toBeInTheDocument();
     expect(within(event).queryByText(/Hall|Tap|Works/)).not.toBeInTheDocument();
+  });
+});
+
+describe("the Society's photos and sponsors (decision 0014)", () => {
+  it("credit the photographer under his photo", () => {
+    render(<StandardPreview />);
+
+    const photo = screen.getByRole("img", { name: "A band on an outdoor festival stage" });
+    expect(photo.closest("figure")).toHaveTextContent(PHOTO_CREDIT);
+  });
+
+  it("show each sponsor's logo, named by its alt text, or its name where it has none", () => {
+    render(<HomePreview />);
+
+    for (const { name, logo } of SPONSORS) {
+      if (logo) expect(screen.getByRole("img", { name })).toBeInTheDocument();
+      else expect(screen.getByText(name)).toBeInTheDocument();
+    }
   });
 });
 
