@@ -696,7 +696,6 @@ do what, and `e2e/listings.spec.ts` tests the form.
   them into a database that got the migration with `supabase migration up` (no reset), run
   `awk '/^-- Classifieds listings\./,0' supabase/seed.sql | docker exec -i supabase_db_obs-platform psql -U postgres -v ON_ERROR_STOP=1`.
   Loading them again changes nothing.
-- Still to come: expiry with "My listings" (K-4).
 
 ### My listings
 
